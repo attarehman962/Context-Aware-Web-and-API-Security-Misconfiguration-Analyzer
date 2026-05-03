@@ -1,0 +1,38 @@
+cat > /home/salahudin/Desktop/cawasma/requirements.txt << 'EOF'
+# Core HTTP / Scanner
+httpx[http2]==0.27.0
+beautifulsoup4==4.12.3
+lxml==5.2.2
+certifi==2024.6.2
+
+# Web Framework
+Flask==3.0.3
+Flask-SQLAlchemy==3.1.1
+Flask-SocketIO==5.3.6
+Flask-Migrate==4.0.7
+gunicorn==22.0.0
+simple-websocket==1.0.0
+
+# Task Queue
+celery==5.4.0
+redis==5.0.7
+
+# NLP / AI
+sentence-transformers==3.0.1
+scikit-learn==1.5.1
+numpy==1.26.4
+spacy==3.7.5
+
+# LLM Clients
+openai==1.35.14
+anthropic==0.30.0
+
+# Report Generation
+WeasyPrint==62.3
+Jinja2==3.1.4
+
+# Utilities
+python-dotenv==1.0.1
+rich==13.7.1
+EOF
+echo "requirements.txt done"

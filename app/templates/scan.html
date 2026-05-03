@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Scan {{ scan.id }} · CAWASMA{% endblock %}
+{% block content %}
+<section class="panel">
+  <div class="scan-header">
+    <div>
+      <h2>{{ scan.target_url }}</h2>
+      <p class="muted">Profile: {{ scan.profile }} · Status: {{ scan.status }}</p>
+    </div>
+    <div class="score-pill">{{ scan.summary or 'Scan in progress' }}</div>
+  </div>
+</section>
+
+<section class="grid">
+  <article class="panel">
+    <h3>Findings</h3>
+    <ul class="finding-list">
+      {% for finding in scan.findings %}
+        <li>
+          <strong>{{ finding.title }}</strong>
+          <span>{{ finding.severity }} · CVSS {{ finding.cvss_adjusted }}</span>
+        </li>
+      {% else %}
+        <li class="muted">No findings recorded yet.</li>
+      {% endfor %}
+    </ul>
+  </article>
+  <article class="panel">
+    <h3>Exploit Chains</h3>
+    <ul class="finding-list">
+      {% for chain in scan.chains %}
+        <li>
+          <strong>{{ chain.name }}</strong>
+          <span>Composite CVSS {{ chain.composite_cvss }}</span>
+        </li>
+      {% else %}
+        <li class="muted">No chains correlated yet.</li>
+      {% endfor %}
+    </ul>
+  </article>
+</section>
+{% endblock %}

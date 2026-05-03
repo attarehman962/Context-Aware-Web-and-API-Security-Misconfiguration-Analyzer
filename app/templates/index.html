@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}CAWASMA Dashboard{% endblock %}
+{% block content %}
+<section class="panel launch-panel">
+  <form method="post" action="{{ url_for('main.launch_scan') }}" class="launch-form">
+    <label>
+      Target URL
+      <input name="target_url" type="url" placeholder="https://example.com" required>
+    </label>
+    <label>
+      Scan Profile
+      <select name="profile">
+        <option>Quick</option>
+        <option selected>Standard</option>
+        <option>Deep</option>
+      </select>
+    </label>
+    <label>
+      Bearer Token
+      <input name="auth_token" type="text" placeholder="Optional authentication token">
+    </label>
+    <button type="submit">Launch Scan</button>
+  </form>
+</section>
+
+<section class="panel">
+  <h2>Recent Scans</h2>
+  <div class="scan-list">
+    {% for scan in scans %}
+      <a class="scan-card" href="{{ url_for('main.scan_detail', scan_id=scan.id) }}">
+        <strong>{{ scan.target_url }}</strong>
+        <span>{{ scan.profile }} · {{ scan.status }}</span>
+      </a>
+    {% else %}
+      <p class="muted">No scans yet.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,3 @@
+sentence-transformers==3.0.1
+spacy==3.7.6
+weasyprint==62.3

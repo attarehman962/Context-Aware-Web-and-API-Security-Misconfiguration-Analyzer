@@ -1,0 +1,41 @@
+@startuml
+left to right direction
+
+actor Analyst
+actor "LLM Provider" as LLM
+actor "HTTPS Target" as Target
+actor "Redis / Celery" as Queue
+
+rectangle CAWASMA {
+  usecase "Launch Scan" as UC1
+  usecase "Discover Endpoints" as UC2
+  usecase "Classify Endpoint Sensitivity" as UC3
+  usecase "Run 58 Security Checks" as UC4
+  usecase "Analyze Response Body" as UC5
+  usecase "Correlate Exploit Chains" as UC6
+  usecase "Adjust CVSS Scores" as UC7
+  usecase "Generate Reports" as UC8
+  usecase "View Live Progress" as UC9
+  usecase "Export Findings" as UC10
+  usecase "Generate AI Summary" as UC11
+}
+
+Analyst --> UC1
+Analyst --> UC9
+Analyst --> UC8
+Analyst --> UC10
+UC1 --> Queue
+Queue --> UC2
+UC2 --> Target
+UC2 --> UC3
+UC3 --> UC4
+UC4 --> UC5
+UC4 --> UC6
+UC5 --> UC7
+UC6 --> UC7
+UC7 --> UC8
+UC8 --> UC10
+UC11 --> LLM
+UC8 --> UC11
+
+@enduml

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}CAWASMA{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body>
+  <div class="shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Context-Aware Web and API Security Misconfiguration Analyzer</p>
+        <h1>CAWASMA</h1>
+        <p class="lede">Black-box HTTPS scanning with sensitivity-aware CVSS, body-context scoring, and exploit-chain correlation.</p>
+      </div>
+    </header>
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
