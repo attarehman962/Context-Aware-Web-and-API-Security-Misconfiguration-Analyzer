@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from app.extensions import db
 
@@ -14,7 +14,7 @@ class Scan(db.Model):
     auth_token = db.Column(db.Text, nullable=True)
     status = db.Column(db.String(32), nullable=False, default="queued")
     summary = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(UTC))
     completed_at = db.Column(db.DateTime, nullable=True)
 
     endpoints = db.relationship("Endpoint", back_populates="scan", cascade="all, delete-orphan")
@@ -46,7 +46,7 @@ class Finding(db.Model):
     cvss_adjusted = db.Column(db.Float, nullable=False, default=0.0)
     evidence = db.Column(db.Text, nullable=True)
     details = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(UTC))
 
     scan = db.relationship("Scan", back_populates="findings")
     endpoint = db.relationship("Endpoint", back_populates="findings")
@@ -59,6 +59,6 @@ class ExploitChain(db.Model):
     summary = db.Column(db.Text, nullable=False)
     composite_cvss = db.Column(db.Float, nullable=False, default=0.0)
     evidence = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(UTC))
 
     scan = db.relationship("Scan", back_populates="chains")

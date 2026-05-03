@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from app.extensions import db, socketio
 from app.models import Endpoint, ExploitChain, Finding, Scan
@@ -105,7 +105,7 @@ class ScanEngine:
             )
 
         scan.status = "complete"
-        scan.completed_at = datetime.utcnow()
+        scan.completed_at = datetime.now(UTC)
         scan.summary = f"Discovered {len(endpoints)} endpoints, {len(findings_payload)} findings, and {len(chain_matches)} chains."
         db.session.add(scan)
         db.session.flush()

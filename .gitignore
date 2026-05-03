@@ -32,9 +32,12 @@ MANIFEST
 # Testing
 .pytest_cache/
 .coverage
+.coverage.*
 htmlcov/
 .tox/
 .nox/
+.mypy_cache/
+.ruff_cache/
 
 # IDEs
 .vscode/
@@ -43,6 +46,11 @@ htmlcov/
 *.swo
 *~
 .DS_Store
+.python-version
+
+# Local workspace metadata
+.agents/
+.codex/
 
 # Environment variables
 .env
@@ -58,6 +66,8 @@ instance/
 # Logs
 logs/
 *.log
+*.pid
+celerybeat-schedule
 
 # Reports and outputs
 reports/

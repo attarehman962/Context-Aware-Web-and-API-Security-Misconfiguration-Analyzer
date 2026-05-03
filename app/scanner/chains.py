@@ -8,33 +8,53 @@ from dataclasses import dataclass, field
 CHAIN_LIBRARY = [
     {
         "name": "XSS -> Cookie Theft -> Account Takeover",
-        "signals": ["missing_csp", "cookie_missing_httponly", "login_no_rate_limit"],
+        "signals": [
+            "missing_content_security_policy_csp",
+            "inline_script_tag_present",
+            "insecure_cookies_set",
+        ],
         "score": 9.4,
         "summary": "Script injection can steal cookies and culminate in account takeover.",
     },
     {
-        "name": "IDOR -> Data Exposure -> Privilege Abuse",
-        "signals": ["api_bola_idor_probe", "api_excessive_data_exposure", "api_object_reference_oracle"],
+        "name": "CORS -> Token Exfiltration -> Session Hijack",
+        "signals": [
+            "cors_allows_any_origin",
+            "secret.jwt",
+            "insecure_cookies_set",
+        ],
         "score": 9.1,
-        "summary": "Broken object reference combined with over-sharing creates a direct data access chain.",
-    },
-    {
-        "name": "Misconfigured CORS -> Token Exfiltration -> Session Hijack",
-        "signals": ["cors_wildcard_with_credentials", "secret.jwt", "cookie_missing_secure"],
-        "score": 9.0,
-        "summary": "Credential-bearing cross-origin responses can leak tokens and sessions.",
+        "summary": "Cross-origin exposure combined with token leakage can enable session hijack.",
     },
     {
         "name": "Debug Exposure -> Secret Recovery -> Admin Access",
-        "signals": ["stack_trace_exposure", "environment_variable_leak", "server_banner_exposure"],
-        "score": 8.8,
-        "summary": "Debug output and metadata expose secrets that enable privileged access.",
+        "signals": [
+            "python_traceback_visible",
+            "secrets_leaked_in_body",
+            "server_header_exposes_information",
+        ],
+        "score": 9.0,
+        "summary": "Debug output and metadata expose secrets that can support privileged access.",
     },
     {
-        "name": "Weak Auth -> Enumeration -> Brute Force Success",
-        "signals": ["password_reset_enumeration", "login_no_rate_limit", "jwt_weak_signature"],
+        "name": "Sensitive File -> Backup Exposure -> Credential Recovery",
+        "signals": [
+            "sensitive_file_exposed",
+            "backup_file_exposed",
+            "api_key_in_response",
+        ],
+        "score": 8.8,
+        "summary": "Exposed config and backup artifacts can compound into direct credential recovery.",
+    },
+    {
+        "name": "Admin Surface -> Weak Transport -> Session Risk",
+        "signals": [
+            "administration_panel_detected",
+            "missing_strict_transport_security_hsts",
+            "insecure_cookies_set",
+        ],
         "score": 8.9,
-        "summary": "Authentication weaknesses allow targeted credential attacks to succeed.",
+        "summary": "An exposed admin surface without transport and cookie hardening increases takeover risk.",
     },
 ]
 
