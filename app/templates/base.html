@@ -1,24 +1,77 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}CAWASMA{% endblock %}</title>
+  <title>{% block title %}CAWASMA{% endblock %} | Context-Aware Security Analyzer</title>
+  <script>
+    (() => {
+      const savedTheme = localStorage.getItem("cawasma-theme");
+      const theme = savedTheme || "dark";
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  {% block extra_head %}{% endblock %}
 </head>
 <body>
-  <div class="shell">
-    <header class="hero">
+  <header class="site-header" id="mainNav">
+    <div class="container shell-nav">
+      <a class="brand" href="{{ url_for('main.index') }}">
+        <span class="brand-icon"><i class="bi bi-shield-shaded"></i></span>
+        <span class="brand-wordmark">CAW<span>ASMA</span></span>
+      </a>
+
+      <button class="nav-toggle" id="navToggle" type="button" aria-expanded="false" aria-controls="siteNav" aria-label="Toggle navigation">
+        <i class="bi bi-grid-3x3-gap-fill"></i>
+      </button>
+
+      <nav class="site-nav" id="siteNav">
+        <a href="{{ url_for('main.index') }}">Home</a>
+        <a href="{{ url_for('main.index') }}#launch-scan">Launch Scan</a>
+        <a href="{{ url_for('main.index') }}#recent-scans">Dashboard</a>
+        <a href="{{ url_for('main.index') }}#workflow">Workflow</a>
+      </nav>
+
+      <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle color theme" aria-pressed="true">
+        <span class="theme-toggle-track">
+          <i class="bi bi-sun-fill theme-icon"></i>
+          <i class="bi bi-moon-stars-fill theme-icon"></i>
+          <span class="theme-toggle-thumb"></span>
+        </span>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
       <div>
-        <p class="eyebrow">Context-Aware Web and API Security Misconfiguration Analyzer</p>
-        <h1>CAWASMA</h1>
-        <p class="lede">Black-box HTTPS scanning with sensitivity-aware CVSS, body-context scoring, and exploit-chain correlation.</p>
+        <div class="footer-brand">
+          <i class="bi bi-shield-shaded"></i>
+          <strong>CAWASMA</strong>
+        </div>
+        <p class="footer-copy">Context-Aware Web and API Security Misconfiguration Analyzer.</p>
       </div>
-    </header>
-    <main>
-      {% block content %}{% endblock %}
-    </main>
-  </div>
+      <div>
+        <p class="footer-heading">FYP Progress Demo</p>
+        <p class="footer-copy">Frontend integration milestone for 40% project completion with backend stability preserved.</p>
+      </div>
+      <div>
+        <p class="footer-heading">Focus Area</p>
+        <p class="footer-copy">OWASP A02 security misconfiguration scanning, context-aware scoring, and findings presentation.</p>
+      </div>
+    </div>
+  </footer>
+
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  {% block extra_js %}{% endblock %}
 </body>
 </html>

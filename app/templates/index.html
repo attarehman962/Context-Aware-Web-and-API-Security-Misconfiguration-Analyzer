@@ -1,39 +1,294 @@
 {% extends "base.html" %}
-{% block title %}CAWASMA Dashboard{% endblock %}
+{% block title %}Dashboard{% endblock %}
 {% block content %}
-<section class="panel launch-panel">
-  <form method="post" action="{{ url_for('main.launch_scan') }}" class="launch-form">
-    <label>
-      Target URL
-      <input name="target_url" type="url" placeholder="https://example.com" required>
-    </label>
-    <label>
-      Scan Profile
-      <select name="profile">
-        <option>Quick</option>
-        <option selected>Standard</option>
-        <option>Deep</option>
-      </select>
-    </label>
-    <label>
-      Bearer Token
-      <input name="auth_token" type="text" placeholder="Optional authentication token">
-    </label>
-    <button type="submit">Launch Scan</button>
-  </form>
+<section class="hero-section">
+  <div class="container hero-grid">
+    <div class="hero-copy">
+      <div class="section-eyebrow fade-up">OWASP A02:2025 | Security Misconfiguration</div>
+      <h1 class="hero-title fade-up delay-1">
+        Detect.<br>
+        Analyze.<br>
+        <span>Secure.</span>
+      </h1>
+      <p class="hero-subtitle fade-up delay-2">
+        CAWASMA combines black-box scanning, context-aware CVSS adjustment, and exploit-chain correlation to surface the same backend results through a stronger, demo-ready frontend experience.
+      </p>
+      <div class="hero-actions fade-up delay-3">
+        <a class="btn btn-primary" href="#launch-scan"><i class="bi bi-search"></i> Launch Scan</a>
+        <a class="btn btn-outline" href="#recent-scans"><i class="bi bi-grid-1x2"></i> View Dashboard</a>
+      </div>
+      <div class="hero-stats fade-up delay-4">
+        <div class="stat-item">
+          <span class="stat-value">{{ dashboard_stats.total_scans }}</span>
+          <span class="stat-label">Total Scans</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">{{ dashboard_stats.targets_analyzed }}</span>
+          <span class="stat-label">Targets Analyzed</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">{{ dashboard_stats.total_endpoints }}</span>
+          <span class="stat-label">Endpoints Mapped</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">{{ "%.1f"|format(dashboard_stats.top_score) }}</span>
+          <span class="stat-label">Top CVSS</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="terminal-card fade-up delay-3">
+      <div class="terminal-bar">
+        <span class="terminal-dot t-red"></span>
+        <span class="terminal-dot t-amber"></span>
+        <span class="terminal-dot t-green"></span>
+        <span class="terminal-url">cawasma.scan-engine://live-session</span>
+      </div>
+      <div class="terminal-body">
+        <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">cawasma --target https://example.com --profile standard</span></div>
+        <div class="t-line"><span class="t-out">[*] Discovering visible routes and API paths...</span></div>
+        <div class="t-line"><span class="t-out">[*] Evaluating headers, TLS, cookies, and response data...</span></div>
+        <div class="t-line"><span class="t-out t-good">[+] Context-aware scoring applied to every observed endpoint</span></div>
+        <div class="t-line"><span class="t-out t-warn">[!] Prioritizing findings by endpoint sensitivity and body signals</span></div>
+        <div class="t-line"><span class="t-out">[*] Correlating attack chains across discovered issues...</span></div>
+        <div class="t-line"><span class="t-out t-bad">[x] High-risk misconfigurations elevated for remediation first</span></div>
+        <div class="t-line"><span class="t-good">[+] Report ready for analyst review</span></div>
+        <div class="t-line"><span class="t-prompt">$</span><span class="t-cursor"></span></div>
+      </div>
+    </div>
+  </div>
 </section>
 
-<section class="panel">
-  <h2>Recent Scans</h2>
-  <div class="scan-list">
-    {% for scan in scans %}
-      <a class="scan-card" href="{{ url_for('main.scan_detail', scan_id=scan.id) }}">
-        <strong>{{ scan.target_url }}</strong>
-        <span>{{ scan.profile }} · {{ scan.status }}</span>
-      </a>
-    {% else %}
-      <p class="muted">No scans yet.</p>
-    {% endfor %}
+<section class="strip-section">
+  <div class="container strip-grid">
+    <div class="risk-card fade-up">
+      <div class="risk-badge">A02</div>
+      <p class="risk-caption">OWASP Top 10 - 2025</p>
+    </div>
+    <div class="risk-copy fade-up delay-1">
+      <h2>Security misconfiguration remains a top-tier risk, but prioritization still matters.</h2>
+      <p>
+        This integration keeps Asim's working engine unchanged while presenting findings in Neelam's cleaner visual language so the FYP demo shows both functional depth and polished delivery.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section class="dashboard-section" id="launch-scan">
+  <div class="container section-stack">
+    <div class="section-head fade-up">
+      <div class="section-eyebrow">Analysis</div>
+      <h2>Launch New Scan</h2>
+      <p>Same backend workflow, upgraded presentation. The form below still posts to Asim's existing `/launch` route and produces the same scan records and results.</p>
+    </div>
+
+    <div class="launch-layout">
+      <div class="panel panel-large fade-up delay-1">
+        <form method="post" action="{{ url_for('main.launch_scan') }}" class="launch-form">
+          <div class="field-block field-span-2">
+            <label class="field-label" for="target_url">Target URL / API Endpoint</label>
+            <input id="target_url" name="target_url" type="url" class="field-input" placeholder="https://example.com or https://api.example.com/v1" required>
+            <div class="hint-row">
+              <button class="hint-pill" type="button" data-target-fill="https://example.com">https://example.com</button>
+              <button class="hint-pill" type="button" data-target-fill="https://httpbin.org">https://httpbin.org</button>
+              <button class="hint-pill" type="button" data-target-fill="https://jsonplaceholder.typicode.com">https://jsonplaceholder.typicode.com</button>
+            </div>
+          </div>
+
+          <div class="field-block">
+            <label class="field-label" for="profile">Scan Profile</label>
+            <select id="profile" name="profile" class="field-input field-select">
+              <option>Quick</option>
+              <option selected>Standard</option>
+              <option>Deep</option>
+            </select>
+          </div>
+
+          <div class="field-block">
+            <label class="field-label" for="auth_token">Bearer Token</label>
+            <input id="auth_token" name="auth_token" type="text" class="field-input" placeholder="Optional authentication token">
+          </div>
+
+          <div class="field-block field-span-2">
+            <div class="info-banner">
+              <i class="bi bi-info-circle"></i>
+              <span>Ethical use only. Scan only systems you own or are explicitly authorized to assess.</span>
+            </div>
+          </div>
+
+          <div class="field-block field-span-2 form-actions">
+            <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i> Start Backend Scan</button>
+            <span class="launch-note">Asim's queue, engine, API structure, and findings output remain unchanged.</span>
+          </div>
+        </form>
+      </div>
+
+      <aside class="panel fade-up delay-2">
+        <div class="mini-head">
+          <span class="mini-title">Scan Summary</span>
+          <span class="status-chip">{{ dashboard_stats.active_scans }} active</span>
+        </div>
+        <div class="info-list">
+          <div class="info-row"><span>Mode</span><strong>Black-box</strong></div>
+          <div class="info-row"><span>Profiles</span><strong>Quick / Standard / Deep</strong></div>
+          <div class="info-row"><span>Output Source</span><strong>Existing Asim engine</strong></div>
+          <div class="info-row"><span>Targets Tracked</span><strong>{{ dashboard_stats.targets_analyzed }}</strong></div>
+          <div class="info-row"><span>Total Findings</span><strong>{{ dashboard_stats.total_findings }}</strong></div>
+        </div>
+        <div class="mini-divider"></div>
+        <p class="sidebar-copy">The UI now reflects a stronger FYP presentation layer while the backend remains the single source of truth for status, findings, chains, and summaries.</p>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<section class="dashboard-section" id="recent-scans">
+  <div class="container section-stack">
+    <div class="section-head fade-up">
+      <div class="section-eyebrow">Overview</div>
+      <h2>Security Dashboard</h2>
+      <p>Live summary cards and recent scan history below are generated entirely from Asim's existing database models.</p>
+    </div>
+
+    <div class="summary-grid">
+      <article class="summary-card tone-strong fade-up">
+        <span class="summary-label">Critical Findings</span>
+        <strong class="summary-value">{{ dashboard_stats.critical_findings }}</strong>
+        <span class="summary-meta">Highest priority issues detected so far</span>
+      </article>
+      <article class="summary-card fade-up delay-1">
+        <span class="summary-label">High Severity</span>
+        <strong class="summary-value">{{ dashboard_stats.high_findings }}</strong>
+        <span class="summary-meta">Elevated risk requiring remediation planning</span>
+      </article>
+      <article class="summary-card fade-up delay-2">
+        <span class="summary-label">Medium Severity</span>
+        <strong class="summary-value">{{ dashboard_stats.medium_findings }}</strong>
+        <span class="summary-meta">Notable findings across assessed targets</span>
+      </article>
+      <article class="summary-card fade-up delay-3">
+        <span class="summary-label">Low Severity</span>
+        <strong class="summary-value">{{ dashboard_stats.low_findings }}</strong>
+        <span class="summary-meta">Lower-risk issues captured in reporting</span>
+      </article>
+    </div>
+
+    <div class="dashboard-grid">
+      <div class="panel panel-large fade-up">
+        <div class="mini-head">
+          <span class="mini-title">Recent Scans</span>
+          <span class="mini-tag">Latest 10 sessions</span>
+        </div>
+        <div class="table-wrap">
+          <table class="scan-table">
+            <thead>
+              <tr>
+                <th>Target</th>
+                <th>Status</th>
+                <th>Findings</th>
+                <th>Top CVSS</th>
+                <th>Created</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in recent_scans %}
+                <tr>
+                  <td>
+                    <div class="table-target">{{ item.scan.target_url }}</div>
+                    <div class="table-sub">{{ item.scan.profile }} profile · {{ item.endpoint_count }} endpoints · {{ item.chain_count }} chains</div>
+                  </td>
+                  <td>
+                    <span class="table-status status-{{ item.scan.status|lower }}">
+                      <span class="status-dot"></span>{{ item.scan.status|capitalize }}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="severity-stack">
+                      <span class="severity-pill severity-critical">{{ item.severity_counts.critical }}C</span>
+                      <span class="severity-pill severity-high">{{ item.severity_counts.high }}H</span>
+                      <span class="severity-pill severity-medium">{{ item.severity_counts.medium }}M</span>
+                      <span class="severity-pill severity-low">{{ item.severity_counts.low }}L</span>
+                    </div>
+                  </td>
+                  <td class="table-score">
+                    {% if item.top_score is not none %}
+                      {{ "%.1f"|format(item.top_score) }}
+                    {% else %}
+                      --
+                    {% endif %}
+                  </td>
+                  <td class="table-date">{{ item.scan.created_at.strftime("%Y-%m-%d %H:%M") if item.scan.created_at else "--" }}</td>
+                  <td><a class="btn btn-outline btn-small" href="{{ url_for('main.scan_detail', scan_id=item.scan.id) }}">Open</a></td>
+                </tr>
+              {% else %}
+                <tr>
+                  <td colspan="6" class="empty-state">No scans are available yet. Launch the first scan above to populate the dashboard.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <aside class="panel fade-up delay-1">
+        <div class="mini-head">
+          <span class="mini-title">System Snapshot</span>
+          <span class="mini-tag">Live from DB</span>
+        </div>
+        <div class="progress-list">
+          <div>
+            <div class="progress-head"><span>Critical</span><strong>{{ dashboard_stats.critical_findings }}</strong></div>
+            <div class="progress-bar"><span style="width: {{ 100 if dashboard_stats.total_findings == 0 else (dashboard_stats.critical_findings / dashboard_stats.total_findings * 100)|round(0, 'floor') }}%"></span></div>
+          </div>
+          <div>
+            <div class="progress-head"><span>High</span><strong>{{ dashboard_stats.high_findings }}</strong></div>
+            <div class="progress-bar"><span style="width: {{ 100 if dashboard_stats.total_findings == 0 else (dashboard_stats.high_findings / dashboard_stats.total_findings * 100)|round(0, 'floor') }}%"></span></div>
+          </div>
+          <div>
+            <div class="progress-head"><span>Medium</span><strong>{{ dashboard_stats.medium_findings }}</strong></div>
+            <div class="progress-bar"><span style="width: {{ 100 if dashboard_stats.total_findings == 0 else (dashboard_stats.medium_findings / dashboard_stats.total_findings * 100)|round(0, 'floor') }}%"></span></div>
+          </div>
+          <div>
+            <div class="progress-head"><span>Low</span><strong>{{ dashboard_stats.low_findings }}</strong></div>
+            <div class="progress-bar"><span style="width: {{ 100 if dashboard_stats.total_findings == 0 else (dashboard_stats.low_findings / dashboard_stats.total_findings * 100)|round(0, 'floor') }}%"></span></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<section class="features-section" id="workflow">
+  <div class="container section-stack">
+    <div class="section-head fade-up">
+      <div class="section-eyebrow">Workflow</div>
+      <h2>How the integrated experience works</h2>
+      <p>Neelam's presentation is now aligned with Asim's real scan lifecycle: launch, process, score, correlate, and review.</p>
+    </div>
+
+    <div class="feature-grid">
+      <article class="feature-card fade-up">
+        <span class="feature-icon"><i class="bi bi-link-45deg"></i></span>
+        <h3>1. Enter Target</h3>
+        <p>Users provide a target URL and optional bearer token through a more polished launch surface.</p>
+      </article>
+      <article class="feature-card fade-up delay-1">
+        <span class="feature-icon"><i class="bi bi-diagram-3"></i></span>
+        <h3>2. Backend Scan Runs</h3>
+        <p>Asim's crawler, classifiers, and checks execute exactly as before, with no API or engine changes.</p>
+      </article>
+      <article class="feature-card fade-up delay-2">
+        <span class="feature-icon"><i class="bi bi-shield-exclamation"></i></span>
+        <h3>3. Findings Are Prioritized</h3>
+        <p>Context-aware scoring and exploit-chain correlation remain the source of truth for results and summaries.</p>
+      </article>
+      <article class="feature-card fade-up delay-3">
+        <span class="feature-icon"><i class="bi bi-file-earmark-text"></i></span>
+        <h3>4. Review Report</h3>
+        <p>The detail page now presents findings, scores, evidence, and chains in a cleaner FYP-ready report layout.</p>
+      </article>
+    </div>
   </div>
 </section>
 {% endblock %}

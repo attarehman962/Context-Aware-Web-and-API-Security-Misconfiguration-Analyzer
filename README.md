@@ -1,38 +1,42 @@
-# Context-Aware Web and API Security Misconfiguration Analyzer
+# CAWASMA
 
-CAWASMA is a Flask-based black-box scanner for web applications and REST APIs. It crawls a target, inspects response headers and bodies, creates security findings, adjusts severity using endpoint and body sensitivity, correlates related signals into exploit chains, and exposes the results through both a web dashboard and a JSON API.
+## Context-Aware Web and API Security Misconfiguration Analyzer
 
-This README documents the project as it exists in the current repository, so the setup and usage instructions here are meant to match the real code path rather than an older design document.
+CAWASMA is a web-based security analysis system designed to detect misconfigurations in web applications and APIs using a black-box scanning approach. The current implementation is built with Python and Flask and focuses on discovering reachable endpoints, inspecting responses, generating findings, adjusting severity using context, and correlating related issues into higher-level exploit chains.
 
-## What the project does
+This repository represents the current working implementation for the Final Year Project (FYP). It includes the backend engine, persistence layer, JSON API, and a server-rendered frontend for launching scans and reviewing results.
 
-The current implementation provides:
+## Features
 
-- A Flask dashboard for launching scans and reviewing recent results
-- A JSON API for creating scans and reading scan output
-- Same-origin crawling with HTML link discovery and lightweight JavaScript route mining
-- Heuristic endpoint sensitivity classification
-- Response-body signal detection for PII, tokens, financial terms, and infrastructure hints
-- Header, cookie, CORS, response-body, and exposure checks
-- Context-adjusted CVSS scoring
-- Exploit-chain correlation based on combinations of findings and body signals
-- SQLite-backed persistence for scans, endpoints, findings, and chains
+- Launch security scans from a web dashboard or JSON API
+- Crawl same-origin web targets and discover reachable endpoints
+- Extract routes from HTML and lightweight JavaScript patterns
+- Classify endpoint sensitivity into `LOW`, `MEDIUM`, `HIGH`, or `CRITICAL`
+- Detect response-body signals such as PII, tokens, financial hints, and infrastructure terms
+- Apply heuristic checks for:
+  - missing security headers
+  - insecure cookie attributes
+  - permissive CORS behavior
+  - error leakage and debug traces
+  - sensitive file exposure indicators
+  - risky inline scripts and body content
+- Adjust CVSS-style scores using endpoint sensitivity and body-signal bonuses
+- Correlate related findings into exploit chains
+- Persist scans, endpoints, findings, and chains in a relational database
+- View recent scans and detailed findings through the browser UI
+- Export a JSON summary of scan findings through the API
+- Fall back to inline execution when Redis is unavailable
 
-## Current architecture
+## Tech Stack
 
-At a high level, the scan flow is:
+### Frontend
 
-1. A scan is created from the dashboard or JSON API.
-2. The scan is queued through Celery if Redis is available.
-3. If Redis is unavailable, the scan runs inline inside the Flask app.
-4. The crawler discovers same-origin endpoints from the seed page, common wordlist paths, and JavaScript route patterns.
-5. Each discovered endpoint is classified for sensitivity.
-6. Response content is checked for body signals and finding heuristics.
-7. Findings receive adjusted CVSS scores based on endpoint sensitivity and body signals.
-8. Related findings are correlated into exploit chains.
-9. Results are stored in the database and shown in the UI/API.
+- Server-rendered HTML templates with Jinja2
+- Custom CSS
+- Vanilla JavaScript
+- Bootstrap Icons via CDN
 
-## Tech stack
+### Backend
 
 - Python 3
 - Flask
@@ -42,230 +46,329 @@ At a high level, the scan flow is:
 - Redis
 - HTTPX
 - BeautifulSoup4
+
+### Database
+
 - SQLite by default
 
-## Repository structure
+### Development and Testing
 
-- `app/`
-  Flask application package.
-- `app/__init__.py`
-  Application factory, extension setup, blueprint registration, and database initialization.
-- `app/routes.py`
-  Dashboard routes.
-- `app/api.py`
-  JSON API routes.
-- `app/models.py`
-  SQLAlchemy models for scans, endpoints, findings, and exploit chains.
-- `app/tasks.py`
-  Celery integration and inline fallback behavior.
-- `app/scanner/`
-  Crawler, checks, CVSS adjustment, body classification, endpoint sensitivity, chain correlation, and report helpers.
-- `app/templates/`
-  Dashboard templates.
-- `app/static/`
-  Frontend assets for the dashboard.
-- `tests/`
-  Smoke, engine, finding, chain, and export tests.
-- `config.py`
-  Central configuration and environment variable loading.
-- `run.py`
-  Development entry point.
-- `requirements.txt`
-  Runtime dependencies required by the current code.
-- `requirements-dev.txt`
-  Runtime dependencies plus `pytest`.
-- `.env.example`
-  Example environment configuration.
-
-## Requirements
-
-Recommended:
-
-- Python 3.11+ or 3.12+
 - `venv`
-- Internet access from the machine that will scan external targets
+- `pytest`
+- `python-dotenv`
 
-Tested in this workspace with:
+## Project Architecture
 
-- Python 3.13
+At a high level, the system works as follows:
 
-## Quick start
+1. A scan request is created from the dashboard form or the `/api/scans` endpoint.
+2. A `Scan` record is stored in the database with status `queued`.
+3. The task layer checks whether Redis is available.
+4. If Redis is available, the scan can be queued through Celery.
+5. If Redis is unavailable, the scan runs inline inside the Flask application.
+6. The scan engine crawls the target, discovers endpoints, and fetches responses.
+7. Each endpoint is classified for sensitivity.
+8. Response content is analyzed for body signals.
+9. The checks registry generates findings from headers, cookies, body content, and status signals.
+10. Findings are rescored using context-aware CVSS adjustment.
+11. Related findings and body signals are correlated into exploit chains.
+12. All results are persisted and made available through the UI and API.
 
-From the project root:
+### Main Runtime Components
 
-```bash
-python3 -m venv venv
-./venv/bin/python -m pip install -r requirements-dev.txt
-./venv/bin/python run.py
-```
+- `app/routes.py`
+  Handles the web UI routes.
+- `app/api.py`
+  Exposes JSON endpoints for scan creation, retrieval, and export.
+- `app/tasks.py`
+  Manages Celery integration and inline fallback behavior.
+- `app/scanner/engine.py`
+  Orchestrates crawl, classification, finding generation, scoring, and persistence.
+- `app/scanner/crawler.py`
+  Performs same-origin endpoint discovery.
+- `app/scanner/checks.py`
+  Contains the heuristic finding registry.
+- `app/scanner/sensitivity.py`
+  Classifies endpoint sensitivity.
+- `app/scanner/body_classifier.py`
+  Detects data-sensitive signals in response bodies.
+- `app/scanner/cvss.py`
+  Applies context-aware score adjustment.
+- `app/scanner/chains.py`
+  Correlates multiple signals into exploit chains.
 
-Then open:
+## Folder Structure
 
 ```text
-http://127.0.0.1:5000
+Context-Aware-Web-and-API-Security-Misconfiguration-Analyzer/
+├── app/
+│   ├── __init__.py
+│   ├── api.py
+│   ├── extensions.py
+│   ├── models.py
+│   ├── routes.py
+│   ├── tasks.py
+│   ├── scanner/
+│   │   ├── body_classifier.py
+│   │   ├── chains.py
+│   │   ├── checks.py
+│   │   ├── crawler.py
+│   │   ├── cvss.py
+│   │   ├── engine.py
+│   │   ├── reports.py
+│   │   └── sensitivity.py
+│   ├── static/
+│   │   ├── css/
+│   │   └── js/
+│   └── templates/
+├── docs/
+│   └── use-case-diagram.puml
+├── instance/
+│   └── cawasma.db
+├── reports/
+├── tests/
+│   ├── test_chains.py
+│   ├── test_checks.py
+│   ├── test_engine.py
+│   ├── test_reports.py
+│   └── test_smoke.py
+├── .env.example
+├── config.py
+├── requirements.txt
+├── requirements-dev.txt
+├── requirements-ml.txt
+├── run.py
+└── README.md
 ```
 
-## Detailed setup
+### Key Files and Directories
 
-### 1. Create a virtual environment
+- `app/__init__.py`
+  Creates the Flask app, loads config, initializes extensions, registers blueprints, and creates database tables.
+- `app/models.py`
+  Defines the `Scan`, `Endpoint`, `Finding`, and `ExploitChain` entities.
+- `app/routes.py`
+  Renders the landing page, scan launcher, dashboard summaries, and scan detail report.
+- `app/api.py`
+  Exposes machine-consumable scan endpoints.
+- `app/scanner/`
+  Contains the core engine and analysis pipeline.
+- `app/templates/`
+  Contains the user-facing pages.
+- `app/static/`
+  Contains the frontend styling and interaction scripts.
+- `tests/`
+  Covers smoke tests, engine execution, checks, chains, and export helpers.
+- `instance/cawasma.db`
+  Default SQLite database file for local development.
+
+## How It Works
+
+### End-to-End Flow
+
+1. The user submits a target URL from the dashboard or sends a JSON request to the API.
+2. The application stores a new `Scan` record.
+3. The scan engine updates the scan status to `running`.
+4. The crawler starts from the seed URL and collects:
+   - HTML links
+   - form actions
+   - script sources
+   - other resource paths
+   - route-like strings found in JavaScript
+   - common built-in endpoint guesses such as `/api`, `/login`, `/admin`, and `/health`
+5. Each discovered endpoint is fetched and stored.
+6. Endpoint paths are classified by sensitivity using keyword and anchor-based matching.
+7. Response bodies are analyzed for signals such as:
+   - email addresses
+   - phone numbers
+   - JWT-like tokens
+   - API key or secret patterns
+   - financial terminology
+   - infrastructure/environment hints
+8. The checks registry evaluates the response and may produce one or more findings.
+9. Each finding receives:
+   - a base score
+   - an adjusted score
+   - a severity label
+   - supporting evidence
+   - detailed explanation
+10. The engine aggregates body signals and findings to detect exploit chains.
+11. The scan is marked `complete` and summarized.
+12. Results become visible in the browser UI and through API retrieval endpoints.
+
+## Installation and Setup
+
+### Prerequisites
+
+- Python 3.11+ recommended
+- `venv`
+- Internet access if scanning external targets
+- Optional: Redis if you want queued execution instead of inline fallback
+
+### 1. Clone and Enter the Project
+
+```bash
+git clone <repository-url>
+cd Context-Aware-Web-and-API-Security-Misconfiguration-Analyzer
+```
+
+### 2. Create a Virtual Environment
 
 ```bash
 python3 -m venv venv
 ```
 
-### 2. Install dependencies
+### 3. Activate the Environment
 
-For normal runtime:
+On Linux/macOS:
 
 ```bash
-./venv/bin/python -m pip install -r requirements.txt
+source venv/bin/activate
+```
+
+On Windows PowerShell:
+
+```powershell
+venv\Scripts\Activate.ps1
+```
+
+### 4. Install Dependencies
+
+For runtime only:
+
+```bash
+pip install -r requirements.txt
 ```
 
 For development and tests:
 
 ```bash
-./venv/bin/python -m pip install -r requirements-dev.txt
+pip install -r requirements-dev.txt
 ```
 
-### 3. Optional environment configuration
-
-If you want to override the defaults:
+### 5. Configure Environment Variables
 
 ```bash
 cp .env.example .env
 ```
 
-Then edit `.env` as needed.
+Edit `.env` as needed.
 
-### 4. Start the application
+### 6. Run the Application
 
 ```bash
-./venv/bin/python run.py
+python run.py
 ```
 
-The app binds to:
+The app runs at:
 
-- `http://127.0.0.1:5000`
-- `http://0.0.0.0:5000`
+```text
+http://127.0.0.1:5000
+```
 
-## Configuration
+## Environment Variables
 
-Environment variables are loaded from `.env` by `config.py`.
+Environment values are loaded from `.env` through `config.py`.
 
-### Core Flask settings
+### Core Application
 
-- `FLASK_SECRET_KEY`
-  Secret key for Flask sessions and security-related internals.
-- `FLASK_DEBUG`
-  Enables debug mode when set to `True`.
-- `FLASK_TESTING`
-  Enables testing mode when set to `True`.
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `FLASK_SECRET_KEY` | Flask secret key | `dev-secret-change-this` |
+| `FLASK_DEBUG` | Enables debug mode | `True` |
+| `FLASK_TESTING` | Enables testing mode | `False` |
 
 ### Database
 
-- `DATABASE_URL`
-  Defaults to a SQLite database under `instance/cawasma.db`.
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `DATABASE_URL` | SQLAlchemy connection string | `sqlite:///instance/cawasma.db` |
 
-Default:
+### Queue and Background Execution
 
-```text
-sqlite:///instance/cawasma.db
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `REDIS_URL` | Base Redis connection URL | `redis://localhost:6379/0` |
+| `CELERY_BROKER_URL` | Celery broker | `redis://localhost:6379/0` |
+| `CELERY_RESULT_BACKEND` | Celery result backend | `redis://localhost:6379/1` |
+
+### Scanner Controls
+
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `SCAN_TIMEOUT` | General scan timeout setting | `30` |
+| `MAX_CRAWL_DEPTH` | Maximum discovery depth | `2` |
+| `MAX_ENDPOINTS` | Maximum discovered endpoints per scan | `100` |
+| `RATE_LIMIT_BURST` | Reserved rate control setting | `20` |
+| `TARGET_WORDLIST_SIZE` | Exposed tuning value for target enumeration | `200` |
+
+### Reporting and Runtime
+
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `REPORT_OUTPUT_DIR` | Output directory for generated report artifacts | `reports` |
+| `SOCKETIO_ASYNC_MODE` | SocketIO async mode | `threading` |
+
+### Reserved / Future-Facing Keys
+
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `OPENAI_API_KEY` | Reserved for future enhancement | empty |
+| `ANTHROPIC_API_KEY` | Reserved for future enhancement | empty |
+| `NLP_MODEL_NAME` | Reserved model name setting | `all-MiniLM-L6-v2` |
+
+### Example `.env`
+
+```env
+FLASK_SECRET_KEY=change-this-to-a-random-secret
+FLASK_DEBUG=True
+FLASK_TESTING=False
+DATABASE_URL=sqlite:///instance/cawasma.db
+REDIS_URL=redis://localhost:6379/0
+CELERY_BROKER_URL=redis://localhost:6379/0
+CELERY_RESULT_BACKEND=redis://localhost:6379/1
+SCAN_TIMEOUT=30
+MAX_CRAWL_DEPTH=2
+MAX_ENDPOINTS=100
+RATE_LIMIT_BURST=20
+REPORT_OUTPUT_DIR=reports
+SOCKETIO_ASYNC_MODE=threading
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
+NLP_MODEL_NAME=all-MiniLM-L6-v2
 ```
 
-### Queue / Redis
+## Usage Guide
 
-- `REDIS_URL`
-  Base Redis URL used as a fallback for broker/backend.
-- `CELERY_BROKER_URL`
-  Celery broker URL.
-- `CELERY_RESULT_BACKEND`
-  Celery result backend URL.
+### Running the Web Interface
 
-Important behavior:
+1. Start the application:
 
-- Redis is optional for local development.
-- If Redis is unavailable, CAWASMA logs a warning and runs scans inline.
-- You can use the app without setting up a separate Celery worker for basic local use.
-
-### Scanner controls
-
-- `SCAN_TIMEOUT`
-  General timeout setting.
-- `MAX_CRAWL_DEPTH`
-  Maximum crawl depth for discovered links.
-- `MAX_ENDPOINTS`
-  Maximum number of endpoints to process in one scan.
-- `RATE_LIMIT_BURST`
-  Reserved configuration for rate-based checks.
-- `TARGET_WORDLIST_SIZE`
-  Config value exposed for scan tuning.
-
-### Reporting / runtime
-
-- `REPORT_OUTPUT_DIR`
-  Directory used for generated report output.
-- `SOCKETIO_ASYNC_MODE`
-  Socket.IO async mode. The example config uses `threading`.
-
-### External keys
-
-- `OPENAI_API_KEY`
-- `ANTHROPIC_API_KEY`
-- `NLP_MODEL_NAME`
-
-Note:
-
-- These values are present in config for future or extended functionality, but the current codebase does not import or require external LLM SDKs or transformer models in the base runtime path.
-
-## Running the dashboard
-
-After starting the server:
-
-1. Open `http://127.0.0.1:5000`
-2. Enter a target URL
-3. Choose a profile
-4. Optionally enter a bearer token
-5. Launch the scan
-
-The dashboard currently includes:
-
-- A launch form on the home page
-- A recent scans list
-- A detail page for each scan
-- Findings with severity and adjusted CVSS
-- Correlated exploit chains with composite CVSS
-
-### Current UI fields
-
-The launch form accepts:
-
-- `target_url`
-- `profile`
-- `auth_token`
-
-Profiles available in the UI:
-
-- `Quick`
-- `Standard`
-- `Deep`
-
-Note:
-
-- These profile values are stored with the scan and shown in the UI, but the current engine does not yet vary crawling or finding behavior based on profile selection.
-
-## Running through the API
-
-All API routes are mounted under `/api`.
-
-### Create a scan
-
-Endpoint:
-
-```text
-POST /api/scans
+```bash
+python run.py
 ```
 
-Example:
+2. Open:
+
+```text
+http://127.0.0.1:5000
+```
+
+3. Use the launch form to enter:
+   - target URL
+   - scan profile
+   - optional bearer token
+4. Submit the scan.
+5. Review:
+   - live dashboard statistics
+   - recent scans
+   - detailed findings
+   - exploit chains
+   - endpoint summaries
+
+### Running Through the API
+
+Create a scan:
 
 ```bash
 curl -X POST http://127.0.0.1:5000/api/scans \
@@ -277,6 +380,48 @@ curl -X POST http://127.0.0.1:5000/api/scans \
   }'
 ```
 
+Get scan details:
+
+```bash
+curl http://127.0.0.1:5000/api/scans/1
+```
+
+Export scan summary:
+
+```bash
+curl http://127.0.0.1:5000/api/scans/1/export
+```
+
+### Running Tests
+
+```bash
+python -m pytest
+```
+
+## API Overview
+
+All API routes are mounted under `/api`.
+
+### `POST /api/scans`
+
+Creates a new scan.
+
+Request body:
+
+```json
+{
+  "target_url": "https://example.com",
+  "profile": "Standard",
+  "auth_token": ""
+}
+```
+
+Behavior:
+
+- validates that `target_url` is present
+- creates a `Scan` record
+- starts execution through the task layer
+
 Success response:
 
 ```json
@@ -286,295 +431,134 @@ Success response:
 }
 ```
 
-Validation rule:
+### `GET /api/scans/<scan_id>`
 
-- `target_url` is required
+Returns structured scan data.
 
-### Get scan details
+Response includes:
 
-Endpoint:
-
-```text
-GET /api/scans/<scan_id>
-```
-
-Example:
-
-```bash
-curl http://127.0.0.1:5000/api/scans/1
-```
-
-Returns:
-
-- scan metadata
+- scan ID
+- target URL
 - profile
 - status
 - summary
-- finding list
-- chain list
+- findings
+- exploit chains
 
-### Export scan summary
+### `GET /api/scans/<scan_id>/export`
 
-Endpoint:
+Returns a simplified JSON export summary.
 
-```text
-GET /api/scans/<scan_id>/export
-```
+Response includes:
 
-Example:
+- target URL
+- finding titles
+- chain names
 
-```bash
-curl http://127.0.0.1:5000/api/scans/1/export
-```
+## Screens / Pages Overview
 
-Current behavior:
+### Home / Dashboard Page
 
-- Returns a JSON summary of the scan target, finding titles, and chain names
-- It does not currently stream a PDF or CSV file directly from this endpoint
+The root page (`/`) serves as the main user entry point. It currently includes:
 
-## Database behavior
+- project introduction and hero section
+- scan launch form
+- summary statistics
+- recent scans list
+- workflow overview
 
-The app automatically creates tables on startup through the Flask app factory.
+### Scan Detail / Findings Report Page
 
-Default entities:
+The scan detail page (`/scans/<scan_id>`) displays:
 
-- `Scan`
-- `Endpoint`
-- `Finding`
-- `ExploitChain`
+- scan metadata
+- top score summary
+- severity counts
+- filterable findings
+- evidence and details for each finding
+- exploit chains
+- discovered endpoint summary
+- JSON export link
 
-For local development, this means you usually do not need to run a separate migration step just to get started.
+## Limitations / Current Scope
 
-## How crawling works
+This repository demonstrates a solid working base for the FYP, but it does not yet represent a fully complete production-grade security platform.
 
-The crawler is intentionally lightweight and same-origin focused.
+### Current Scope
 
-Discovery sources include:
+- same-origin black-box crawling
+- heuristic response inspection
+- context-aware scoring
+- exploit-chain correlation
+- dashboard and API-based interaction
 
-- the original seed URL
-- HTML anchors
-- form actions
-- script sources
-- image, link, and source tags
-- JavaScript route-like strings
-- a small built-in wordlist of common paths
+### Current Limitations
 
-Examples of common seeded paths:
+- The implementation is Flask-based, not a full MERN stack.
+- Scan profiles such as `Quick`, `Standard`, and `Deep` are stored and displayed, but they do not yet change engine behavior.
+- The optional bearer token is stored with the scan record, but it is not currently injected into outbound crawler requests.
+- Crawling is lightweight and heuristic-based; it is not a full browser automation engine.
+- Export helpers exist for JSON and CSV, but the public API currently exposes only a simple JSON summary endpoint.
+- There is no user authentication or role-based access control.
+- The project uses automatic table creation and does not yet include a migration workflow.
+- The checks are deterministic heuristics and may not cover every real-world misconfiguration pattern.
+- Report generation and advanced analytics are still limited compared to a mature security product.
 
-- `/api`
-- `/api/v1`
-- `/api/v2`
-- `/health`
-- `/login`
-- `/status`
-- `/robots.txt`
-- `/.well-known/security.txt`
-- `/admin`
-- `/users`
-- `/auth`
-- `/data`
-- `/graphql`
-- `/rest`
+## Future Improvements
 
-The crawler skips:
+- Implement authenticated target scanning using the stored bearer token
+- Make scan profiles control crawl depth, endpoint limits, and analysis intensity
+- Add downloadable PDF, CSV, and full JSON report routes
+- Introduce user authentication and project-level scan ownership
+- Add richer real-time progress updates in the frontend using SocketIO
+- Expand the findings registry with more advanced misconfiguration checks
+- Add browser-based crawling for JavaScript-heavy applications
+- Add database migrations and environment-specific deployment workflows
+- Improve reporting with remediation guidance, trends, and historical comparisons
+- Add containerization and deployment automation
 
-- non-HTTP(S) URLs
-- different-origin URLs
-- common static assets
-- obvious archive/binary-style targets such as `.zip`, `.tar`, `.gz`, `.exe`, and `.dmg`
+## Contribution Guidelines
 
-## How findings are produced
+Contributions should remain aligned with the project goal of context-aware web and API misconfiguration analysis.
 
-Each discovered endpoint is processed through:
+### Basic Guidelines
 
-1. endpoint sensitivity classification
-2. body signal detection
-3. finding heuristic checks
-4. CVSS adjustment
-5. exploit-chain correlation
-
-The current checks focus on areas such as:
-
-- missing security headers
-- exposed server/framework headers
-- insecure cookies
-- permissive CORS
-- inline scripts and risky body content
-- stack traces and error leakage
-- admin path exposure
-- health endpoint exposure
-- robots.txt hints
-- sensitive-file indicators
-- backup-file indicators
-
-## Scoring model
-
-Findings start from a base CVSS-like value and are adjusted using:
-
-- endpoint sensitivity label
-- response-body signal bonus
-
-Endpoint sensitivity labels:
-
-- `LOW`
-- `MEDIUM`
-- `HIGH`
-- `CRITICAL`
-
-Body signals can add extra weight when the response suggests:
-
-- PII
-- tokens or secrets
-- financial information
-- infrastructure identifiers
-
-## Exploit chains
-
-The project also correlates combinations of signals into higher-level chains, such as:
-
-- XSS and insecure cookie combinations
-- CORS and token leakage combinations
-- debug exposure and secret leakage combinations
-- admin-surface and transport-hardening combinations
-
-These are stored separately from single findings so the scan can highlight combined attack paths, not just isolated issues.
-
-## Authentication handling
-
-The UI and API both accept an optional bearer token string when a scan is created.
-
-Current state:
-
-- The token is stored on the `Scan` record
-- The current crawler/engine path does not yet inject that token into outbound target requests
-
-That means:
-
-- authenticated scan support is partially modeled in data and UI
-- full authenticated request execution is not yet implemented in the current scanner path
-
-## Reports and exports
-
-The repository includes export helpers for:
-
-- JSON
-- CSV
-
-Current note:
-
-- Export helper functions exist in the scanner/report layer
-- The public API currently exposes a simple JSON export summary endpoint
-- Direct downloadable report workflows are not fully wired into the web routes yet
-
-## Development workflow
-
-### Run tests
+1. Fork the repository or create a feature branch.
+2. Keep changes focused and well-scoped.
+3. Follow the existing project structure and naming conventions.
+4. Add or update tests when changing scanner logic, export behavior, or API behavior.
+5. Verify the application starts successfully before submitting changes.
+6. Run the test suite before opening a pull request:
 
 ```bash
-./venv/bin/python -m pytest -q
+python -m pytest
 ```
 
-### Byte-compile sanity check
+### Suggested Workflow
 
 ```bash
-./venv/bin/python -m py_compile app/*.py app/scanner/*.py tests/*.py run.py config.py
+git checkout -b feature/your-change
+python -m pytest
+git commit -m "Describe your change"
 ```
-
-### Verify dependency health
-
-```bash
-./venv/bin/python -m pip check
-```
-
-## Example local workflow
-
-```bash
-python3 -m venv venv
-./venv/bin/python -m pip install -r requirements-dev.txt
-cp .env.example .env
-./venv/bin/python run.py
-```
-
-Then in another terminal:
-
-```bash
-curl -X POST http://127.0.0.1:5000/api/scans \
-  -H "Content-Type: application/json" \
-  -d '{"target_url":"https://example.com","profile":"Standard"}'
-```
-
-## Troubleshooting
-
-### The app does not start
-
-Check:
-
-- the virtual environment exists
-- dependencies were installed
-- you are running from the project root
-
-Start command:
-
-```bash
-./venv/bin/python run.py
-```
-
-### Redis is not running
-
-This is usually fine for local development.
-
-Expected behavior:
-
-- CAWASMA detects the broker is unavailable
-- it runs the scan inline instead of queueing it
-
-### The database file is missing
-
-The application factory creates the `instance/` directory and initializes tables automatically on startup.
-
-### A scan seems limited
-
-Tune these settings in `.env`:
-
-- `MAX_CRAWL_DEPTH`
-- `MAX_ENDPOINTS`
-- `SCAN_TIMEOUT`
-
-### API request returns `400`
-
-For scan creation, make sure your JSON includes:
-
-- `target_url`
-
-## Security and usage notes
-
-- Use this tool only against systems you are authorized to assess.
-- Crawling and heuristic probing can create logs on target systems.
-- The current implementation is designed as a development-stage scanner and should be validated before relying on it for production security decisions.
-
-## Known limitations
-
-The current repository is functional, but there are some important boundaries to keep in mind:
-
-- scan profiles are stored but do not yet change engine behavior
-- auth tokens are stored but not yet injected into outbound requests
-- report export helpers exist, but full downloadable reporting flows are not wired into the UI
-- configuration exposes some future-oriented settings that the current runtime path does not use yet
-- the scanner is heuristic and lightweight, not a full authenticated DAST platform
-
-## Files most useful to read first
-
-If you want to understand the code quickly, start here:
-
-1. `run.py`
-2. `app/__init__.py`
-3. `app/routes.py`
-4. `app/api.py`
-5. `app/tasks.py`
-6. `app/scanner/engine.py`
-7. `app/scanner/crawler.py`
-8. `app/scanner/checks.py`
 
 ## License
 
-No license file is currently included in the repository. Add one if you intend to distribute or publish the project.
+No license file is currently included in this repository.
+
+If this project will be published publicly, add an appropriate license such as MIT, Apache-2.0, or another institution-approved license before release.
+
+## Notes for FYP Review
+
+For evaluation purposes, this implementation already demonstrates:
+
+- a working scan lifecycle
+- backend persistence
+- endpoint discovery
+- contextual severity scoring
+- exploit-chain generation
+- a functional UI
+- API-driven interaction
+- a tested codebase
+
+At the same time, some advanced capabilities are intentionally still in-progress, which makes the project suitable to present as a meaningful partial milestone rather than a fully finalized security platform.

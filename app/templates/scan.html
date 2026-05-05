@@ -1,42 +1,191 @@
 {% extends "base.html" %}
-{% block title %}Scan {{ scan.id }} · CAWASMA{% endblock %}
+{% block title %}Scan {{ scan.id }}{% endblock %}
 {% block content %}
-<section class="panel">
-  <div class="scan-header">
-    <div>
-      <h2>{{ scan.target_url }}</h2>
-      <p class="muted">Profile: {{ scan.profile }} · Status: {{ scan.status }}</p>
+<section class="report-section">
+  <div class="container section-stack">
+    <div class="report-header fade-up">
+      <div class="report-copy">
+        <div class="section-eyebrow">Findings Report</div>
+        <p class="report-target">{{ scan.target_url }}</p>
+        <h1>Security Misconfiguration Analysis</h1>
+        <div class="report-meta">
+          <span><i class="bi bi-hdd-network"></i> Scan #{{ scan.id }}</span>
+          <span><i class="bi bi-sliders"></i> {{ scan.profile }} profile</span>
+          <span><i class="bi bi-calendar3"></i> {{ scan.completed_at.strftime("%Y-%m-%d %H:%M") if scan.completed_at else scan.created_at.strftime("%Y-%m-%d %H:%M") }}</span>
+          <span><i class="bi bi-diagram-2"></i> {{ endpoints|length }} endpoints</span>
+          <span><i class="bi bi-link-45deg"></i> {{ chains|length }} chains</span>
+        </div>
+        <p class="report-summary">{{ scan.summary or "The scan is still processing. Results will appear here as soon as the backend finishes persisting findings." }}</p>
+      </div>
+      <div class="report-actions">
+        <div class="score-panel">
+          <span class="score-label">Top CVSS</span>
+          <strong class="score-value">
+            {% if top_finding %}
+              {{ "%.1f"|format(top_finding.cvss_adjusted) }}
+            {% else %}
+              --
+            {% endif %}
+          </strong>
+          <span class="score-caption">
+            {% if top_finding %}
+              {{ top_finding.severity }}
+            {% else %}
+              pending
+            {% endif %}
+          </span>
+        </div>
+        <a class="btn btn-outline" href="{{ url_for('api.export_scan', scan_id=scan.id) }}"><i class="bi bi-download"></i> Export JSON</a>
+      </div>
     </div>
-    <div class="score-pill">{{ scan.summary or 'Scan in progress' }}</div>
-  </div>
-</section>
 
-<section class="grid">
-  <article class="panel">
-    <h3>Findings</h3>
-    <ul class="finding-list">
-      {% for finding in scan.findings %}
-        <li>
-          <strong>{{ finding.title }}</strong>
-          <span>{{ finding.severity }} · CVSS {{ finding.cvss_adjusted }}</span>
-        </li>
-      {% else %}
-        <li class="muted">No findings recorded yet.</li>
-      {% endfor %}
-    </ul>
-  </article>
-  <article class="panel">
-    <h3>Exploit Chains</h3>
-    <ul class="finding-list">
-      {% for chain in scan.chains %}
-        <li>
-          <strong>{{ chain.name }}</strong>
-          <span>Composite CVSS {{ chain.composite_cvss }}</span>
-        </li>
-      {% else %}
-        <li class="muted">No chains correlated yet.</li>
-      {% endfor %}
-    </ul>
-  </article>
+    <div class="summary-grid">
+      <article class="summary-card tone-strong fade-up">
+        <span class="summary-label">Critical</span>
+        <strong class="summary-value">{{ severity_counts.critical }}</strong>
+        <span class="summary-meta">Highest-risk findings in this scan</span>
+      </article>
+      <article class="summary-card fade-up delay-1">
+        <span class="summary-label">High</span>
+        <strong class="summary-value">{{ severity_counts.high }}</strong>
+        <span class="summary-meta">Requires prompt remediation</span>
+      </article>
+      <article class="summary-card fade-up delay-2">
+        <span class="summary-label">Medium</span>
+        <strong class="summary-value">{{ severity_counts.medium }}</strong>
+        <span class="summary-meta">Actionable but lower urgency</span>
+      </article>
+      <article class="summary-card fade-up delay-3">
+        <span class="summary-label">Low</span>
+        <strong class="summary-value">{{ severity_counts.low }}</strong>
+        <span class="summary-meta">Captured for complete reporting</span>
+      </article>
+    </div>
+
+    <div class="filter-bar fade-up delay-1">
+      <button class="filter-pill active" type="button" data-filter="all">All Findings</button>
+      <button class="filter-pill" type="button" data-filter="critical">Critical</button>
+      <button class="filter-pill" type="button" data-filter="high">High</button>
+      <button class="filter-pill" type="button" data-filter="medium">Medium</button>
+      <button class="filter-pill" type="button" data-filter="low">Low</button>
+      <label class="search-box">
+        <i class="bi bi-search"></i>
+        <input id="findingSearch" type="search" placeholder="Search findings or checks">
+      </label>
+    </div>
+
+    <div class="report-grid">
+      <div class="findings-column">
+        {% for finding in findings %}
+          <article class="finding-card fade-up {% if loop.first %}is-open{% endif %}" data-finding-card data-severity="{{ finding.severity|lower }}" data-search="{{ (finding.title ~ ' ' ~ finding.check_name ~ ' ' ~ (finding.endpoint.path if finding.endpoint else 'scan-wide'))|lower }}">
+            <button class="finding-head" type="button" data-finding-toggle aria-expanded="{{ 'true' if loop.first else 'false' }}">
+              <span class="finding-bar severity-{{ finding.severity|lower }}"></span>
+              <span class="finding-main">
+                <span class="finding-title">{{ finding.title }}</span>
+                <span class="finding-endpoint">
+                  {% if finding.endpoint %}
+                    {{ finding.endpoint.method }} {{ finding.endpoint.path }}
+                  {% else %}
+                    Scan-wide result
+                  {% endif %}
+                </span>
+                <span class="finding-tags">
+                  <span class="severity-pill severity-{{ finding.severity|lower }}">{{ finding.severity }}</span>
+                  <span class="tag-pill">{{ finding.check_name }}</span>
+                  {% if finding.endpoint %}
+                    <span class="tag-pill">{{ finding.endpoint.sensitivity }}</span>
+                  {% endif %}
+                </span>
+              </span>
+              <span class="finding-score">
+                <strong>{{ "%.1f"|format(finding.cvss_adjusted) }}</strong>
+                <small>CVSS</small>
+                <i class="bi bi-chevron-down"></i>
+              </span>
+            </button>
+
+            <div class="finding-body">
+              <div class="detail-grid">
+                <div class="detail-item">
+                  <span>Base Score</span>
+                  <strong>{{ "%.1f"|format(finding.cvss_base) }}</strong>
+                </div>
+                <div class="detail-item">
+                  <span>Adjusted Score</span>
+                  <strong>{{ "%.1f"|format(finding.cvss_adjusted) }}</strong>
+                </div>
+                <div class="detail-item">
+                  <span>Severity</span>
+                  <strong>{{ finding.severity }}</strong>
+                </div>
+                <div class="detail-item">
+                  <span>Endpoint</span>
+                  <strong>{{ finding.endpoint.path if finding.endpoint else "Scan-wide" }}</strong>
+                </div>
+              </div>
+
+              <div class="evidence-block">
+                <div class="evidence-heading">Evidence</div>
+                <pre>{{ finding.evidence or "No raw evidence was stored for this finding." }}</pre>
+              </div>
+
+              <div class="remediation-block">
+                <div class="evidence-heading">Details</div>
+                <p>{{ finding.details or "No additional details were produced by the backend for this finding." }}</p>
+              </div>
+            </div>
+          </article>
+        {% else %}
+          <div class="panel">
+            <div class="mini-head">
+              <span class="mini-title">No findings yet</span>
+              <span class="status-chip">{{ scan.status }}</span>
+            </div>
+            <p class="sidebar-copy">This scan currently has no persisted findings. If the status is still queued or running, refresh after the backend completes its work.</p>
+          </div>
+        {% endfor %}
+      </div>
+
+      <aside class="sidebar-column">
+        <div class="panel fade-up delay-2">
+          <div class="mini-head">
+            <span class="mini-title">Exploit Chains</span>
+            <span class="mini-tag">{{ chains|length }} total</span>
+          </div>
+          <div class="sidebar-list">
+            {% for chain in chains %}
+              <div class="sidebar-card">
+                <strong>{{ chain.name }}</strong>
+                <span>Composite CVSS {{ "%.1f"|format(chain.composite_cvss) }}</span>
+                <p>{{ chain.summary }}</p>
+              </div>
+            {% else %}
+              <p class="sidebar-copy">No exploit chains were correlated for this scan.</p>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="panel fade-up delay-3">
+          <div class="mini-head">
+            <span class="mini-title">Discovered Endpoints</span>
+            <span class="mini-tag">{{ endpoints|length }} mapped</span>
+          </div>
+          <div class="endpoint-list">
+            {% for endpoint in endpoints[:8] %}
+              <div class="endpoint-row">
+                <span class="endpoint-method">{{ endpoint.method }}</span>
+                <div>
+                  <strong>{{ endpoint.path }}</strong>
+                  <span>{{ endpoint.sensitivity }} sensitivity</span>
+                </div>
+              </div>
+            {% else %}
+              <p class="sidebar-copy">No endpoint records are available yet for this scan.</p>
+            {% endfor %}
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
 </section>
 {% endblock %}
