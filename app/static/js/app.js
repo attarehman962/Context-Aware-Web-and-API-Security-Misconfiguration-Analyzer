@@ -50,6 +50,19 @@ document.querySelectorAll("[data-finding-toggle]").forEach((button) => {
   });
 });
 
+document.querySelectorAll("[data-scan-row-toggle]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const row = button.closest("[data-scan-row]");
+    if (!row) {
+      return;
+    }
+
+    const isExpanded = row.classList.toggle("is-expanded");
+    button.setAttribute("aria-expanded", String(isExpanded));
+    button.textContent = isExpanded ? "Show Less" : "Show More";
+  });
+});
+
 const filterButtons = document.querySelectorAll("[data-filter]");
 const findingCards = document.querySelectorAll("[data-finding-card]");
 const searchInput = document.getElementById("findingSearch");
