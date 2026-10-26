@@ -15,6 +15,8 @@ function trimSlash(url: string): string {
 export const publicEnv = {
   /** CAWASMA API as reached from the browser. */
   apiUrl: trimSlash(process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_URL),
+  /** Serve API calls from MSW fixtures instead of the real API (src/mocks/). */
+  useMock: process.env.NEXT_PUBLIC_USE_MOCK === "true",
 };
 
 /** CAWASMA API as reached from the Next.js server (e.g. http://api:8000 in compose). */
