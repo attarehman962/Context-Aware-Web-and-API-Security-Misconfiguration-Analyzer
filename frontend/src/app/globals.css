@@ -39,6 +39,25 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  /* Severity + status tokens (values below; meaning in src/lib/severity.ts). */
+  --color-sev-critical: var(--sev-critical);
+  --color-sev-critical-bg: var(--sev-critical-bg);
+  --color-sev-critical-solid: var(--sev-critical-solid);
+  --color-sev-high: var(--sev-high);
+  --color-sev-high-bg: var(--sev-high-bg);
+  --color-sev-high-solid: var(--sev-high-solid);
+  --color-sev-medium: var(--sev-medium);
+  --color-sev-medium-bg: var(--sev-medium-bg);
+  --color-sev-medium-solid: var(--sev-medium-solid);
+  --color-sev-low: var(--sev-low);
+  --color-sev-low-bg: var(--sev-low-bg);
+  --color-sev-low-solid: var(--sev-low-solid);
+  --color-sev-none: var(--sev-none);
+  --color-sev-none-bg: var(--sev-none-bg);
+  --color-sev-none-solid: var(--sev-none-solid);
+  --color-sev-success: var(--sev-success);
+  --color-sev-success-bg: var(--sev-success-bg);
+  --color-sev-success-solid: var(--sev-success-solid);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -81,6 +100,34 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /*
+   * Severity tokens: the only place severity colours are defined. Per level:
+   *   --sev-X        text/icon colour (>= 4.5:1 on --sev-X-bg and on --background)
+   *   --sev-X-bg     tinted badge background
+   *   --sev-X-solid  bars, dots, borders (>= 3:1 on --background)
+   * Colour is never the only cue: components pair it with an icon and a label.
+   * severity-tokens.test.ts checks these contrast ratios in both themes.
+   */
+  --sev-critical: oklch(0.45 0.17 350);
+  --sev-critical-bg: oklch(0.95 0.03 350);
+  --sev-critical-solid: oklch(0.52 0.2 350);
+  --sev-high: oklch(0.47 0.14 40);
+  --sev-high-bg: oklch(0.95 0.04 50);
+  --sev-high-solid: oklch(0.6 0.18 42);
+  --sev-medium: oklch(0.46 0.09 75);
+  --sev-medium-bg: oklch(0.96 0.06 90);
+  --sev-medium-solid: oklch(0.62 0.13 75);
+  --sev-low: oklch(0.45 0.13 250);
+  --sev-low-bg: oklch(0.95 0.03 250);
+  --sev-low-solid: oklch(0.55 0.15 250);
+  --sev-none: oklch(0.45 0.01 260);
+  --sev-none-bg: oklch(0.96 0.003 260);
+  --sev-none-solid: oklch(0.58 0.01 260);
+  /* Status "done" (no severity meaning). */
+  --sev-success: oklch(0.43 0.11 150);
+  --sev-success-bg: oklch(0.95 0.04 150);
+  --sev-success-solid: oklch(0.55 0.13 150);
 }
 
 .dark {
@@ -115,6 +162,25 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  --sev-critical: oklch(0.82 0.1 350);
+  --sev-critical-bg: oklch(0.3 0.08 350);
+  --sev-critical-solid: oklch(0.66 0.19 350);
+  --sev-high: oklch(0.84 0.1 50);
+  --sev-high-bg: oklch(0.3 0.07 45);
+  --sev-high-solid: oklch(0.7 0.17 45);
+  --sev-medium: oklch(0.88 0.11 90);
+  --sev-medium-bg: oklch(0.3 0.05 85);
+  --sev-medium-solid: oklch(0.8 0.14 85);
+  --sev-low: oklch(0.84 0.08 250);
+  --sev-low-bg: oklch(0.3 0.06 250);
+  --sev-low-solid: oklch(0.66 0.14 250);
+  --sev-none: oklch(0.84 0.01 260);
+  --sev-none-bg: oklch(0.28 0.01 260);
+  --sev-none-solid: oklch(0.62 0.01 260);
+  --sev-success: oklch(0.85 0.1 150);
+  --sev-success-bg: oklch(0.29 0.06 150);
+  --sev-success-solid: oklch(0.68 0.14 150);
 }
 
 @layer base {
