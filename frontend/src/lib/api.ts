@@ -85,7 +85,9 @@ async function request<T>(
       headers: { Accept: "application/json", ...init.headers },
     });
   } catch (err) {
-    if (err instanceof DOMException && err.name === "AbortError") throw err;
+    // Cancelled on purpose: not a network failure. (`instanceof DOMException`
+    // is unreliable across realms, so check the signal.)
+    if (init.signal?.aborted) throw err;
     return {
       ok: false,
       error: {
