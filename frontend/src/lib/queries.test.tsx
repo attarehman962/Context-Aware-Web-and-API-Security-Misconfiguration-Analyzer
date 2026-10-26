@@ -7,7 +7,12 @@ import { DONE_SCAN_ID } from "@/mocks/fixtures";
 import { createMockServer } from "@/mocks/node";
 
 import { useCreateScan, useScanResults } from "./queries";
-import { ApiRequestError, makeQueryClient, shouldRetry } from "./query-client";
+import {
+  ApiRequestError,
+  makeQueryClient,
+  retryDelay,
+  shouldRetry,
+} from "./query-client";
 
 const server = createMockServer();
 
@@ -71,10 +76,16 @@ describe("shouldRetry", () => {
           },
     );
 
-  it("retries network and server errors, up to twice", () => {
+  it("retries network and server errors, up to three times", () => {
     expect(shouldRetry(0, error("network"))).toBe(true);
-    expect(shouldRetry(1, error("server"))).toBe(true);
-    expect(shouldRetry(2, error("server"))).toBe(false);
+    expect(shouldRetry(2, error("server"))).toBe(true);
+    expect(shouldRetry(3, error("server"))).toBe(false);
+  });
+
+  it("backs off exponentially, capped at 8 s", () => {
+    expect([0, 1, 2, 3, 4, 10].map(retryDelay)).toEqual([
+      1000, 2000, 4000, 8000, 8000, 8000,
+    ]);
   });
 
   it("never retries a client error", () => {
