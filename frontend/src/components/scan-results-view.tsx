@@ -1,27 +1,35 @@
 "use client";
 
-import { RotateCw, ShieldCheck, WifiOff } from "lucide-react";
+import { RotateCw, WifiOff } from "lucide-react";
 import Link from "next/link";
+import { useMemo } from "react";
 
-import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
-import { FindingsTable } from "@/components/findings-table";
 import { LoadingSkeleton } from "@/components/loading-skeleton";
-import { SeverityBadge } from "@/components/severity-badge";
-import { StatusPill } from "@/components/status-pill";
+import { FindingsPanel } from "@/components/results/findings-panel";
+import { ScanSummary } from "@/components/results/scan-summary";
 import { Button } from "@/components/ui/button";
 import type { ScanStatus } from "@/lib/api-types";
+import { rankFindings } from "@/lib/findings";
 import { useScanResults } from "@/lib/queries";
 import { ApiRequestError, MAX_RETRIES } from "@/lib/query-client";
-import { SEVERITY_ORDER } from "@/lib/severity";
+import { useFindingsView } from "@/lib/use-findings-view";
 
 /**
  * One scan: polls GET /api/results/{id} every 2 s while it is queued or
- * running, then shows the findings. Unknown ids, failed scans and an
- * unreachable API each get their own message.
+ * running, then shows the summary and the ranked, filterable findings.
+ * Unknown ids, failed scans and an unreachable API each get their own
+ * message; every part has a loading and an empty state.
  */
 export function ScanResultsView({ scanId }: { scanId: string }) {
   const results = useScanResults(scanId);
+  const [view, setView] = useFindingsView();
+  const findings = results.data?.findings;
+  const ranked = useMemo(
+    () => (findings ? rankFindings(findings) : undefined),
+    [findings],
+  );
+
   const retrying = results.isFetching && results.failureCount > 0;
   const retryNote = retrying
     ? `Can't reach the API. Retrying (attempt ${results.failureCount} of ${MAX_RETRIES})…`
@@ -29,9 +37,10 @@ export function ScanResultsView({ scanId }: { scanId: string }) {
 
   if (results.isPending) {
     return (
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-6">
         {retryNote && <RetryNote text={retryNote} />}
-        <LoadingSkeleton variant="card" label="Loading scan…" />
+        <LoadingSkeleton variant="card" label="Loading scan summary…" />
+        <LoadingSkeleton variant="table" rows={6} label="Loading findings…" />
       </div>
     );
   }
@@ -60,15 +69,17 @@ export function ScanResultsView({ scanId }: { scanId: string }) {
     );
   }
 
-  const { scan, findings } = results.data;
-  const lostConnection = results.isError;
+  const { scan, chains } = results.data;
 
   return (
     <div className="flex flex-col gap-6">
-      <ScanHeader scan={scan} />
+      <ScanSummary
+        scan={scan}
+        ranked={scan.status === "DONE" ? ranked : undefined}
+      />
 
       {retryNote && <RetryNote text={retryNote} />}
-      {lostConnection && (
+      {results.isError && (
         <div
           role="alert"
           className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-sev-critical-solid bg-sev-critical-bg p-4 text-sm text-sev-critical"
@@ -86,7 +97,19 @@ export function ScanResultsView({ scanId }: { scanId: string }) {
       )}
 
       {(scan.status === "QUEUED" || scan.status === "RUNNING") && (
-        <Progress scan={scan} />
+        <>
+          <Progress scan={scan} />
+          <section aria-label="Findings" className="flex flex-col gap-2">
+            <p className="text-sm text-muted-foreground">
+              Findings appear here when the scan is done.
+            </p>
+            <LoadingSkeleton
+              variant="table"
+              rows={4}
+              label="Waiting for findings…"
+            />
+          </section>
+        </>
       )}
 
       {scan.status === "FAILED" && (
@@ -99,29 +122,24 @@ export function ScanResultsView({ scanId }: { scanId: string }) {
         </div>
       )}
 
-      {scan.status === "DONE" && (
+      {scan.status === "DONE" && findings && (
         <section
           aria-labelledby="findings-heading"
           className="flex flex-col gap-4"
         >
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2
-              id="findings-heading"
-              className="font-heading text-lg font-semibold"
-            >
-              {findings.length} finding{findings.length === 1 ? "" : "s"}
-            </h2>
-            <SeverityCounts scan={scan} />
-          </div>
-          {findings.length > 0 ? (
-            <FindingsTable findings={findings} targetUrl={scan.url} />
-          ) : (
-            <EmptyState
-              icon={ShieldCheck}
-              title="No misconfigurations found"
-              description="None of the checks fired on the endpoints this scan discovered."
-            />
-          )}
+          <h2
+            id="findings-heading"
+            className="font-heading text-lg font-semibold"
+          >
+            Findings
+          </h2>
+          <FindingsPanel
+            findings={findings}
+            chains={chains}
+            targetUrl={scan.url}
+            view={view}
+            onViewChange={setView}
+          />
         </section>
       )}
     </div>
@@ -134,29 +152,6 @@ function isNotFound(error: unknown): boolean {
     error.error.kind === "client" &&
     (error.error.code === "NOT_FOUND" ||
       error.error.code === "VALIDATION_ERROR")
-  );
-}
-
-function ScanHeader({ scan }: { scan: ScanStatus }) {
-  return (
-    <div className="flex flex-col gap-2">
-      <p className="text-sm text-muted-foreground">Target</p>
-      <h1 className="font-heading text-2xl font-semibold tracking-tight break-all">
-        {scan.url}
-      </h1>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
-        <StatusPill status={scan.status} progress={scan.progress} />
-        <span>Started {formatTime(scan.started_at ?? scan.created_at)}</span>
-        {scan.completed_at && (
-          <span>Finished {formatTime(scan.completed_at)}</span>
-        )}
-        <span>
-          Depth {scan.options.crawl_depth}
-          {scan.options.passive_only ? " · passive only" : ""}
-          {scan.options.use_wordlist ? "" : " · no wordlist"}
-        </span>
-      </div>
-    </div>
   );
 }
 
@@ -186,25 +181,6 @@ function Progress({ scan }: { scan: ScanStatus }) {
   );
 }
 
-function SeverityCounts({ scan }: { scan: ScanStatus }) {
-  return (
-    <ul className="flex flex-wrap gap-3" aria-label="Findings per severity">
-      {SEVERITY_ORDER.map((severity) => (
-        <li key={severity} className="flex items-center gap-1.5 text-sm">
-          <SeverityBadge severity={severity} size="sm" />
-          <span className="tabular-nums">
-            {
-              scan.severity_counts[
-                severity.toLowerCase() as keyof ScanStatus["severity_counts"]
-              ]
-            }
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 function RetryNote({ text }: { text: string }) {
   return (
     <p
@@ -215,11 +191,4 @@ function RetryNote({ text }: { text: string }) {
       {text}
     </p>
   );
-}
-
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "medium",
-  });
 }

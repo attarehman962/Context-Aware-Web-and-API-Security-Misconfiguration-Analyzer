@@ -28,7 +28,7 @@ export function isFinished(scan: ScanStatus): boolean {
 }
 
 /** Findings ranked by final_score, highest first; ties by check_id. */
-export function rankFindings(findings: Finding[]): Finding[] {
+export function sortByFinalScore(findings: Finding[]): Finding[] {
   return [...findings].sort(
     (a, b) =>
       b.final_score - a.final_score || a.check_id.localeCompare(b.check_id),
@@ -45,7 +45,7 @@ export function useScanResults(scanId: string) {
     queryFn: async ({ signal }) => {
       const results = unwrap(await getResults(scanId, { signal }));
       // The contract ranks findings, but the API does not sort them yet.
-      return { ...results, findings: rankFindings(results.findings) };
+      return { ...results, findings: sortByFinalScore(results.findings) };
     },
     refetchInterval: (query: Query<ScanResults>) => {
       const data = query.state.data;

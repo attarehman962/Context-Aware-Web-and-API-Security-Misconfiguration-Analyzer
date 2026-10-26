@@ -30,6 +30,7 @@ import {
   scanList,
   scanQueued,
 } from "./fixtures";
+import { LARGE_SCAN_ID, largeScanResults } from "./large-scan";
 import {
   simulatedResults,
   simulatedScanIds,
@@ -78,6 +79,8 @@ export function createHandlers({ now = Date.now }: HandlerOptions = {}) {
         return resultsFailed;
       case QUEUED_SCAN_ID:
         return { ...resultsDone, scan: scanQueued, findings: [], chains: [] };
+      case LARGE_SCAN_ID:
+        return largeScanResults();
       default:
         return simulatedResults(id, now());
     }
