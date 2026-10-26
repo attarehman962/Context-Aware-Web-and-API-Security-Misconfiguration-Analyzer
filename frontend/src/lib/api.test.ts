@@ -262,8 +262,14 @@ describe("getExportUrl", () => {
     expect(rows).toHaveLength(8);
   });
 
-  it("answers 409 before DONE and 501 for PDF in mock mode", async () => {
+  it("answers 409 before DONE", async () => {
     expect((await fetch(getExportUrl(RUNNING_SCAN_ID))).status).toBe(409);
-    expect((await fetch(getExportUrl(DONE_SCAN_ID, "pdf"))).status).toBe(501);
+  });
+
+  it("serves a PDF, as the real API does", async () => {
+    const response = await fetch(getExportUrl(DONE_SCAN_ID, "pdf"));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe("application/pdf");
+    expect(await response.text()).toMatch(/^%PDF-/);
   });
 });

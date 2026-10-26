@@ -147,24 +147,20 @@ export function createHandlers({ now = Date.now }: HandlerOptions = {}) {
       if (found.scan.status !== "DONE") {
         return apiError(409, "SCAN_NOT_FINISHED", "Scan is not finished yet.");
       }
-      if (format === "pdf") {
-        return apiError(
-          501,
-          "FORMAT_UNAVAILABLE",
-          "PDF export is not available in mock mode.",
-        );
-      }
-
       const disposition = `attachment; filename="cawasma-${found.scan.scan_id}.${format}"`;
       if (format === "json") {
         return HttpResponse.json(found, {
           headers: { "Content-Disposition": disposition },
         });
       }
+      // The real API renders a PDF (WeasyPrint is in the image); a minimal
+      // valid PDF keeps the mock's response the same shape.
       const [body, type] =
         format === "csv"
           ? [toCsv(found), "text/csv; charset=utf-8"]
-          : [toHtml(found), "text/html; charset=utf-8"];
+          : format === "pdf"
+            ? [MINIMAL_PDF, "application/pdf"]
+            : [toHtml(found), "text/html; charset=utf-8"];
       return new HttpResponse(body, {
         headers: { "Content-Type": type, "Content-Disposition": disposition },
       });
@@ -209,6 +205,15 @@ export function createHandlers({ now = Date.now }: HandlerOptions = {}) {
 }
 
 export const handlers = createHandlers();
+
+const MINIMAL_PDF = [
+  "%PDF-1.4",
+  "1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj",
+  "2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj",
+  "3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]>>endobj",
+  "trailer<</Root 1 0 R>>",
+  "%%EOF",
+].join("\n");
 
 function apiError(status: number, code: ApiErrorCode, message: string) {
   return HttpResponse.json(
