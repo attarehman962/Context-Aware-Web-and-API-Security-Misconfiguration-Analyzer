@@ -20,12 +20,18 @@ export function unwrap<T>(result: ApiResult<T>): T {
   return result.data;
 }
 
-const MAX_RETRIES = 2;
+export const MAX_RETRIES = 3;
+const MAX_RETRY_DELAY_MS = 8_000;
 
 /** Retry what may succeed next time (network, 5xx); a 4xx won't change. */
 export function shouldRetry(failureCount: number, error: unknown): boolean {
   if (failureCount >= MAX_RETRIES) return false;
   return !(error instanceof ApiRequestError && error.error.kind === "client");
+}
+
+/** Exponential backoff between retries: 1 s, 2 s, 4 s, ... capped at 8 s. */
+export function retryDelay(failureCount: number): number {
+  return Math.min(1_000 * 2 ** failureCount, MAX_RETRY_DELAY_MS);
 }
 
 export function makeQueryClient(): QueryClient {
@@ -35,6 +41,7 @@ export function makeQueryClient(): QueryClient {
         // Scan data changes only while a scan runs, and those queries poll.
         staleTime: 30_000,
         retry: shouldRetry,
+        retryDelay,
         refetchOnWindowFocus: false,
       },
       mutations: {

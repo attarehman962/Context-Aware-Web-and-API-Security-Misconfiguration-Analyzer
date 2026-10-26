@@ -8,6 +8,7 @@ import {
   WifiOff,
   type LucideIcon,
 } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import type { ApiError } from "@/lib/api";
@@ -19,8 +20,12 @@ export interface ErrorStateProps {
   error: unknown;
   /** Overrides the title derived from the error. */
   title?: string;
+  /** Overrides the message derived from the error. */
+  message?: string;
   /** Shows a "Try again" button. */
   onRetry?: () => void;
+  /** Another way forward, e.g. a link. */
+  action?: ReactNode;
   className?: string;
 }
 
@@ -28,7 +33,9 @@ export interface ErrorStateProps {
 export function ErrorState({
   error,
   title,
+  message,
   onRetry,
+  action,
   className,
 }: ErrorStateProps) {
   const view = describe(error);
@@ -45,15 +52,22 @@ export function ErrorState({
       <h2 className="font-heading text-lg font-semibold">
         {title ?? view.title}
       </h2>
-      <p className="max-w-md text-sm text-muted-foreground">{view.message}</p>
+      <p className="max-w-md text-sm text-muted-foreground">
+        {message ?? view.message}
+      </p>
       {view.code && (
         <p className="font-mono text-xs text-muted-foreground">{view.code}</p>
       )}
-      {onRetry && (
-        <Button variant="outline" className="mt-2" onClick={onRetry}>
-          <RotateCw aria-hidden />
-          Try again
-        </Button>
+      {(onRetry || action) && (
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+          {onRetry && (
+            <Button variant="outline" onClick={onRetry}>
+              <RotateCw aria-hidden />
+              Try again
+            </Button>
+          )}
+          {action}
+        </div>
       )}
     </div>
   );

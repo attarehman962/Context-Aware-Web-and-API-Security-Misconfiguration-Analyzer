@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { LoadingSkeleton } from "@/components/loading-skeleton";
-import { ScanStatusView } from "@/components/scan-status-view";
+import { ScanResultsView } from "@/components/scan-results-view";
 
 export const metadata: Metadata = { title: "Scan · CAWASMA" };
 
@@ -12,7 +12,7 @@ export default function ScanPage({ params }: PageProps<"/scans/[id]">) {
   return (
     <Suspense fallback={<LoadingSkeleton variant="card" />}>
       {params.then(({ id }) => (
-        <ScanStatusView scanId={id} />
+        <ScanResultsView scanId={id} />
       ))}
     </Suspense>
   );
