@@ -42,7 +42,8 @@ def cor_004_unsafe_methods(ctx: CheckContext) -> RawFinding | None:
 
 @rule
 def cor_005_max_age(ctx: CheckContext) -> RawFinding | None:
-    # Only meaningful when CORS is actually in use.
-    if ctx.cors_acao and not ctx.has_header("Access-Control-Max-Age"):
+    # Max-Age only exists on preflight responses, so judge the preflight probe
+    # (and only when it shows CORS in use), never the GET response.
+    if ctx.cors_preflight_acao and not ctx.cors_max_age:
         return make("COR-005", "CORS enabled without Access-Control-Max-Age.")
     return None

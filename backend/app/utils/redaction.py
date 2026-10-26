@@ -28,9 +28,11 @@ _SECRET_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("jwt", re.compile(r"eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}")),
     ("bearer", re.compile(r"(?i)bearer\s+[A-Za-z0-9._\-]{10,}")),
     ("aws_key", re.compile(r"AKIA[0-9A-Z]{16}")),
+    # KEY=value, key: value and JSON "key": "value", whatever the value's
+    # characters or length (SECRET_KEY=abc123, DB_PASSWORD=pw, "pwd": "P@ss!").
     ("api_key_assign", re.compile(
-        r"(?i)(api[_-]?key|secret|token|password|passwd|pwd)"
-        r"\s*[=:]\s*['\"]?[A-Za-z0-9._\-]{6,}['\"]?"
+        r"(?i)(api[_-]?key|secret|token|password|passwd|pwd|access[_-]?key)"
+        r"[\w-]*['\"]?\s*[=:]\s*(?:\"[^\"\n]*\"|'[^'\n]*'|[^\s'\",;&<>]+)"
     )),
     ("private_key", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
 ]

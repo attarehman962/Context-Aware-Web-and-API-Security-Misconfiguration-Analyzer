@@ -27,7 +27,7 @@ from app.api.schemas.contract import (
     SeverityCounts,
 )
 from app.core.contracts import BodySignal
-from app.core.reports import render_html, render_pdf
+from app.core.reports import csv_safe, render_html, render_pdf
 from app.db.models import AttackChain, Scan
 from app.db.models import Finding as FindingRow
 
@@ -168,13 +168,13 @@ def _csv(results: ScanResults) -> str:
     writer = csv.writer(buf)
     writer.writerow(CSV_COLUMNS)
     for f in results.findings:
-        writer.writerow([
+        writer.writerow([csv_safe(v) for v in (
             f.id, f.check_id, f.title, f.category.value, f.severity_bucket.value,
             f.final_score, f.base_score, f.cvss_vector,
             f.sensitivity_class.value if f.sensitivity_class else "",
             ";".join(s.value for s in f.body_signals), ";".join(f.owasp_map),
             ";".join(f.cwe_map), f.endpoint_url or "", ";".join(str(c) for c in f.chain_ids),
-        ])
+        )])
     return buf.getvalue()
 
 

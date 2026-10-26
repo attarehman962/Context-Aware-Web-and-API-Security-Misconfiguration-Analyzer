@@ -25,6 +25,12 @@ async def create_scan(
     body: ScanCreate, session: AsyncSession = Depends(get_session)
 ) -> ScanCreated:
     """Create a scan job. Returns immediately with a queued scan id."""
+    # Same rule as POST /api/scan: no scan without the operator's confirmation.
+    if not body.authorization_confirmed:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="authorization_confirmed must be true: confirm you may test this target.",
+        )
     try:
         scan = await scan_service.create_scan(
             session, body.target_url, authorization_confirmed=body.authorization_confirmed

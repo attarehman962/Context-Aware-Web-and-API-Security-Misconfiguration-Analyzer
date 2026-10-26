@@ -54,15 +54,20 @@ def _name(common_name: str) -> x509.Name:
 
 
 def make_certificates(names: list[str], ips: list[str]) -> tuple[bytes, bytes, bytes]:
-    """Return ``(ca_cert_pem, leaf_cert_pem, leaf_key_pem)`` valid for a day."""
+    """Return ``(ca_cert_pem, leaf_cert_pem, leaf_key_pem)``.
+
+    Valid for 90 days: a long-running demo container must not hit expiry, and
+    TLS-003 flags certificates that expire within 15 days.
+    """
     now = dt.datetime.now(dt.UTC)
+    valid = dt.timedelta(days=90)
     ca_key = ec.generate_private_key(ec.SECP256R1())
     ca = (
         x509.CertificateBuilder()
         .subject_name(_name("CAWASMA demo CA")).issuer_name(_name("CAWASMA demo CA"))
         .public_key(ca_key.public_key()).serial_number(x509.random_serial_number())
         .not_valid_before(now - dt.timedelta(minutes=5))
-        .not_valid_after(now + dt.timedelta(days=1))
+        .not_valid_after(now + valid)
         .add_extension(x509.BasicConstraints(ca=True, path_length=0), critical=True)
         .add_extension(x509.KeyUsage(
             digital_signature=False, content_commitment=False, key_encipherment=False,
@@ -80,7 +85,7 @@ def make_certificates(names: list[str], ips: list[str]) -> tuple[bytes, bytes, b
         .subject_name(_name((names or ips)[0])).issuer_name(ca.subject)
         .public_key(key.public_key()).serial_number(x509.random_serial_number())
         .not_valid_before(now - dt.timedelta(minutes=5))
-        .not_valid_after(now + dt.timedelta(days=1))
+        .not_valid_after(now + valid)
         .add_extension(x509.SubjectAlternativeName(sans), critical=False)
         .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
         .add_extension(x509.ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH]),

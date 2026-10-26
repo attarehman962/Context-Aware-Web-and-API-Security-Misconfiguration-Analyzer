@@ -70,7 +70,9 @@ async def start_scan(body: ScanRequest, session: SessionDep, response: Response,
         try:
             scan = await scan_service.create_scan(
                 session, body.url, authorization_confirmed=body.authorisation_confirmed,
-                options=body.model_dump(include={"crawl_depth", "use_wordlist", "passive_only"}),
+                options={**body.model_dump(include={"crawl_depth", "use_wordlist",
+                                                     "passive_only"}),
+                         "runner": "api"},       # see fail_interrupted_scans
                 dispatch=False,
             )
         except InvalidTargetError as exc:

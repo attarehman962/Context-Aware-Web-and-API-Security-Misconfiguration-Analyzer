@@ -30,6 +30,7 @@ from app.core.body_classifier import BodyClassification, classify_body
 from app.core.chains import correlate_chains
 from app.core.checks.catalog import CATALOG
 from app.core.cvss import compute_score
+from app.core.cvss31 import base_score
 from app.core.pipeline import _BONUS_RULES, _FORCE_CRIT_RULES  # same rules as live scans
 from app.core.sensitivity import SensitivityClassifier
 from app.db.models import (
@@ -175,7 +176,8 @@ def _finding(
     bonus = body.bonus if body is not None and check_id in _BONUS_RULES else 0.0
     force = bool(body and body.force_critical and check_id in _FORCE_CRIT_RULES)
     ctx = endpoint.context_class if endpoint is not None else None
-    score = compute_score(meta.base_score, ctx, bonus, force_critical=force)
+    # Score of the vector, as live scans do (catalog base_score can disagree).
+    score = compute_score(base_score(meta.cvss_vector), ctx, bonus, force_critical=force)
     owasp, cwe = _MAPPINGS.get(check_id, ([], []))
     text = f"{meta.name}" + (f" on {endpoint.path}" if endpoint is not None else "")
     if body is not None and body.evidence and check_id in _BONUS_RULES:

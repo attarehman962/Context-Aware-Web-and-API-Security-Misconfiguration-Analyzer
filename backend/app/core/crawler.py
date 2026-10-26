@@ -8,7 +8,10 @@ MAX_CRAWL_DEPTH, MAX_CRAWL_PAGES (pages fetched) and MAX_ENDPOINTS:
   2. JavaScript scan   -- fetch()/axios/baseURL and /api/... paths in inline
                           scripts and in fetched script sources
   3. Wordlist probing  -- the small list in app/data/wordlist.txt; skipped in
-                          passive mode
+                          passive mode. A site that answers every path with the
+                          same 200 page (SPA catch-all, "soft 404") is detected
+                          with one random path first, so its shell page is not
+                          reported as /.env, /backup.zip, ...
   4. Recursive crawl   -- BFS to depth <= 2
 
 Off-host links are logged (and kept in ``Crawler.off_host``) but never fetched.
@@ -19,6 +22,7 @@ service layer persists later.
 from __future__ import annotations
 
 import re
+import secrets
 from dataclasses import dataclass
 from urllib.parse import urljoin, urlparse, urlunparse
 
@@ -113,9 +117,11 @@ class Crawler:
             if not resp.ok:
                 continue
 
+            # Relative links resolve against where the page was served from.
+            base = resp.final_url
             ctype = (resp.content_type or "").lower()
             if "html" in ctype:
-                for link, method, how in self._extract_html(url, resp.body):
+                for link, method, how in self._extract_html(base, resp.body):
                     if not self._in_scope(seed, link, url):
                         continue
                     added = self._add(link, method, how)
@@ -124,7 +130,7 @@ class Crawler:
                         queue.append((_normalize(link), depth + 1))
             # Strategy 2: JS scan (inline scripts and fetched script files).
             if "javascript" in ctype or "html" in ctype:
-                for link in self._extract_js(url, resp.body):
+                for link in self._extract_js(base, resp.body):
                     if self._in_scope(seed, link, url):
                         self._add(link, "GET", DiscoveryMethod.JAVASCRIPT)
 
@@ -174,13 +180,20 @@ class Crawler:
 
     async def _probe_wordlist(self, seed: str) -> None:
         root = f"{urlparse(seed).scheme}://{urlparse(seed).netloc}"
+        # Soft-404 baseline: what a path that cannot exist returns.
+        missing = await self._engine.fetch(f"{root}/cawasma-{secrets.token_hex(8)}",
+                                           method="GET", same_origin_only=True)
+        catch_all = missing.body if missing.ok and missing.status_code == 200 else None
         for path in PROBE_PATHS:
             if len(self._results) >= settings.MAX_ENDPOINTS:
                 break
             url = root + path
             if (_normalize(url), "GET") in self._seen:
                 continue
-            resp = await self._engine.fetch(url, method="GET")
-            # Record only paths that exist (not 404) to avoid noise.
-            if resp.ok and resp.status_code not in (404, 410):
+            resp = await self._engine.fetch(url, method="GET", same_origin_only=True)
+            # Record only paths that exist: not 404/410, not a redirect we
+            # stopped at, and not the site's catch-all page.
+            if (resp.ok and resp.status_code not in (404, 410)
+                    and not (300 <= (resp.status_code or 0) < 400)
+                    and not (catch_all is not None and resp.body == catch_all)):
                 self._add(url, "GET", DiscoveryMethod.WORDLIST, resp)

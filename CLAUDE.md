@@ -81,6 +81,10 @@ Notes:
   the Celery worker only serves the deprecated `POST /api/scans` for now.
 - An unreachable target raises `pipeline.ScanError` and the scan is FAILED; only
   `ScanError` messages are shown to users.
+- Scans started by `POST /api/scan` carry `options.runner = "api"`; at start-up the
+  api marks those still QUEUED/RUNNING as FAILED (they died with the old process).
+- Legacy `@rule` findings take their base score from the catalog vector, not the
+  catalog's `base_score` (31 entries disagree; `make validate-config` lists them).
 
 ## Neelam: frontend
 

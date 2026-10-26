@@ -83,5 +83,7 @@ async def run_scan_async(scan_id: str | uuid.UUID, *, probe: bool = True) -> Non
                 scan.error_message = message[:500]
                 scan.completed_at = datetime.now(UTC)
                 await session.commit()
+            # Terminal event, so live listeners (WebSocket) stop waiting.
+            await publisher.publish("failed", scan.progress if scan else 0, message)
         finally:
             await publisher.close()

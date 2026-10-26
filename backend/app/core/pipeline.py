@@ -56,6 +56,10 @@ ProgressFn = Callable[[str, int, str], Awaitable[None]]
 _BONUS_RULES = {"API-013", "API-003", "INF-001", "INF-003", "INF-005"}
 # Rules that represent credential exposure -> force CRITICAL when creds present.
 _FORCE_CRIT_RULES = {"API-013", "INF-003"}
+# Host-level rules: they read only the host's TLS probe / HTTP->HTTPS check, so
+# they are reported once per scan with no endpoint (contract: endpoint_id null),
+# not once per endpoint.
+_HOST_RULES = {"TLS-001", "TLS-002", "TLS-003", "TLS-004", "TLS-005", "TLS-008"}
 
 
 class ScanError(Exception):
@@ -209,20 +213,35 @@ async def _probe_endpoint(engine: HttpEngine, ep_url: str, result: HttpResult,
         "injection_error_reflected": False,
         "graphql_introspection": "__schema" in (result.body or ""),
     }
+    # Every probe stays on the endpoint's origin (same_origin_only): a redirect
+    # elsewhere must not carry our probes to a host nobody authorised.
     # OPTIONS -> Allow header.
     try:
-        opt = await engine.fetch(ep_url, method="OPTIONS")
-        allow = opt.headers.get("allow") or opt.headers.get("Allow")
+        opt = await engine.fetch(ep_url, method="OPTIONS", same_origin_only=True)
+        allow = opt.headers.get("allow")
         if allow:
             signals["allowed_methods"] = {m.strip().upper() for m in allow.split(",")}
         signals["cors_methods"] = opt.headers.get("access-control-allow-methods")
     except Exception as exc:  # noqa: BLE001
         logger.debug("OPTIONS probe failed: %s", exc)
 
-    # CORS probe with a test Origin header.
     probe_origin = "https://cawasma-probe.example"
+    # A real CORS preflight: the only response that carries Access-Control-Max-Age.
     try:
-        cors = await engine.fetch(ep_url, extra_headers={"Origin": probe_origin})
+        pre = await engine.fetch(ep_url, method="OPTIONS", same_origin_only=True,
+                                 extra_headers={"Origin": probe_origin,
+                                                "Access-Control-Request-Method": "GET"})
+        signals["cors_preflight_acao"] = pre.headers.get("access-control-allow-origin")
+        signals["cors_max_age"] = pre.headers.get("access-control-max-age")
+        if not signals["cors_methods"]:
+            signals["cors_methods"] = pre.headers.get("access-control-allow-methods")
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("CORS preflight probe failed: %s", exc)
+
+    # CORS probe with a test Origin header.
+    try:
+        cors = await engine.fetch(ep_url, extra_headers={"Origin": probe_origin},
+                                  same_origin_only=True)
         signals["cors_acao"] = cors.headers.get("access-control-allow-origin")
         signals["cors_acac"] = cors.headers.get("access-control-allow-credentials")
         if not signals["cors_methods"]:
@@ -235,8 +254,9 @@ async def _probe_endpoint(engine: HttpEngine, ep_url: str, result: HttpResult,
         sep = "&" if urlparse(ep_url).query else "?"
         probe_url = f"{ep_url}{sep}cawasma_probe=%27%22%3C"
         try:
-            inj = await engine.fetch(probe_url)
-            if inj.status_code and inj.status_code >= 500:
+            inj = await engine.fetch(probe_url, same_origin_only=True)
+            # Only a 5xx the probe caused: not when the endpoint fails anyway.
+            if inj.status_code and inj.status_code >= 500 and (result.status_code or 0) < 500:
                 signals["injection_error_reflected"] = True
             elif "cawasma_probe" in (inj.body or "") and any(
                 tok in (inj.body or "") for tok in ("SQL", "syntax", "Exception", "Traceback")
@@ -245,6 +265,28 @@ async def _probe_endpoint(engine: HttpEngine, ep_url: str, result: HttpResult,
         except Exception as exc:  # noqa: BLE001
             logger.debug("injection probe failed: %s", exc)
     return signals
+
+
+def _host_findings(target: str, seed: HttpResult, tls: TlsProbe | None,
+                   http_redirects: bool | None) -> list[ScoredFinding]:
+    """The host-level rules, once per scan, with no endpoint or sensitivity class."""
+    if tls is None and http_redirects is None:
+        return []
+    ctx = CheckContext(url=target, path=urlparse(target).path or "/", result=seed,
+                       tls=tls, http_scheme_redirects_https=http_redirects)
+    out: list[ScoredFinding] = []
+    for raw in run_checks(ctx):
+        if raw.rule_id not in _HOST_RULES:
+            continue
+        score = compute_score(raw.base_score, None)
+        out.append(ScoredFinding(
+            raw=raw, cvss_base_score=score.cvss_base_score,
+            context_multiplier=score.context_multiplier,
+            response_bonus=score.response_bonus,
+            cawasma_final_score=score.cawasma_final_score, severity=score.severity,
+            context_class=None, context_confidence=None, endpoint_index=None,
+        ))
+    return out
 
 
 async def _check_http_redirect(engine: HttpEngine, host: str) -> bool | None:
@@ -303,14 +345,22 @@ async def run_pipeline(target: str, on_progress: ProgressFn | None = None,
 
         # --- Host-level checks ------------------------------------------
         await report("tls", 12, "Probing TLS configuration")
-        tls = await asyncio.to_thread(probe_tls, host) if probe else None
+        port = urlparse(target).port or 443
+        tls = (await asyncio.to_thread(probe_tls, host, port, allow_private=allow_private)
+               if probe else None)
         http_redirects = await _check_http_redirect(engine, host) if probe else None
 
         # --- Per-endpoint analysis --------------------------------------
         endpoints: list[EndpointAnalysis] = []
         findings: list[ScoredFinding] = []
 
+        analyzed: set[str] = set()
         for i, de in enumerate(discovered):
+            # The scanner only ever GETs: a URL found as both a link and a POST
+            # form is the same response, so analyse it once.
+            if de.url in analyzed:
+                continue
+            analyzed.add(de.url)
             pct = 15 + int((i / total) * 70)
             await report("analyzing", pct, f"Analyzing {de.path}")
 
@@ -332,6 +382,8 @@ async def run_pipeline(target: str, on_progress: ProgressFn | None = None,
                 cors_acao=signals.get("cors_acao"),
                 cors_acac=signals.get("cors_acac"),
                 cors_methods=signals.get("cors_methods"),
+                cors_preflight_acao=signals.get("cors_preflight_acao"),
+                cors_max_age=signals.get("cors_max_age"),
                 tls=tls,
                 http_scheme_redirects_https=http_redirects,
                 graphql_introspection=signals.get("graphql_introspection", False),
@@ -361,6 +413,8 @@ async def run_pipeline(target: str, on_progress: ProgressFn | None = None,
                 signals=body_signals(body_class), ep_index=ep_index,
             ))
             for raw in run_checks(ctx):
+                if raw.rule_id in _HOST_RULES:
+                    continue                      # reported once, below
                 bonus = body_class.bonus if raw.rule_id in _BONUS_RULES else 0.0
                 force = (raw.rule_id in _FORCE_CRIT_RULES) and body_class.credentials
                 score = compute_score(
@@ -377,6 +431,8 @@ async def run_pipeline(target: str, on_progress: ProgressFn | None = None,
                     context_confidence=cls.confidence,
                     endpoint_index=ep_index,
                 ))
+
+        findings.extend(_host_findings(target, seed, tls, http_redirects))
 
         # --- Attack-chain correlation -----------------------------------
         await report("correlating", 92, "Correlating attack chains")

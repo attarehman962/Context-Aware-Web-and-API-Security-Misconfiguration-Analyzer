@@ -21,6 +21,18 @@ def render_json(data: dict) -> str:
     return json.dumps(data, indent=2, default=str)
 
 
+_FORMULA_START = ("=", "+", "-", "@", "\t", "\r")
+
+
+def csv_safe(value: object) -> object:
+    """Neutralise spreadsheet formulas: target-controlled text (URLs, header
+    values in evidence) starting with = + - @ would run when the CSV is opened
+    in Excel/Sheets. Numbers are left alone."""
+    if isinstance(value, str) and value.startswith(_FORMULA_START):
+        return "'" + value
+    return value
+
+
 def render_csv(data: dict) -> str:
     buf = io.StringIO()
     writer = csv.writer(buf)
@@ -30,13 +42,13 @@ def render_csv(data: dict) -> str:
         "cawasma_final_score", "endpoint_url", "limitation",
     ])
     for f in data["findings"]:
-        writer.writerow([
+        writer.writerow([csv_safe(v) for v in (
             f["rule_id"], f["title"], f["category"], f["severity"],
             f["cvss_base_score"], f["context_class"],
             f["cawasma_context_multiplier"], f["response_bonus"],
             f["cawasma_final_score"], f["endpoint_url"] or "",
             (f["limitation"] or "").replace("\n", " "),
-        ])
+        )])
     return buf.getvalue()
 
 
@@ -118,9 +130,11 @@ verification.</p>
 
 
 def render_html(data: dict) -> str:
-    from jinja2 import Template
+    # Autoescape: titles, URLs and evidence come from the scanned target, so an
+    # unescaped Server header or path would be live HTML/JS in the report.
+    from jinja2 import Environment
 
-    return Template(_HTML_TEMPLATE).render(**data)
+    return Environment(autoescape=True).from_string(_HTML_TEMPLATE).render(**data)
 
 
 def render_pdf(data: dict) -> bytes:

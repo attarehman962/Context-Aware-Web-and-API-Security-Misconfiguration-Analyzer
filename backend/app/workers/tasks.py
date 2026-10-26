@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 
+from app.db.session import engine
 from app.services.scan_runner import run_scan_async
 from app.utils.logging import get_logger
 from app.workers.celery_app import celery_app
@@ -25,5 +26,15 @@ def ping() -> str:
 def run_scan(self, scan_id: str) -> str:
     """Run a full scan in the worker process."""
     logger.info("worker received scan %s (task %s)", scan_id, self.request.id)
-    asyncio.run(run_scan_async(scan_id))
+    asyncio.run(_run_and_dispose(scan_id))
     return scan_id
+
+
+async def _run_and_dispose(scan_id: str) -> None:
+    """Each task gets a fresh event loop (asyncio.run), but the engine's pooled
+    asyncpg connections belong to the loop that opened them: reusing them in the
+    next task fails ("attached to a different loop"). Close them every time."""
+    try:
+        await run_scan_async(scan_id)
+    finally:
+        await engine.dispose()

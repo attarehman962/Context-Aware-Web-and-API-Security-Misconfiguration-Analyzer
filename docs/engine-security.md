@@ -17,6 +17,15 @@ Every request goes through two independent checks.
    `302 Location: http://169.254.169.254/` never gets its target fetched.
 2. **When connecting** (`PinnedNetworkBackend`): see *DNS rebinding* below.
 
+The TLS probe (`core/tls.py`) opens raw sockets outside httpx, so it applies
+the same rule itself: it resolves and validates the host, then connects to the
+validated IP (on the target's own port).
+
+**Active probes stay on the target's origin.** The wordlist, OPTIONS, CORS and
+injection probes call `fetch(..., same_origin_only=True)`: a redirect to
+another host is reported, not followed, so a probe never reaches a host the
+user did not authorise.
+
 Blocked, whatever the encoding:
 
 | Range | Examples |

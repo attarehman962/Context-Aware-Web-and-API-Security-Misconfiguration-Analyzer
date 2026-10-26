@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from app.core.body_classifier import BodyClassification
 from app.core.catalog_ref import CATALOG  # re-export for rule modules
 from app.core.cvss import severity_for
+from app.core.cvss31 import base_score as vector_base_score
 from app.core.engine import HttpResult
 from app.core.tls import TlsProbe
 from app.db.models.enums import ContextClass, FindingCategory, Severity
@@ -32,6 +33,8 @@ class CheckContext:
     cors_acao: str | None = None            # Access-Control-Allow-Origin (probe)
     cors_acac: str | None = None            # Access-Control-Allow-Credentials
     cors_methods: str | None = None         # Access-Control-Allow-Methods
+    cors_preflight_acao: str | None = None  # ACAO on a real preflight (OPTIONS + Origin)
+    cors_max_age: str | None = None         # Access-Control-Max-Age on that preflight
     probe_origin: str = "https://cawasma-probe.example"
     tls: TlsProbe | None = None
     http_scheme_redirects_https: bool | None = None
@@ -68,6 +71,13 @@ DetectFn = Callable[[CheckContext], "RawFinding | None"]
 REGISTRY: list[DetectFn] = []
 
 
+def query_names(url: str) -> set[str]:
+    """Lowercased query parameter names of ``url`` (``?a=1&B=2`` -> {"a", "b"})."""
+    from urllib.parse import parse_qsl, urlparse
+
+    return {k.lower() for k, _ in parse_qsl(urlparse(url).query, keep_blank_values=True)}
+
+
 def rule(fn: DetectFn) -> DetectFn:
     """Register a detection function."""
     REGISTRY.append(fn)
@@ -75,15 +85,22 @@ def rule(fn: DetectFn) -> DetectFn:
 
 
 def make(rule_id: str, evidence: str | None = None) -> RawFinding:
-    """Build a RawFinding from catalog metadata + runtime evidence."""
+    """Build a RawFinding from catalog metadata + runtime evidence.
+
+    The base score is computed from the catalog's CVSS vector, never taken from
+    its hand-written ``base_score``: 31 entries disagree with their own vector
+    (``make validate-config`` lists them), and the API promises that
+    ``base_score`` is the official score of ``cvss_vector``.
+    """
     meta = CATALOG[rule_id]
+    score = vector_base_score(meta.cvss_vector)
     return RawFinding(
         rule_id=meta.rule_id,
         title=meta.name,
         category=meta.category,
-        base_severity=severity_for(meta.base_score),
+        base_severity=severity_for(score),
         cvss_vector=meta.cvss_vector,
-        base_score=meta.base_score,
+        base_score=score,
         evidence=evidence,
         impact=meta.impact,
         recommendation=meta.recommendation,

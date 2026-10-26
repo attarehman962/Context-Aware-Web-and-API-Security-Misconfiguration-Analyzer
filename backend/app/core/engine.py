@@ -32,6 +32,7 @@ from app.config import settings
 from app.core.tls import TlsProbe
 from app.utils.logging import get_logger
 from app.utils.security import SSRFError, resolve_and_validate, validate_url_ssrf
+from app.utils.validators import same_origin
 
 logger = get_logger(__name__)
 
@@ -180,8 +181,14 @@ class HttpEngine:
         await self._client.aclose()
 
     async def fetch(self, url: str, method: str = "GET",
-                    extra_headers: dict[str, str] | None = None) -> ScanResponse:
-        """Fetch ``url`` safely, following redirects with SSRF re-checks."""
+                    extra_headers: dict[str, str] | None = None, *,
+                    same_origin_only: bool = False) -> ScanResponse:
+        """Fetch ``url`` safely, following redirects with SSRF re-checks.
+
+        ``same_origin_only`` stops at a redirect that leaves the URL's origin and
+        returns that redirect response instead: active probes (wordlist, OPTIONS,
+        CORS, injection) must only ever reach the host the user authorised.
+        """
         method = method.upper()
         result = ScanResponse(requested_url=url, final_url=url, method=method)
         start = time.perf_counter()
@@ -202,9 +209,11 @@ class HttpEngine:
 
                 if resp.status_code in _REDIRECTS:
                     location = resp.headers.get("location")
-                    if not location:
+                    nxt = str(httpx.URL(current).join(location)) if location else None
+                    if nxt is None or (same_origin_only and not same_origin(url, nxt)):
+                        self._capture(result, resp)     # report the redirect itself
                         break
-                    current = str(httpx.URL(current).join(location))
+                    current = nxt
                     chain.append(current)
                     if resp.status_code == 303:   # 303 -> next request is a GET
                         method = "GET"
