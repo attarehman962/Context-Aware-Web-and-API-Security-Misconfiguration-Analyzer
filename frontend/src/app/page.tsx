@@ -3,7 +3,7 @@ import { publicEnv } from "@/lib/env";
 
 export default function Home() {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-6 px-6 py-24">
+    <div className="flex max-w-3xl flex-col gap-6 py-16">
       <h1 className="font-heading text-3xl font-semibold tracking-tight">
         CAWASMA
       </h1>
@@ -18,6 +18,6 @@ export default function Home() {
           API docs
         </Button>
       </div>
-    </main>
+    </div>
   );
 }
