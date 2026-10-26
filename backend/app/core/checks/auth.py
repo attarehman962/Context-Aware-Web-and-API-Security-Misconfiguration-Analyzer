@@ -10,8 +10,10 @@ from __future__ import annotations
 import re
 from urllib.parse import urlparse
 
-from app.core.checks.base import CheckContext, RawFinding, make, rule
+from app.core.checks.base import CheckContext, RawFinding, make, query_names, rule
 
+_ADMIN_SEGMENT = re.compile(r"(?i)(?:^|/)admin")
+_REDIRECT_PARAMS = {"redirect_uri", "returnurl", "next", "redirect", "return_to"}
 _LOGIN_PATHS = ("login", "signin", "admin", "wp-login", "auth")
 _DEFAULT_CRED_TECH = ("tomcat", "jenkins", "grafana", "phpmyadmin", "wp-admin")
 
@@ -27,7 +29,9 @@ def aut_001_basic(ctx: CheckContext) -> RawFinding | None:
 @rule
 def aut_002_function_level(ctx: CheckContext) -> RawFinding | None:
     # Surface indicator: an admin-ish path that returned 200 unauthenticated.
-    if "admin" in ctx.path and ctx.result.status_code == 200:
+    # A path segment starting with "admin" (/admin, /administrator), not
+    # "/badminton".
+    if _ADMIN_SEGMENT.search(ctx.path) and ctx.result.status_code == 200:
         return make("AUT-002", f"Admin path reachable unauthenticated: {ctx.path}")
     return None
 
@@ -71,7 +75,6 @@ def aut_006_default_creds(ctx: CheckContext) -> RawFinding | None:
 
 @rule
 def aut_007_oauth_redirect(ctx: CheckContext) -> RawFinding | None:
-    query = (urlparse(ctx.url).query or "").lower()
-    if "redirect_uri=" in query or "returnurl=" in query or "next=" in query:
+    if query_names(ctx.url) & _REDIRECT_PARAMS:
         return make("AUT-007", "Redirect parameter present; verify allow-listing.")
     return None

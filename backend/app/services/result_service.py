@@ -24,6 +24,7 @@ from app.db.models import (
 from app.db.models.enums import FindingCategory
 from app.services.insights import generate_insight
 from app.utils.logging import get_logger
+from app.utils.redaction import redact_text
 
 logger = get_logger(__name__)
 
@@ -36,6 +37,18 @@ _SECURITY_HEADERS = {
     "access-control-allow-origin", "access-control-allow-credentials",
     "www-authenticate",
 }
+
+
+def _redacted(value: Any) -> Any:
+    """Evidence goes through redaction before it is stored (checks may quote
+    header values or body snippets); keys and non-strings are kept."""
+    if isinstance(value, str):
+        return redact_text(value)
+    if isinstance(value, dict):
+        return {k: _redacted(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_redacted(v) for v in value]
+    return value
 
 
 def body_signals_json(body: BodyClassification | None) -> dict[str, Any]:
@@ -103,7 +116,7 @@ async def persist_result(session, scan: Scan, result: ScanResult) -> None:
             check_id=raw.rule_id,
             title=raw.title,
             category=raw.category,
-            description=raw.evidence,
+            description=redact_text(raw.evidence),
             context_class=sf.context_class,
             context_confidence=sf.context_confidence,
             cvss_vector=raw.cvss_vector,
@@ -116,7 +129,7 @@ async def persist_result(session, scan: Scan, result: ScanResult) -> None:
             severity_bucket=sf.severity,
             owasp_map=sf.owasp_map,
             cwe_map=sf.cwe_map,
-            evidence=sf.evidence or ({"text": raw.evidence} if raw.evidence else {}),
+            evidence=_redacted(sf.evidence or ({"text": raw.evidence} if raw.evidence else {})),
             impact=raw.impact,
             recommendation=raw.recommendation,
             references=raw.references,

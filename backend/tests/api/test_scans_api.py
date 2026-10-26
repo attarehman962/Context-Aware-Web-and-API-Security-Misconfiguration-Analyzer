@@ -4,6 +4,10 @@ from __future__ import annotations
 import pytest
 
 
+def _new(url: str) -> dict:
+    return {"target_url": url, "authorization_confirmed": True}
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("path", ["/health", "/api/health"])
 async def test_health(client, path):
@@ -14,7 +18,7 @@ async def test_health(client, path):
 
 @pytest.mark.asyncio
 async def test_create_scan_valid(client):
-    r = await client.post("/api/scans", json={"target_url": "https://example.com"})
+    r = await client.post("/api/scans", json=_new("https://example.com"))
     assert r.status_code == 201
     body = r.json()
     assert body["status"] == "QUEUED"
@@ -23,7 +27,7 @@ async def test_create_scan_valid(client):
 
 @pytest.mark.asyncio
 async def test_create_scan_rejects_http(client):
-    r = await client.post("/api/scans", json={"target_url": "http://example.com"})
+    r = await client.post("/api/scans", json=_new("http://example.com"))
     assert r.status_code == 400
     err = r.json()
     assert err["success"] is False
@@ -32,14 +36,14 @@ async def test_create_scan_rejects_http(client):
 
 @pytest.mark.asyncio
 async def test_create_scan_rejects_garbage(client):
-    r = await client.post("/api/scans", json={"target_url": "not a url"})
+    r = await client.post("/api/scans", json=_new("not a url"))
     assert r.status_code == 400
 
 
 @pytest.mark.asyncio
 async def test_get_scan_and_status(client):
     created = (await client.post(
-        "/api/scans", json={"target_url": "https://example.com"}
+        "/api/scans", json=_new("https://example.com")
     )).json()
     sid = created["scan_id"]
 
@@ -56,7 +60,7 @@ async def test_get_scan_and_status(client):
 @pytest.mark.asyncio
 async def test_list_scans_pagination(client):
     for _ in range(3):
-        await client.post("/api/scans", json={"target_url": "https://example.com"})
+        await client.post("/api/scans", json=_new("https://example.com"))
     r = await client.get("/api/scans?page=1&limit=2")
     assert r.status_code == 200
     body = r.json()
@@ -68,7 +72,7 @@ async def test_list_scans_pagination(client):
 @pytest.mark.asyncio
 async def test_findings_and_endpoints_empty(client):
     sid = (await client.post(
-        "/api/scans", json={"target_url": "https://example.com"}
+        "/api/scans", json=_new("https://example.com")
     )).json()["scan_id"]
     f = await client.get(f"/api/scans/{sid}/findings")
     assert f.status_code == 200
@@ -83,7 +87,7 @@ async def test_findings_and_endpoints_empty(client):
 @pytest.mark.asyncio
 async def test_delete_scan(client):
     sid = (await client.post(
-        "/api/scans", json={"target_url": "https://example.com"}
+        "/api/scans", json=_new("https://example.com")
     )).json()["scan_id"]
     d = await client.delete(f"/api/scans/{sid}")
     assert d.status_code == 204
@@ -97,3 +101,10 @@ async def test_unknown_scan_404(client):
     import uuid
     r = await client.get(f"/api/scans/{uuid.uuid4()}")
     assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_create_scan_requires_authorization(client):
+    r = await client.post("/api/scans", json={"target_url": "https://example.com"})
+    assert r.status_code == 400
+    assert "authorization_confirmed" in r.json()["error"]["message"]

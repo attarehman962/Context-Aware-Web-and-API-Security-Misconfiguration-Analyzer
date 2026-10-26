@@ -21,20 +21,45 @@ _CRED_PATTERNS = [
     re.compile(r"eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}"),  # JWT
     re.compile(r"AKIA[0-9A-Z]{16}"),                                                # AWS
     re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),                             # key
+    # SECRET_KEY=..., password: ..., and JSON "password": "..." (quote before ':').
     re.compile(r"(?i)(api[_-]?key|secret|token|password|passwd|pwd|access[_-]?key)"
-               r"[\w-]*\s*[=:]\s*['\"]?[A-Za-z0-9._\-/+]{5,}"),  # e.g. SECRET_KEY=...
+               r"[\w-]*['\"]?\s*[=:]\s*['\"]?[^\s'\",;&<>]{5,}"),
 ]
 _EMAIL = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}")
-_PHONE = re.compile(r"(?<!\d)(?:\+?\d[\d\-\s]{8,}\d)(?!\d)")
+# Grouped numbers (+92 300 1234567, (555) 123-4567, 555-123-4567) or E.164
+# (+923001234567). Not any 10+ digit run: that matched every ISO timestamp.
+_PHONE = re.compile(
+    r"(?<![\w+])(?:\+\d{1,3}[\s.-]?)?(?:\(\d{2,4}\)\s?|\d{3}[\s.-])\d{3}[\s.-]?\d{4}(?!\d)"
+    r"|(?<![\w+])\+\d{8,14}(?!\d)")
 _SSN = re.compile(r"(?<!\d)\d{3}-\d{2}-\d{4}(?!\d)")
 _CARD_CANDIDATE = re.compile(r"(?<!\d)(?:\d[ -]?){13,16}(?!\d)")
 _IBAN = re.compile(r"\b[A-Z]{2}\d{2}[A-Z0-9]{10,30}\b")
-_MONEY = re.compile(r"(?i)(balance|amount|total|price)\D{0,5}[\$€£]?\s?\d")
+# "total" alone is pagination ("total": 3), so it needs a currency or cents.
+_MONEY = re.compile(
+    r"(?i)\b(?:balance|amount|price)\b\W{0,5}[\$€£]?\s?\d"
+    r"|\btotal\b\W{0,5}(?:[\$€£]\s?\d|\d+\.\d{2}\b)")
+# Card brands by prefix (Visa, Mastercard, Amex, Discover); a bare Luhn check
+# also passes ~1 in 10 timestamps and ids.
+_CARD_PREFIX = re.compile(r"^(?:4|5[1-5]|2[2-7]|3[47]|6(?:011|5))")
 _PRIVATE_IP = re.compile(
     r"\b(?:10\.\d{1,3}\.\d{1,3}\.\d{1,3}"
     r"|192\.168\.\d{1,3}\.\d{1,3}"
     r"|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})\b"
 )
+
+
+def _iban_ok(candidate: str) -> bool:
+    """ISO 13616 mod-97 check, so random uppercase ids don't count as IBANs."""
+    rearranged = candidate[4:] + candidate[:4]
+    try:
+        return int("".join(str(int(ch, 36)) for ch in rearranged)) % 97 == 1
+    except ValueError:
+        return False
+
+
+def _card_ok(number: str) -> bool:
+    digits = "".join(d for d in number if d.isdigit())
+    return bool(_CARD_PREFIX.match(digits)) and _luhn_ok(digits)
 
 
 def _luhn_ok(number: str) -> bool:
@@ -89,10 +114,11 @@ def classify_body(body: str | None, content_type: str | None = None
         result.reasons.append("Personally identifiable information detected")
         hits.append("pii")
 
-    financial = bool(_IBAN.search(body) or _MONEY.search(body))
+    financial = bool(_MONEY.search(body)
+                     or any(_iban_ok(m) for m in _IBAN.findall(body)))
     if not financial:
         for cand in _CARD_CANDIDATE.findall(body):
-            if _luhn_ok(cand):
+            if _card_ok(cand):
                 financial = True
                 break
     if financial:

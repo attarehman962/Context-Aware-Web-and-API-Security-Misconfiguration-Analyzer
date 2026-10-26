@@ -1,9 +1,10 @@
 """Cookie checks CKI-001..CKI-006 (spec section 13)."""
 from __future__ import annotations
 
-from urllib.parse import urlparse
+from app.core.checks.base import CheckContext, RawFinding, make, query_names, rule
 
-from app.core.checks.base import CheckContext, RawFinding, make, rule
+_TOKEN_PARAMS = {"token", "sid", "session", "sessionid", "sessid", "jsessionid",
+                 "phpsessid", "auth", "jwt", "access_token", "id_token", "auth_token"}
 
 
 def _parse_cookie(raw: str) -> dict:
@@ -44,10 +45,10 @@ def cki_003_samesite(ctx: CheckContext) -> RawFinding | None:
 
 @rule
 def cki_004_token_in_url(ctx: CheckContext) -> RawFinding | None:
-    query = (urlparse(ctx.url).query or "").lower()
-    for marker in ("sessionid", "sessid", "token", "sid", "auth", "jwt"):
-        if marker in query:
-            return make("CKI-004", f"URL query appears to carry a session token ({marker}).")
+    # Whole parameter names: "author=" or "inside=" are not session tokens.
+    for name in sorted(query_names(ctx.url)):
+        if name in _TOKEN_PARAMS or name.endswith(("_token", "-token", "sessionid", "sessid")):
+            return make("CKI-004", f"URL query appears to carry a session token ({name}).")
     return None
 
 

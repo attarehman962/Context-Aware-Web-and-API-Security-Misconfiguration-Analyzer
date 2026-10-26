@@ -100,6 +100,28 @@ def _dispatch(scan_id) -> None:
         logger.error("failed to dispatch scan %s to Celery: %s", scan_id, exc)
 
 
+INTERRUPTED = "Scan interrupted: the server restarted before it finished. Start it again."
+
+
+async def fail_interrupted_scans(session: AsyncSession) -> int:
+    """Mark scans the API process was running (``options.runner == "api"``) as
+    FAILED. They ran as background tasks in a process that no longer exists, so
+    without this they would stay QUEUED/RUNNING forever and clients would poll
+    for ever. Celery-dispatched scans are left alone: the worker still has them.
+    Call once at API start-up.
+    """
+    rows = (await session.scalars(
+        select(Scan).where(Scan.status.in_([ScanStatus.QUEUED, ScanStatus.RUNNING]))
+    )).all()
+    stale = [s for s in rows if (s.options or {}).get("runner") == "api"]
+    for scan in stale:
+        scan.status = ScanStatus.FAILED
+        scan.error_message = INTERRUPTED
+        scan.completed_at = datetime.now(UTC)
+    await session.commit()
+    return len(stale)
+
+
 async def get_scan(session: AsyncSession, scan_id: uuid.UUID) -> Scan | None:
     return await session.get(Scan, scan_id)
 
@@ -110,7 +132,7 @@ async def list_scans(
     total = await session.scalar(select(func.count()).select_from(Scan)) or 0
     rows = (
         await session.scalars(
-            select(Scan).order_by(Scan.created_at.desc()).offset(offset).limit(limit)
+            select(Scan).order_by(Scan.created_at.desc(), Scan.id).offset(offset).limit(limit)
         )
     ).all()
     return list(rows), total
@@ -163,7 +185,7 @@ async def list_findings(
         await session.scalars(
             select(Finding)
             .where(Finding.scan_id == scan_id)
-            .order_by(Finding.final_score.desc())
+            .order_by(Finding.final_score.desc(), Finding.id)   # stable pages on ties
             .offset(offset)
             .limit(limit)
         )
@@ -181,7 +203,7 @@ async def list_endpoints(
         await session.scalars(
             select(Endpoint)
             .where(Endpoint.scan_id == scan_id)
-            .order_by(Endpoint.created_at.asc())
+            .order_by(Endpoint.created_at.asc(), Endpoint.id)
             .offset(offset)
             .limit(limit)
         )

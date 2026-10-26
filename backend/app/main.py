@@ -37,8 +37,24 @@ async def lifespan(app: FastAPI):
     )
     if settings.MOCK_API:
         logger.warning("MOCK_API=true: contract routes return example data, not scans")
+    else:
+        await _fail_interrupted_scans()
     yield
     logger.info("shutting down cawasma backend")
+
+
+async def _fail_interrupted_scans() -> None:
+    """Scans this process was running died with it (BackgroundTasks)."""
+    from app.db.session import session_scope
+    from app.services.scan_service import fail_interrupted_scans
+
+    try:
+        async with session_scope() as session:
+            n = await fail_interrupted_scans(session)
+        if n:
+            logger.warning("marked %d interrupted scan(s) as FAILED", n)
+    except Exception as exc:  # noqa: BLE001 - a DB hiccup must not stop the api
+        logger.warning("could not check for interrupted scans: %s", exc)
 
 
 def _error_body(code: str, message: str) -> dict:

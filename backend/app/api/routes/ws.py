@@ -71,6 +71,12 @@ async def ws_scan(websocket: WebSocket, scan_id: str) -> None:
         redis = aioredis.from_url(settings.REDIS_URL)
         pubsub = redis.pubsub()
         await pubsub.subscribe(channel_for(sid))
+        # The scan may have finished between the snapshot and the subscribe;
+        # its terminal event is then gone, so check once more.
+        snap = await _snapshot(sid)
+        if snap is not None and snap["terminal"]:
+            await websocket.send_text(json.dumps(snap))
+            return
         async for msg in pubsub.listen():
             if msg.get("type") != "message":
                 continue
@@ -79,7 +85,8 @@ async def ws_scan(websocket: WebSocket, scan_id: str) -> None:
             await websocket.send_text(text)
             try:
                 ev = json.loads(text)
-                if ev.get("percent", 0) >= 100 or ev.get("stage") == "completed":
+                if (ev.get("percent", 0) >= 100
+                        or ev.get("stage") in ("completed", "failed")):
                     break
             except json.JSONDecodeError:
                 pass

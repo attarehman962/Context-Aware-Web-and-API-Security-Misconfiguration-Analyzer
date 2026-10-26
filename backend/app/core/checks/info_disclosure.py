@@ -40,6 +40,9 @@ def inf_004_git(ctx: CheckContext) -> RawFinding | None:
 @rule
 def inf_005_backup(ctx: CheckContext) -> RawFinding | None:
     lowered = ctx.path.lower()
+    # An HTML page at /backup.zip is the site's catch-all, not an archive.
+    if "html" in (ctx.result.content_type or "").lower():
+        return None
     if ctx.result.status_code == 200 and lowered.endswith(
         (".zip", ".tar", ".tar.gz", ".bak", ".sql", ".old", ".backup")
     ):
