@@ -15,6 +15,9 @@ describe("validateTargetUrl", () => {
     "https://shop.example.com:8443/",
     "https://localhost",
     "https://[2001:db8::1]/",
+    // Single-label hosts: the backend decides (the demo target is one).
+    "https://demo-target:8443/",
+    "https://intranet",
   ])("accepts %s", (url) => {
     expect(validateTargetUrl(url)).toBeNull();
   });
@@ -35,7 +38,6 @@ describe("validateTargetUrl", () => {
     ["ftp://files.example.com", /Only web addresses/],
     ["javascript:alert(1)", /Only web addresses/],
     ["https://", /not a valid URL/],
-    ["https://intranet", /full host name/],
     ["https://user:secret@shop.example.com", /user name or password/],
   ])("rejects %j", (url, message) => {
     expect(validateTargetUrl(url)).toMatch(message);

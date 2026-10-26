@@ -59,12 +59,11 @@ export function validateTargetUrl(input: string): string | null {
     return `Only HTTPS targets can be scanned. Try https://${url.host}${url.pathname === "/" ? "" : url.pathname}`;
   }
   if (url.protocol !== "https:") return UNSUPPORTED_SCHEME;
-  const host = url.hostname;
-  if (
-    !host ||
-    (!host.includes(".") && !host.startsWith("[") && host !== "localhost")
-  ) {
-    return "Enter a full host name, for example https://shop.example.com";
+  // Whether the host resolves to an allowed address is the backend's call
+  // (SSRF guard, ALLOWED_INTERNAL_HOSTS): single-label names such as the
+  // demo target "demo-target" can be valid.
+  if (!url.hostname) {
+    return "Enter a host name, for example https://shop.example.com";
   }
   if (url.username || url.password) {
     return "Remove the user name or password from the URL.";
