@@ -82,6 +82,10 @@ function VirtualRows({
   const virtualizer = useWindowVirtualizer({
     count: ranked.length,
     estimateSize: () => ESTIMATED_ROW_PX,
+    // A hidden row (display: none, e.g. Next keeping a page mounted out of
+    // view) measures 0; keep the estimate instead of collapsing the list.
+    measureElement: (el) =>
+      el.getBoundingClientRect().height || ESTIMATED_ROW_PX,
     overscan: 8,
     scrollMargin: offset,
     getItemKey: (i) => ranked[i].finding.id,
