@@ -1,15 +1,15 @@
 import { expect, test } from "@playwright/test";
 
-test("home page shows the product name", async ({ page }) => {
+test("home page is the new-scan form", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveTitle("CAWASMA");
   await expect(
-    page.getByRole("heading", { level: 1, name: "CAWASMA" }),
+    page.getByRole("heading", { level: 1, name: "New scan" }),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: "API docs" })).toHaveAttribute(
-    "href",
-    /\/docs$/,
-  );
+  const start = page.getByRole("button", { name: "Start scan" });
+  await expect(start).toBeDisabled();
+  await page.getByRole("checkbox", { name: /I own this target/ }).check();
+  await expect(start).toBeEnabled();
 });
 
 test("app shell has the nav and shows the API mode", async ({ page }) => {
