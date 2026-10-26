@@ -68,8 +68,7 @@ export function simulatedResults(id: string, now: number): ScanResults | null {
         ...base,
         status: "RUNNING",
         progress,
-        stage:
-          progress < 35 ? "crawling" : progress < 70 ? "checking" : "analyzing",
+        stage: stageAt(progress),
         started_at: startedAt,
       },
       findings: [],
@@ -97,6 +96,22 @@ export function simulatedResults(id: string, now: number): ScanResults | null {
   };
 }
 
+/**
+ * The real pipeline's stages and the progress at which each starts
+ * (backend/app/core/pipeline.py run_pipeline).
+ */
+const STAGES: [number, string][] = [
+  [92, "correlating"],
+  [15, "analyzing"],
+  [12, "tls"],
+  [8, "crawling"],
+  [0, "initializing"],
+];
+
+function stageAt(progress: number): string {
+  return STAGES.find(([from]) => progress >= from)![1];
+}
+
 function createdAtOf(id: string): number | null {
   if (!id.startsWith(ID_PREFIX)) return null;
   const ms = Number.parseInt(id.slice(ID_PREFIX.length), 16);
@@ -111,6 +126,7 @@ function originOf(url: string): string {
   }
 }
 
+/** Like the real API: microsecond precision, e.g. 2026-10-26T17:26:21.445000Z. */
 function iso(ms: number): string {
-  return new Date(ms).toISOString().replace(/\.\d{3}Z$/, "Z");
+  return new Date(ms).toISOString().replace(/Z$/, "000Z");
 }
