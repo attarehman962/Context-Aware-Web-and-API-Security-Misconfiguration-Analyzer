@@ -118,7 +118,17 @@ E2E_BASE_URL=http://localhost:3000 npm run test:e2e   # against a running app
 npm run lint           # ESLint (next core-web-vitals + typescript, prettier-compatible)
 npm run format         # Prettier write (format:check in CI)
 npm run typecheck      # next typegen && tsc --noEmit
+npm run gen:api        # regenerate src/lib/api-schema.ts from docs/openapi.json
 ```
+
+API layer (`src/lib/`): `api.ts` is the typed client (`createScan`,
+`getResults`, `getExportUrl`); it returns `ApiResult`s and never throws
+(errors are `network` / `client` 4xx / `server` 5xx). Contract types are in
+`api-types.ts` over the generated `api-schema.ts` (never hand-edit that one).
+Components fetch through the TanStack Query hooks in `queries.ts`. The MSW
+mocks are in `src/mocks/`: fixtures copied from `docs/examples/` (a test
+fails if they drift) and a simulated scan that goes QUEUED -> RUNNING -> DONE
+in about 10 s.
 
 Docker: `docker compose --profile frontend up -d --build` serves the app on
 http://localhost:3000 (`FRONTEND_HOST_PORT`) alongside the api on :8000.
@@ -129,6 +139,8 @@ Env vars (read only through `src/lib/env.ts`):
   time, so in Docker it is a build arg; changing it needs a rebuild.
 - `API_INTERNAL_URL`: api as the Next.js **server** reaches it
   (`http://api:8000` in compose). Read at runtime.
+- `NEXT_PUBLIC_USE_MOCK`: `true` serves every API call from the MSW fixtures
+  (browser and server), so no backend is needed. Build-time like the URL.
 
 The api's CORS allow-list (`FRONTEND_ORIGIN`, default `http://localhost:5173`)
 must include `http://localhost:3000` for browser calls from this app.
