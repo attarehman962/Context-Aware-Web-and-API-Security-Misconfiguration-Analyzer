@@ -17,10 +17,6 @@ export const publicEnv = {
   apiUrl: trimSlash(process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_URL),
   /** Serve API calls from MSW fixtures instead of the real API (src/mocks/). */
   useMock: process.env.NEXT_PUBLIC_USE_MOCK === "true",
-  /** /dev/* pages: always in `next dev`, in builds only when opted in. */
-  showDevPages:
-    process.env.NODE_ENV !== "production" ||
-    process.env.NEXT_PUBLIC_SHOW_DEV_PAGES === "true",
 };
 
 /** CAWASMA API as reached from the Next.js server (e.g. http://api:8000 in compose). */
