@@ -452,7 +452,8 @@ curl -s -i -X POST http://localhost:8000/api/scan \
   -d '{"url": "https://demo-target:8443/", "authorisation_confirmed": true}'
 # -> 202, Location: /api/results/<scan_id>, body {"scan_id": "...", "status": "QUEUED", ...}
 
-# 3. Poll until DONE or FAILED (a few seconds)
+# 3. Poll until DONE or FAILED (a few seconds; the first scan after a start
+#    takes ~10-20 s while the NLP model loads)
 SCAN_ID=<scan_id from step 2>
 curl -s http://localhost:8000/api/results/$SCAN_ID | jq '.scan.status, .scan.progress'
 

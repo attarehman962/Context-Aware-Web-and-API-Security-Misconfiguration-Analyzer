@@ -36,3 +36,6 @@ reports_output/
 
 # Team planning documents (prompts, plans, specs) -- local reference only
 /pdf/
+
+# Local SQLite databases (may hold scan data from third-party targets)
+*.db
