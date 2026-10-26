@@ -344,7 +344,7 @@ export interface components {
       /** Context Reason */
       context_reason: string[] | null;
       /** Body Signals */
-      body_signals: Record<string, never>;
+      body_signals: Record<string, unknown>;
       /** Response Time */
       response_time: number | null;
       discovered_by: components["schemas"]["DiscoveryMethod"];
@@ -452,7 +452,7 @@ export interface components {
        * Evidence
        * @description Redacted. Always has 'text'; other keys depend on the check.
        */
-      evidence: Record<string, never>;
+      evidence: Record<string, unknown>;
       /** @description Sensitivity class of the endpoint (null for host-level findings). */
       sensitivity_class?: components["schemas"]["ContextClass"] | null;
       /**
@@ -530,7 +530,7 @@ export interface components {
       /** Evidence */
       evidence: string | null;
       /** Evidence Details */
-      evidence_details: Record<string, never>;
+      evidence_details: Record<string, unknown>;
       /** Impact */
       impact: string | null;
       /** Recommendation */
@@ -672,7 +672,7 @@ export interface components {
       /** Current Stage */
       current_stage: string | null;
       /** Options */
-      options: Record<string, never>;
+      options: Record<string, unknown>;
       /** Authorization Confirmed */
       authorization_confirmed: boolean;
       /** Authorization Confirmed At */

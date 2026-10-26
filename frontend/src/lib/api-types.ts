@@ -11,15 +11,32 @@ import type { components } from "./api-schema";
 
 type Schemas = components["schemas"];
 
-export type ScanStatus = Schemas["app__api__schemas__contract__ScanStatus"];
+/**
+ * The API always sends every response field, defaulted ones included, but
+ * openapi.json lists fields with a default as optional. `Sent` makes them
+ * required (nullable fields stay nullable).
+ */
+type Sent<T> = { [K in keyof T]-?: T[K] };
+
+export type ScanStatus = Sent<
+  Omit<Schemas["app__api__schemas__contract__ScanStatus"], "severity_counts">
+> & { severity_counts: SeverityCounts };
 export type ScanState = Schemas["app__db__models__enums__ScanStatus"];
-export type ScanOptions = Schemas["ScanOptions"];
-export type ScanResults = Schemas["ScanResults"];
-export type ScanList = Schemas["Page_ScanStatus_"];
-export type Finding = Schemas["Finding"];
-export type Chain = Schemas["Chain"];
+export type ScanOptions = Sent<Schemas["ScanOptions"]>;
+export type Finding = Sent<Schemas["Finding"]>;
+export type Chain = Sent<Schemas["Chain"]>;
+export type ScanResults = {
+  contract_version: string;
+  scan: ScanStatus;
+  findings: Finding[];
+  chains: Chain[];
+};
+export type ScanList = {
+  items: ScanStatus[];
+  meta: Sent<Schemas["PaginationMeta"]>;
+};
 export type Severity = Schemas["Severity"];
-export type SeverityCounts = Schemas["SeverityCounts"];
+export type SeverityCounts = Sent<Schemas["SeverityCounts"]>;
 export type SensitivityClass = Schemas["ContextClass"];
 export type BodySignal = Schemas["BodySignal"];
 export type ErrorResponse = Schemas["ErrorResponse"];

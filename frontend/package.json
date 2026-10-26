@@ -11,7 +11,7 @@
     "start": "node scripts/start-standalone.mjs",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
-    "gen:api": "openapi-typescript ../docs/openapi.json -o src/lib/api-schema.ts && prettier --write src/lib/api-schema.ts",
+    "gen:api": "openapi-typescript ../docs/openapi.json --empty-objects-unknown -o src/lib/api-schema.ts && prettier --write src/lib/api-schema.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
@@ -51,5 +51,10 @@
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^5.0.5"
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
   }
 }
