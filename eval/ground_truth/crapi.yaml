@@ -38,9 +38,11 @@ known_issues:
   verification: unverified
 - endpoint: /workshop/api/shop/products
   check_id: COR-002
-  expected: present
+  expected: absent
   source: 'official docs: https://github.com/OWASP/crAPI; observed passive GET/OPTIONS, 2026-10-27 (observed/crapi.json)'
-  notes: 'Preflight answers Access-Control-Allow-Origin: *.'
+  notes: 'Corrected 2026-10-27: an arbitrary Origin (https://evil-7f3a.example) is answered with Access-Control-Allow-Origin:
+    *, never reflected; COR-002''s spec limitation says presence is not reflection, so this is a true
+    negative.'
   verification: unverified
 - endpoint: /identity/api/auth/login
   check_id: API-001

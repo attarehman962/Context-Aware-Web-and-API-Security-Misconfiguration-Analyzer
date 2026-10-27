@@ -29,10 +29,12 @@ known_issues:
   verification: unverified
 - endpoint: /
   check_id: COR-002
-  expected: present
+  expected: absent
   source: 'official docs: https://pwning.owasp-juice.shop/companion-guide/latest/; observed passive GET/OPTIONS,
     2026-10-27 (observed/juice-shop.json)'
-  notes: 'Preflight answers Access-Control-Allow-Origin: * (no credentials).'
+  notes: 'Corrected 2026-10-27: an arbitrary Origin (https://evil-7f3a.example) is answered with Access-Control-Allow-Origin:
+    *, never reflected; COR-002''s spec limitation says presence is not reflection, so this is a true
+    negative.'
   verification: unverified
 - endpoint: /rest/user/login
   check_id: API-001

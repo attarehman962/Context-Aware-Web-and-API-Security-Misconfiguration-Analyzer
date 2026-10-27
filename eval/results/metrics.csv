@@ -1,0 +1,13 @@
+tool,target,tp,fp,fn,tn,precision,recall,fpr,not_covered,unlabelled,out_of_scope,scan_seconds
+cawasma,juice-shop,3,0,6,14,1.0,0.333,0.0,0,150,0,3.1
+cawasma,dvwa,4,0,6,7,1.0,0.4,0.0,0,38,0,3.1
+cawasma,vampi,4,0,4,10,1.0,0.5,0.0,0,23,0,3.0
+cawasma,crapi,5,0,1,12,1.0,0.833,0.0,0,80,0,3.1
+zap,juice-shop,1,0,3,7,1.0,0.25,0.0,12,9,25,36.5
+zap,dvwa,0,0,9,1,,0.0,0.0,7,6,2,14.7
+zap,vampi,1,0,3,5,1.0,0.25,0.0,9,16,7,16.4
+zap,crapi,4,0,0,6,1.0,1.0,0.0,8,0,1,14.3
+nuclei,juice-shop,3,0,2,7,1.0,0.6,0.0,11,2,6,100.6
+nuclei,dvwa,3,0,2,5,1.0,0.6,0.0,7,3,10,102.0
+nuclei,vampi,3,0,0,5,1.0,1.0,0.0,10,4,6,100.6
+nuclei,crapi,4,0,0,5,1.0,1.0,0.0,9,3,6,100.6
