@@ -8,13 +8,21 @@
 # Never set ALLOWED_INTERNAL_HOSTS in the normal stack.
 
 services:
+  # The *-tls names are the harness's TLS front (eval/harness); its per-run CA
+  # is trusted through SCAN_CA_BUNDLE, so certificate verification stays on.
   api:
     environment:
-      ALLOWED_INTERNAL_HOSTS: juice-shop,dvwa,vampi,crapi-web
+      ALLOWED_INTERNAL_HOSTS: juice-shop,dvwa,vampi,crapi-web,juice-shop-tls,dvwa-tls,vampi-tls,crapi-tls
+      SCAN_CA_BUNDLE: /eval-tls/ca.pem
+    volumes:
+      - ./eval/.run/tls:/eval-tls:ro
     networks: [backend, eval]
   worker:
     environment:
-      ALLOWED_INTERNAL_HOSTS: juice-shop,dvwa,vampi,crapi-web
+      ALLOWED_INTERNAL_HOSTS: juice-shop,dvwa,vampi,crapi-web,juice-shop-tls,dvwa-tls,vampi-tls,crapi-tls
+      SCAN_CA_BUNDLE: /eval-tls/ca.pem
+    volumes:
+      - ./eval/.run/tls:/eval-tls:ro
     networks: [backend, eval]
 
 networks:

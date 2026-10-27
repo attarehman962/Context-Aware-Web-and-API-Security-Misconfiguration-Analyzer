@@ -24,12 +24,12 @@ make eval-down
 make eval-reset
 ```
 
-The four target services are published on loopback ports 3001–3004 and use
-digest-pinned amd64 images. The Compose network is marked `internal: true`, so
-the targets have no outbound internet route. The current backend does not yet
-consume `ALLOWED_INTERNAL_HOSTS`; the eval-only anchor in
-`docker-compose.eval.yml` records the allow-list Atta must wire into the SSRF
-guard before scans are run.
+The targets run on an internal Compose network (`cawasma-eval`, no internet
+route, no published ports) with digest-pinned images, and are reached by
+service name from containers on that network. `make eval` runs the full
+evaluation (CAWASMA, ZAP, Nuclei; `harness/README.md`); CAWASMA reaches the
+targets through the harness's TLS front with `ALLOWED_INTERNAL_HOSTS` set only
+in `docker-compose.eval-scan.yml`.
 
 The endpoint collector is a bounded, same-origin HTTP discovery tool for lab
 data collection. It reads OpenAPI paths when available and then follows HTML

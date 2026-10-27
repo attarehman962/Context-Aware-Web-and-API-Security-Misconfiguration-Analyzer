@@ -36,7 +36,10 @@ def test_every_eval_script_import_is_declared():
     for extra in PYPROJECT["project"]["optional-dependencies"].values():
         declared |= {_name(r) for r in extra}
     missing = set()
+    generated = {".cache", ".run", "raw"}          # downloads and tool outputs, not our code
     for script in (ROOT / "eval").rglob("*.py"):
+        if generated & set(script.relative_to(ROOT).parts):
+            continue
         for node in ast.walk(ast.parse(script.read_text())):
             names = ([a.name for a in node.names] if isinstance(node, ast.Import)
                      else [node.module] if isinstance(node, ast.ImportFrom) and node.module
@@ -44,6 +47,9 @@ def test_every_eval_script_import_is_declared():
             for name in names:
                 top = name.split(".")[0]
                 if top in sys.stdlib_module_names or top == "__future__":
+                    continue
+                # Local code: a sibling script, or the backend's own packages.
+                if (script.parent / f"{top}.py").exists() or top in {"app", "scripts"}:
                     continue
                 if DIST_FOR_IMPORT.get(top, top).lower() not in declared:
                     missing.add(f"{script.relative_to(ROOT)}: {top}")

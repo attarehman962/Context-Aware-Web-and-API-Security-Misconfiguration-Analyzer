@@ -1,0 +1,65 @@
+# What other tools' findings mean in CAWASMA check ids (Asim).
+# Used by eval/harness/evaluate.py. A rule mapped to null (or not listed) is
+# kept and reported as "out of scope", never dropped. A tool is only scored on
+# the check ids it can produce here ("coverage").
+
+# OWASP ZAP 2.15.0: alert pluginid -> check_id (baseline = passive rules).
+zap:
+  "10035": HDR-001   # Strict-Transport-Security Header Not Set
+  "10038": HDR-002   # Content Security Policy (CSP) Header Not Set
+  "10055": HDR-013   # CSP: unsafe-inline / unsafe-eval / wildcard directives
+  "10020": HDR-003   # Missing Anti-clickjacking Header
+  "10021": HDR-004   # X-Content-Type-Options Header Missing
+  "10063": HDR-006   # Permissions Policy Header Not Set
+  "10036": HDR-007   # Server Leaks Version Information via "Server"
+  "10037": HDR-008   # Server Leaks Information via "X-Powered-By"
+  "10010": CKI-001   # Cookie No HttpOnly Flag
+  "10011": CKI-002   # Cookie Without Secure Flag
+  "10054": CKI-003   # Cookie without SameSite Attribute
+  "10033": INF-002   # Directory Browsing
+  "90022": API-004   # Application Error Disclosure (stack traces)
+  "10023": INF-007   # Information Disclosure - Debug Error Messages
+  "40028": INF-007   # ELMAH information leak
+  # Out of scope (no CAWASMA check): listed so the mapping is explicit.
+  "10098": null      # Cross-Domain Misconfiguration (ACAO: *; CAWASMA's COR-001 is legacy, not in checks.yaml)
+  "10015": null      # Re-examine Cache-control Directives
+  "10017": null      # Cross-Domain JavaScript Source File Inclusion
+  "10027": null      # Information Disclosure - Suspicious Comments
+  "10049": null      # Storable and Cacheable Content
+  "10096": null      # Timestamp Disclosure
+  "10109": null      # Modern Web Application
+  "10110": null      # Dangerous JS Functions
+  "10112": null      # Session Management Response Identified
+  "10202": null      # Absence of Anti-CSRF Tokens
+  "90004": null      # Insufficient Site Isolation Against Spectre (COOP/COEP/CORP)
+  "10111": null      # Authentication Request Identified (informational)
+  "100000": null     # A Client Error response code was returned (informational)
+
+# Nuclei 3.9.0 with nuclei-templates v10.1.1. Keys: "template-id:matcher-name",
+# "template-id", or "path:<glob>" on the template path (for families).
+nuclei:
+  "http-missing-security-headers:strict-transport-security": HDR-001
+  "http-missing-security-headers:content-security-policy": HDR-002
+  "http-missing-security-headers:x-frame-options": HDR-003
+  "http-missing-security-headers:x-content-type-options": HDR-004
+  "http-missing-security-headers:referrer-policy": HDR-005
+  "http-missing-security-headers:permissions-policy": HDR-006
+  "http-missing-security-headers:cross-origin-opener-policy": null
+  "http-missing-security-headers:cross-origin-resource-policy": null
+  "http-missing-security-headers:cross-origin-embedder-policy": null
+  "http-missing-security-headers:x-permitted-cross-domain-policies": null
+  "http-missing-security-headers:clear-site-data": null
+  "http-missing-security-headers:content-type-charset-specification": null
+  "cors-misconfig": COR-002          # arbitrary Origin reflected
+  "git-config": INF-004
+  "git-config-nginxoffbyslash": INF-004
+  "generic-env": INF-003
+  "laravel-env": INF-003
+  "directory-listing": INF-002
+  "dir-listing": INF-002
+  "directory-listing-no-host-header": INF-002
+  "path:http/exposures/backups/*": INF-005
+  "openapi": INF-006                # public API documentation (legacy check)
+  "swagger-api": INF-006
+  "options-method": null
+  "http-trace": null

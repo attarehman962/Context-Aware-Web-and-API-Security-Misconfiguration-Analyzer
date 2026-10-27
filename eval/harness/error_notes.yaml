@@ -1,0 +1,34 @@
+# Why each CAWASMA error happened (Asim; checked by hand against the live
+# targets on 2026-10-27). Shown under each check id in eval/results/errors.md.
+# Owner in brackets: who can fix it.
+
+false_positives: {}
+
+false_negatives:
+  API-001: >-
+    [Atta + Asim] Three of the four login endpoints were never crawled (see API-003
+    for why). On DVWA /login.php, which was crawled, the legacy rule only looks at
+    API-like paths (/api or JSON), and the checks.yaml spec stays unimplemented until
+    Asim says what an "authentication endpoint" is (docs/check-coverage.md).
+  API-003: >-
+    [Atta] Never crawled. The crawler's JavaScript route extraction only matches
+    quoted "/api/..." paths: Juice Shop's routes are "/rest/..." and crAPI keeps
+    relative "api/..." strings with a separate service prefix. It doesn't read
+    OpenAPI specs (VAmPI publishes /openapi.json), and its wordlist has no /metrics
+    or /ftp. eval/labels/collect_endpoints.py finds all of them, so it is a
+    discovery gap, not a detection one.
+  CKI-001: >-
+    [Atta] Engine bug, reproduced: the httpx client keeps a cookie jar across the
+    scan. DVWA sets PHPSESSID on the first response (the / redirect); every later
+    request sends it back, so /login.php never sets it again. The cookie set on
+    the redirect hop itself is dropped too, because only the final response is
+    kept. The scanner should not carry cookies between requests, and should look
+    at Set-Cookie on every redirect hop.
+  CKI-002: "[Atta] Same cookie-jar cause as CKI-001."
+  CKI-003: "[Atta] Same cookie-jar cause as CKI-001."
+  INF-002: >-
+    [Atta + Asim] Never crawled: /config/, /docs/ (DVWA) and /ftp, /encryptionkeys
+    (Juice Shop) are not linked from crawled pages and not in the wordlist. Juice
+    Shop's listings would still be missed: the checks.yaml regex knows only
+    Apache's "Index of /", not serve-index's "listing directory" (noted in
+    ground_truth/juice-shop.yaml).
