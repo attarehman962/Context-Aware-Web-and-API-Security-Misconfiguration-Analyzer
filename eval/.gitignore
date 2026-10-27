@@ -1,0 +1,6 @@
+# Generated per run; never committed.
+.cache/
+.run/
+# Raw tool outputs hold the targets' full responses (incl. their demo credentials);
+# reproducible with `make eval`. metrics.csv / comparison.md / errors.md are committed.
+results/raw/

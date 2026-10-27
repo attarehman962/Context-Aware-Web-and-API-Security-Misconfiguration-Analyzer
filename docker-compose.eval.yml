@@ -232,6 +232,39 @@ services:
       retries: 12
       start_period: 20s
 
+  # --- Evaluation harness (eval/harness/run_all.py, `make eval`) -----------
+  # TLS front: CAWASMA scans HTTPS only, the targets speak HTTP. nginx serves
+  # each target as https://<target>-tls with a certificate the harness makes
+  # per run (eval/.run/tls); transparent (eval/harness/tls-front/nginx.conf).
+  # Profile "scan": it needs that certificate, so plain `make eval-up` skips it.
+  tls-front:
+    image: nginx@sha256:814a8e88df978ade80e584cc5b333144b9372a8e3c98872d07137dbf3b44d0e4  # nginx:1.27.3-alpine
+    profiles: [scan]
+    volumes:
+      - ./eval/harness/tls-front/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./eval/.run/tls:/tls:ro
+    networks:
+      eval:
+        aliases: [juice-shop-tls, dvwa-tls, vampi-tls, crapi-tls]
+    healthcheck:
+      test: ["CMD-SHELL", "nginx -t -q && test -s /var/run/nginx.pid"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  # Baseline tools, run one-off by the harness (pinned versions).
+  zap:
+    image: zaproxy/zap-stable@sha256:8dc78e39fafc3281ac2cf54eab05c3ea02721a1ea58f1c135f981a57f4e218b1  # 2.15.0
+    profiles: [tools]
+    networks: [eval]
+
+  nuclei:
+    image: projectdiscovery/nuclei@sha256:66b5f88c9b98ad29c03343dd34e5e85bde0ad10428d72e0171b067efe1ed7811  # v3.9.0
+    profiles: [tools]
+    volumes:
+      - ./eval/.cache/nuclei-templates-10.1.1:/templates:ro   # make eval-templates
+    networks: [eval]
+
   # One-off endpoint collector (eval/labels/collect_endpoints.py) on the eval
   # network: make eval-collect. Standard library only (no egress for pip).
   collector:

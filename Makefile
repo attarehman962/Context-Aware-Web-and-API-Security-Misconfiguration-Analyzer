@@ -69,6 +69,19 @@ eval-up: ## Start pinned isolated evaluation targets and wait for healthchecks
 eval-collect: ## Collect endpoint paths from the running targets into eval/labels/endpoints_raw.csv
 	EVAL_UID=$$(id -u) EVAL_GID=$$(id -g) $(COMPOSE) -f docker-compose.eval.yml run --rm collector
 
+NUCLEI_TEMPLATES_VERSION := 10.1.1
+NUCLEI_TEMPLATES_SHA256 := 45f427f4b44facea80e4bbb5a400826222fd564006aa8423047abe65637cfc01
+
+eval-templates: ## Download the pinned nuclei-templates release once (sha256-checked) into eval/.cache
+	@mkdir -p eval/.cache
+	@test -d eval/.cache/nuclei-templates-$(NUCLEI_TEMPLATES_VERSION) || ( \
+	  curl -sSL -o eval/.cache/nt.tar.gz https://github.com/projectdiscovery/nuclei-templates/archive/refs/tags/v$(NUCLEI_TEMPLATES_VERSION).tar.gz && \
+	  echo "$(NUCLEI_TEMPLATES_SHA256)  eval/.cache/nt.tar.gz" | sha256sum -c - && \
+	  tar -xzf eval/.cache/nt.tar.gz -C eval/.cache && rm eval/.cache/nt.tar.gz )
+
+eval: eval-templates ## Full evaluation: reset targets, scan with CAWASMA/ZAP/Nuclei, write eval/results/
+	PYTHONHASHSEED=0 "$(PYTHON)" eval/harness/run_all.py
+
 eval-down: ## Stop and remove evaluation target containers
 	$(COMPOSE) -f docker-compose.eval.yml down
 
