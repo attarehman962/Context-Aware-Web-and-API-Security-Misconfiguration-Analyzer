@@ -38,7 +38,7 @@ PAGE = b"""<!doctype html>
 
 # Everything the header checks look for, except Strict-Transport-Security.
 HEADERS = {
-    "Content-Security-Policy": "default-src 'self'",
+    "Content-Security-Policy": "default-src 'self'; frame-ancestors 'none'",
     "X-Frame-Options": "DENY",
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",
@@ -124,6 +124,17 @@ class _Handler(BaseHTTPRequestHandler):
         self.do_GET()
 
 
+class _QuietServer(ThreadingHTTPServer):
+    """A TLS scanner (SSLyze) opens and drops many connections; a dropped
+    handshake is expected here, not an error worth a traceback."""
+
+    def handle_error(self, request: object, client_address: object) -> None:
+        import sys
+
+        if not isinstance(sys.exc_info()[1], ConnectionError | ssl.SSLError | TimeoutError):
+            super().handle_error(request, client_address)  # type: ignore[arg-type]
+
+
 def make_server(host: str, port: int, names: list[str], ips: list[str]
                 ) -> tuple[ThreadingHTTPServer, bytes]:
     """An HTTPS server bound to ``host:port`` (0 = any free port), and its CA PEM."""
@@ -136,7 +147,7 @@ def make_server(host: str, port: int, names: list[str], ips: list[str]
         cert.write_bytes(cert_pem + ca_pem)
         key.write_bytes(key_pem)
         ctx.load_cert_chain(cert, key)   # read now; the files are deleted on exit
-    server = ThreadingHTTPServer((host, port), _Handler)
+    server = _QuietServer((host, port), _Handler)
     server.daemon_threads = True
     server.socket = ctx.wrap_socket(server.socket, server_side=True,
                                     do_handshake_on_connect=False)

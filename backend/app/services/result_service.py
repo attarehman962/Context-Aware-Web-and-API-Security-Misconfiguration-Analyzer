@@ -160,10 +160,12 @@ async def persist_result(session, scan: Scan, result: ScanResult) -> None:
             scan_id=scan.id, chain_code=ch.code, name=ch.name,
             description=ch.description,
             template_composite_score=ch.composite_score, severity=ch.severity,
+            composite_vector=ch.composite_vector, evidence=ch.evidence,
         )
-        for rid in ch.matched_rule_ids:
-            for fr in by_rule.get(rid, []):
-                chain_row.findings.append(fr)
+        # Exactly the member findings of this unit (not every finding with a
+        # matching check id elsewhere in the scan).
+        for i in ch.member_indexes:
+            chain_row.findings.append(finding_rows[i])
         session.add(chain_row)
 
     # Deterministic executive insight (built-in, not an external LLM).

@@ -41,6 +41,9 @@ validate-checks: ## Validate config/checks.yaml (specs + CVSS vectors)
 validate-config: ## Validate checks, cvss_mapping and chains YAML; report catalog score drift
 	cd $(BACKEND) && "$(PYTHON)" scripts/validate_specs.py all
 
+check-coverage: ## Write docs/check-coverage.md (every check id: implementation, tests, passing)
+	cd $(BACKEND) && "$(PYTHON)" scripts/check_coverage.py
+
 openapi: ## Regenerate docs/openapi.json and docs/examples/*.json from the code (commit them)
 	cd $(BACKEND) && "$(PYTHON)" scripts/export_openapi.py
 

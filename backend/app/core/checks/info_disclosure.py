@@ -1,4 +1,7 @@
-"""Information-disclosure checks INF-001..INF-006 (spec section 13)."""
+"""Information-disclosure checks INF-001..INF-006 (spec section 13).
+
+INF-002 moved to ``checks/spec/disclosure.py``.
+"""
 from __future__ import annotations
 
 from app.core.checks.base import CheckContext, RawFinding, make, rule
@@ -8,14 +11,6 @@ from app.core.checks.base import CheckContext, RawFinding, make, rule
 def inf_001_internal_ip(ctx: CheckContext) -> RawFinding | None:
     if ctx.body_class and ctx.body_class.internal_ip:
         return make("INF-001", "Response body contains an internal/private IP address.")
-    return None
-
-
-@rule
-def inf_002_dir_listing(ctx: CheckContext) -> RawFinding | None:
-    body = ctx.result.body
-    if "Index of /" in body or "<title>Directory listing for" in body:
-        return make("INF-002", "Directory listing page detected.")
     return None
 
 

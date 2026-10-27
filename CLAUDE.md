@@ -24,9 +24,10 @@ are the data and scoring references.
 
 > **Current state vs goal:** (4) is implemented in `core/cvss.py`
 > (`environmental_score` / `score_finding`, using the `cvss` library and
-> `config/cvss_mapping.yaml`). The pipeline scores spec-registry checks
-> (`core/checks/spec/`, today HDR-001 and TLS-009) that way and stores
-> `final_vector` + `score_reasons`; the legacy `@rule` checks still use the
+> `config/cvss_mapping.yaml`). The pipeline scores the 20 spec-registry checks
+> (`core/checks/spec/`, every `checks.yaml` spec except the 5 blocked on
+> questions for Asim, see `docs/check-coverage.md`) that way and stores
+> `final_vector` + `score_reasons`; the 42 legacy `@rule` checks still use the
 > interim formula `min(10, base × context_multiplier + response_bonus)`
 > (docs/06) until each moves to the registry. Keep the official base score and
 > the context-aware score in separate columns, as the `findings` table does.
@@ -75,8 +76,15 @@ Owned files:
 
 Notes:
 
-- Next up: move the remaining legacy `@rule` checks to the spec registry so
-  every finding gets an environmental score (see "Current state vs goal").
+- Next up: implement API-001, API-003, INF-003/004/005 once Asim answers the
+  questions in `docs/check-coverage.md`; move the other legacy rules as specs
+  arrive. `make check-coverage` regenerates the coverage table.
+- Chains come from `config/chains.yaml` (`core/chains.py`, docs/chain-templates.md):
+  one per template per scope unit, scored with its composite vector; members'
+  evidence names the chain. TLS uses SSLyze once per host (fallback: `ssl`).
+- The sensitivity class comes from `app.ml.sensitivity.classify` and the body
+  signals from `app.ml.body_classifier` (Asim) through the contract, with the
+  built-in classifiers as fallback.
 - `POST /api/scan` runs scans as a FastAPI background task in the api process;
   the Celery worker only serves the deprecated `POST /api/scans` for now.
 - An unreachable target raises `pipeline.ScanError` and the scan is FAILED; only

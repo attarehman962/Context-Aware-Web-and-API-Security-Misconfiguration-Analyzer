@@ -46,10 +46,11 @@ def test_every_catalog_rule_has_exactly_one_implementation():
 
 
 def test_missing_headers_fire():
+    # HDR-001..008 are spec-registry checks now (tests/checks/); the legacy
+    # header rules left are HDR-009..012.
     ctx = _ctx(headers={}, body="<html></html>")
     ids = {f.rule_id for f in run_checks(ctx)}
-    # No security headers at all -> the header checks should fire.
-    assert {"HDR-002", "HDR-003", "HDR-004"} <= ids
+    assert {"HDR-009", "HDR-010"} <= ids
 
 
 def test_full_headers_suppress_findings():
@@ -64,24 +65,23 @@ def test_full_headers_suppress_findings():
         "Cross-Origin-Resource-Policy": "same-origin",
     })
     ids = {f.rule_id for f in run_checks(ctx)}
-    for rid in ("HDR-001", "HDR-002", "HDR-003", "HDR-004", "HDR-005", "HDR-006"):
+    for rid in ("HDR-009", "HDR-010"):
         assert rid not in ids
 
 
-def test_insecure_cookie_flags():
+def test_short_session_cookie_value():
+    # CKI-001..003 (flags) are spec-registry checks now (tests/checks/).
     ctx = _ctx(body="")
     ctx.result.set_cookie_headers = ["sessionid=abc; Path=/"]
     ids = {f.rule_id for f in run_checks(ctx)}
-    assert {"CKI-001", "CKI-002", "CKI-003"} <= ids  # no HttpOnly/Secure/SameSite
+    assert "CKI-006" in ids
 
 
-def test_cors_reflection_and_credentials():
+def test_cors_wildcard_origin():
+    # COR-002/COR-003 are spec-registry checks now (tests/checks/).
     ctx = _ctx()
-    ctx.cors_acao = ctx.probe_origin
-    ctx.cors_acac = "true"
-    ids = {f.rule_id for f in run_checks(ctx)}
-    assert "COR-002" in ids  # reflection
-    assert "COR-003" in ids  # credentials + weak origin
+    ctx.cors_acao = "*"
+    assert "COR-001" in {f.rule_id for f in run_checks(ctx)}
 
 
 def test_env_exposure_and_secrets():
@@ -93,10 +93,11 @@ def test_env_exposure_and_secrets():
     assert "API-013" in ids   # secrets in response
 
 
-def test_verbose_error_detected():
-    ctx = _ctx(body="Traceback (most recent call last): ...", ctype="text/html")
+def test_moved_rules_no_longer_run_as_legacy():
+    ctx = _ctx(headers={}, body="Traceback (most recent call last): ...")
+    ctx.result.set_cookie_headers = ["sessionid=abc; Path=/"]
     ids = {f.rule_id for f in run_checks(ctx)}
-    assert "API-004" in ids
+    assert not ids & {"HDR-002", "CKI-001", "COR-002", "API-004", "INF-002", "TLS-005"}
 
 
 def test_limitation_marked_on_blackbox_checks():

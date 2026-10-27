@@ -2,6 +2,8 @@
 
 These read the CORS response to a probe request carrying a test Origin header;
 the pipeline performs that probe and populates ``ctx.cors_*``.
+
+COR-002 and COR-003 moved to ``checks/spec/cors.py``.
 """
 from __future__ import annotations
 
@@ -12,23 +14,6 @@ from app.core.checks.base import CheckContext, RawFinding, make, rule
 def cor_001_wildcard(ctx: CheckContext) -> RawFinding | None:
     if ctx.cors_acao == "*":
         return make("COR-001", "Access-Control-Allow-Origin is '*'.")
-    return None
-
-
-@rule
-def cor_002_reflection(ctx: CheckContext) -> RawFinding | None:
-    # Server echoed our probe origin back -> arbitrary origins allowed.
-    if ctx.cors_acao and ctx.cors_acao == ctx.probe_origin:
-        return make("COR-002", f"Origin reflected: ACAO echoed '{ctx.cors_acao}'.")
-    return None
-
-
-@rule
-def cor_003_credentials(ctx: CheckContext) -> RawFinding | None:
-    acac = (ctx.cors_acac or "").lower() == "true"
-    weak_origin = ctx.cors_acao == "*" or ctx.cors_acao == ctx.probe_origin
-    if acac and weak_origin:
-        return make("COR-003", "Allow-Credentials: true combined with weak origin.")
     return None
 
 

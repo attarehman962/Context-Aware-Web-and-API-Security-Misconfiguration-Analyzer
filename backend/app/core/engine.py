@@ -65,6 +65,9 @@ class ScanResponse:
     error: str | None = None
     truncated: bool = False
     tls: TlsProbe | None = None
+    # Extra headers the engine sent (e.g. the CORS probe's Origin), so a check
+    # can compare the response with exactly what was asked.
+    request_headers: dict[str, str] = field(default_factory=dict)
 
     @property
     def ok(self) -> bool:
@@ -182,15 +185,19 @@ class HttpEngine:
 
     async def fetch(self, url: str, method: str = "GET",
                     extra_headers: dict[str, str] | None = None, *,
-                    same_origin_only: bool = False) -> ScanResponse:
+                    same_origin_only: bool = False,
+                    follow_redirects: bool = True) -> ScanResponse:
         """Fetch ``url`` safely, following redirects with SSRF re-checks.
 
         ``same_origin_only`` stops at a redirect that leaves the URL's origin and
         returns that redirect response instead: active probes (wordlist, OPTIONS,
         CORS, injection) must only ever reach the host the user authorised.
+        ``follow_redirects=False`` returns the first response as is (TLS-005
+        judges the HTTP probe itself, not where it leads).
         """
         method = method.upper()
-        result = ScanResponse(requested_url=url, final_url=url, method=method)
+        result = ScanResponse(requested_url=url, final_url=url, method=method,
+                              request_headers=dict(extra_headers or {}))
         start = time.perf_counter()
         if self.passive_only and method not in PASSIVE_METHODS:
             result.error = f"Blocked by passive mode: {method} not allowed (GET/HEAD only)."
@@ -210,7 +217,8 @@ class HttpEngine:
                 if resp.status_code in _REDIRECTS:
                     location = resp.headers.get("location")
                     nxt = str(httpx.URL(current).join(location)) if location else None
-                    if nxt is None or (same_origin_only and not same_origin(url, nxt)):
+                    if (nxt is None or not follow_redirects
+                            or (same_origin_only and not same_origin(url, nxt))):
                         self._capture(result, resp)     # report the redirect itself
                         break
                     current = nxt

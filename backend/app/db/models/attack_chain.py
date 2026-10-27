@@ -8,7 +8,7 @@ for a computed CVSS (spec section 6 & Phase-1 conflict resolution).
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
     Column,
@@ -22,7 +22,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.db.base import Base, TimestampMixin
+from app.db.base import Base, JSONType, TimestampMixin
 from app.db.models.enums import Severity
 
 if TYPE_CHECKING:
@@ -62,8 +62,13 @@ class AttackChain(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # Documented template severity for this known pattern (NOT a computed CVSS).
+    # The chain's own score: the CVSS v3.1 base score of the template's
+    # composite vector (config/chains.yaml), above every member's (SRS O4).
     template_composite_score: Mapped[float] = mapped_column(Float, nullable=False)
+    composite_vector: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # Why it fired: scope unit, matched check ids per group, and the context
+    # (sensitivity class / body signal) that satisfied the gates.
+    evidence: Mapped[dict[str, Any] | None] = mapped_column(JSONType, nullable=True)
     severity: Mapped[Severity] = mapped_column(
         Enum(Severity, name="chain_severity"), nullable=False
     )

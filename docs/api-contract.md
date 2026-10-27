@@ -1,4 +1,4 @@
-# CAWASMA API contract v1.1.0
+# CAWASMA API contract v1.2.0
 
 The API the frontend builds against. **Frozen at the end of Sprint 1.**
 Machine-readable version: [`openapi.json`](openapi.json) (generate a typed
@@ -10,7 +10,7 @@ checked against it in CI.
 |---|---|
 | Base URL (dev) | `http://localhost:8000` |
 | Format | JSON, UTF-8. Timestamps are ISO 8601 in UTC (`2026-10-20T09:00:02Z`). Ids are UUIDs. |
-| Version header | every response carries `X-Contract-Version: 1.1.0` |
+| Version header | every response carries `X-Contract-Version: 1.2.0` |
 | Interactive docs | `http://localhost:8000/docs` (routes tagged **contract v1**) |
 | Example responses | [`examples/`](examples/): one JSON file per shape (`results-done.json`, `results-running.json`, `results-failed.json`, `scan-status-queued.json`, `scans.json`, `scan-request.json`, `error.json`), identical to what mock mode returns |
 
@@ -94,7 +94,7 @@ broken by `check_id`), so render them in the order received.
 <!-- example: ScanResults -->
 ```json
 {
-  "contract_version": "1.1.0",
+  "contract_version": "1.2.0",
   "scan": {
     "scan_id": "11111111-1111-4111-8111-111111111111",
     "url": "https://shop.example.com",
@@ -162,21 +162,57 @@ broken by `check_id`), so render them in the order received.
     {
       "id": "c0050000-0000-4000-8000-000000000001",
       "chain_code": "C005",
-      "name": ".env Exposure -> Version Leak -> Full Compromise",
-      "description": "An exposed .env combined with version disclosure can lead to full compromise.",
-      "composite_score": 9.8,
+      "name": "Exposed configuration leaks live credentials",
+      "description": "A .env file or Git metadata is served and the response itself contains credentials, so the secrets are directly usable against the application and the services behind it.",
+      "composite_score": 10.0,
       "severity": "CRITICAL",
       "finding_ids": [
-        "f0000000-0000-4000-8000-000000000001",
-        "f0000000-0000-4000-8000-000000000006"
-      ]
+        "f0000000-0000-4000-8000-000000000001"
+      ],
+      "composite_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H",
+      "evidence": {
+        "scope": {
+          "kind": "endpoint",
+          "value": "https://shop.example.com/.env"
+        },
+        "groups": [
+          [
+            "INF-003"
+          ]
+        ],
+        "context": {
+          "body_signals": [
+            "CREDENTIALS"
+          ]
+        },
+        "composite_cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H"
+      }
     }
   ]
 }
 ```
 
 (Trimmed to 2 of the 7 findings; the full example is in `openapi.json` and
-in mock mode. Note that the chain references a finding not shown here.)
+in mock mode.)
+
+#### Filters and pagination (since 1.2)
+
+All optional; without them the response is exactly the 1.1 one. Repeat a
+parameter for several values (`?severity=CRITICAL&severity=HIGH`): values of
+one filter are OR-ed, different filters are AND-ed.
+
+| Parameter | Values | Keeps |
+|-----------|--------|-------|
+| `severity` | `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, `INFO` | findings in these buckets |
+| `category` | `HEADERS`, `COOKIES`, `CORS`, `TLS`, `REST_API`, `AUTH`, `INFO_DISCLOSURE` | findings of these categories |
+| `owasp` | e.g. `A05:2021`, `API8:2023` (case-insensitive) | findings mapped to any of them |
+| `in_chain` | `true` / `false` | attack-chain members / the others |
+| `page`, `limit` | `page` ≥ 1; `limit` 1–500, default 50 | one page of the ranked findings |
+
+When any is given, the response carries `findings_meta`: `total` (findings
+matching the filters, all pages), `page`, `limit`, `pages` (null when not
+paginated) and `filters` (as applied). `scan.severity_counts` and `chains`
+always describe the **whole** scan. A bad value is `422 VALIDATION_ERROR`.
 
 | Status | When | `error.code` |
 |--------|------|--------------|
@@ -199,9 +235,38 @@ in mock mode. Note that the chain references a finding not shown here.)
 | `evidence` | redacted JSON. `evidence.text` is always present; display other keys as key/value detail |
 | `sensitivity_class` | how sensitive the endpoint is: `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`; `null` for host-level |
 | `body_signals` | sensitive data seen in the endpoint's response: `CREDENTIALS`, `PII`, `FINANCIAL`, `INTERNAL_IP` |
-| `chain_ids` | ids into `chains[]`; use for "part of attack chain" badges and links |
+| `chain_ids` | ids into `chains[]`; use for "part of attack chain" badges and links. A member's `evidence.chains` also lists `{chain_id, name}` (the template code, e.g. `C005`) |
 | `recommendation` | how to fix |
 | `limitation` | if set, black-box testing could not confirm the finding; show it next to the finding |
+
+#### Chain fields
+
+| Field | Meaning |
+|-------|---------|
+| `chain_code`, `name`, `description` | the template from `config/chains.yaml` (`C001`-`C005`) |
+| `composite_score`, `severity` | CVSS v3.1 base score of `composite_vector`; always above every member's score |
+| `composite_vector` | *since 1.2.* the chain's own CVSS v3.1 vector |
+| `evidence` | *since 1.2.* why it fired: `scope` (`{kind: endpoint\|host\|scan, value}`), `groups` (matched check ids per template group), `context` (the `endpoint_sensitivity` or `body_signals` that satisfied the template) |
+| `finding_ids` | the member findings: exactly those in the chain's scope unit |
+
+### `GET /api/results/{scan_id}/findings/{finding_id}`: one finding (since 1.2)
+
+The drill-down: every `Finding` field, plus
+
+| Field | Meaning |
+|-------|---------|
+| `description`, `impact`, `references` | what the check is about and why it matters |
+| `endpoint` | `null` for host-level findings; otherwise `id`, `url`, `path`, `method`, `status_code`, `content_type`, `sensitivity_class`, `sensitivity_confidence`, `sensitivity_reason` (why the class), `body_signals`, `security_headers` (redacted), `cookies` (metadata: name, `http_only`, `secure`, `same_site`, `domain`, `path`; never values) |
+| `chains` | the full `Chain` objects the finding belongs to |
+
+The score breakdown is in the `Finding` fields: `cvss_vector` + `base_score`
+(official), `final_vector` + `final_score` + `score_reasons` (context-aware).
+
+| Status | When | `error.code` |
+|--------|------|--------------|
+| 200 | finding exists in that scan | |
+| 404 | no such scan, or no such finding in it | `NOT_FOUND` |
+| 422 | an id is not a UUID | `VALIDATION_ERROR` |
 
 ### `GET /api/results/{scan_id}/export?format=json|csv|html|pdf`: download
 
@@ -325,6 +390,13 @@ for history. The old dashboard list must switch to the new fields.
 
 ## Changelog
 
+- **1.2.0** (Sprint 3): additive. `GET /api/results/{id}` takes `severity`,
+  `category`, `owasp`, `in_chain`, `page`, `limit` and then returns
+  `findings_meta`; new `GET /api/results/{id}/findings/{finding_id}`
+  (`FindingDetail`); `Chain` gains `composite_vector` and `evidence`. Chains now
+  come from `config/chains.yaml` (C001-C005), with a composite CVSS vector, and
+  list exactly their scope's member findings. 18 more checks are spec-registry
+  checks scored with environmental metrics (`final_vector` set).
 - **1.1.0** (Sprint 2): findings gain `final_vector` and `score_reasons`
   (optional, additive). Checks moved to the spec registry (today HDR-001,
   TLS-009) are scored with CVSS v3.1 environmental metrics.

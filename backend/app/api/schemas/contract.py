@@ -23,12 +23,15 @@ from app.core.contracts import BodySignal, SensitivityClass
 from app.db.models.enums import FindingCategory, Severity
 from app.db.models.enums import ScanStatus as ScanState
 
-CONTRACT_VERSION = "1.1.0"
+CONTRACT_VERSION = "1.2.0"
 
 __all__ = [
     "CONTRACT_VERSION",
     "ExportFormat",
     "Finding",
+    "FindingDetail",
+    "EndpointDetail",
+    "FindingsMeta",
     "Chain",
     "ScanOptions",
     "ScanRequest",
@@ -139,9 +142,47 @@ class Chain(_Contract):
     name: str
     description: str | None = None
     composite_score: float = Field(..., ge=0, le=10,
-                                   description="Documented template score, not computed.")
+                                   description="CVSS v3.1 base score of composite_vector "
+                                               "(always above every member's score).")
     severity: Severity
     finding_ids: list[uuid.UUID]
+    composite_vector: str | None = Field(
+        None, examples=["CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H"],
+        description="Since 1.2. The chain's own CVSS v3.1 vector (config/chains.yaml).")
+    evidence: dict[str, Any] | None = Field(
+        None, description="Since 1.2. Why it fired: scope (kind, value), the matched "
+                          "check ids per group, and the context (sensitivity class or body "
+                          "signal) that satisfied the template.")
+
+
+class FindingsMeta(_Contract):
+    """Since 1.2: what the findings list holds after filters and pagination."""
+
+    total: int = Field(..., ge=0, description="Findings matching the filters (all pages).")
+    page: int | None = Field(None, ge=1, description="Null when not paginated.")
+    limit: int | None = Field(None, ge=1)
+    pages: int | None = Field(None, ge=0)
+    filters: dict[str, Any] = Field(default_factory=dict,
+                                    description="The filters applied, as given.")
+
+
+class EndpointDetail(_Contract):
+    """Since 1.2: the endpoint of a finding, for the drill-down."""
+
+    id: uuid.UUID
+    url: str
+    path: str
+    method: str
+    status_code: int | None = None
+    content_type: str | None = None
+    sensitivity_class: SensitivityClass | None = None
+    sensitivity_confidence: float | None = None
+    sensitivity_reason: list[str] = Field(default_factory=list)
+    body_signals: list[BodySignal] = Field(default_factory=list)
+    security_headers: dict[str, str] = Field(
+        default_factory=dict, description="Security-relevant response headers (redacted).")
+    cookies: list[dict[str, Any]] = Field(
+        default_factory=list, description="Cookie metadata: name, flags, scope. Never values.")
 
 
 class ScanResults(_Contract):
@@ -151,10 +192,24 @@ class ScanResults(_Contract):
     scan: ScanStatus
     findings: list[Finding] = Field(
         ..., description="Ranked by final_score, highest first (ties: check_id). Empty "
-                         "until status is DONE.")
+                         "until status is DONE. Filtered/paginated when the request asks.")
     chains: list[Chain] = Field(default_factory=list)
+    findings_meta: FindingsMeta | None = Field(
+        None, description="Since 1.2. Set when the request filters or paginates: the "
+                          "filtered total and the page. Null otherwise and in exports.")
 
     @model_validator(mode="after")
     def _rank_findings(self) -> ScanResults:
         self.findings.sort(key=lambda f: (-f.final_score, f.check_id, str(f.id)))
         return self
+
+
+class FindingDetail(Finding):
+    """Since 1.2: body of ``GET /api/results/{scan_id}/findings/{finding_id}``."""
+
+    description: str | None = None
+    impact: str | None = None
+    references: list[str] = Field(default_factory=list)
+    endpoint: EndpointDetail | None = Field(None, description="Null for host-level findings.")
+    chains: list[Chain] = Field(default_factory=list,
+                                description="The chains this finding belongs to.")

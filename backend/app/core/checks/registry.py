@@ -117,20 +117,31 @@ def response_info(resp: ScanResponse) -> ResponseInfo:
                         content_type=resp.content_type, headers=resp.headers, body=resp.body)
 
 
-def condition_matches(check_id: str, resp: ScanResponse) -> bool:
-    """Whether the spec's http_condition holds for ``resp`` (method included)."""
+def condition_matches(check_id: str, resp: ScanResponse, *,
+                      headers: Mapping[str, str] | None = None) -> bool:
+    """Whether the spec's http_condition holds for ``resp`` (method included).
+
+    ``headers`` replaces the response headers, e.g. one ``Set-Cookie`` at a time:
+    the engine folds repeated headers, so a cookie check must see each cookie.
+    """
     condition = spec_for(check_id).http_condition
-    return resp.method == condition.method and condition.matches(response_info(resp))
+    info = response_info(resp)
+    if headers is not None:
+        info = ResponseInfo(url=info.url, status_code=info.status_code,
+                            content_type=info.content_type, headers=headers, body=info.body)
+    return resp.method == condition.method and condition.matches(info)
 
 
 def run_spec_checks(resp: ScanResponse, endpoint: EndpointInfo, *,
-                    is_target_root: bool = False) -> list[RawFinding]:
-    """Run every registered check that applies to this response. One failing
+                    scope: str = "every_endpoint") -> list[RawFinding]:
+    """Run every registered check of ``scope`` on this response. The pipeline
+    calls it for each endpoint's GET and CORS preflight (``every_endpoint``),
+    and once per host for the plain-HTTP probe (``target_root``). One failing
     check is logged and skipped; it never stops the others."""
     findings: list[RawFinding] = []
     for check_id in sorted(CHECKS):
         spec = load_specs().get(check_id)
-        if spec is not None and spec.http_condition.scope == "target_root" and not is_target_root:
+        if spec is None or spec.http_condition.scope != scope:
             continue
         try:
             findings.extend(CHECKS[check_id](resp, endpoint))

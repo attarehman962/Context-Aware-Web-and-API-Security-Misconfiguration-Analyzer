@@ -24,15 +24,16 @@ through an async ``on_progress`` callback so the worker can publish it to Redis.
 from __future__ import annotations
 
 import asyncio
+import secrets
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from urllib.parse import urlparse
 
-from app.core.body_classifier import BodyClassification, classify_body
-from app.core.chains import DetectedChain, correlate_chains
+from app.core.body_classifier import BodyClassification, classify_response
+from app.core.chains import ChainEndpoint, ChainMember, DetectedChain, correlate
 from app.core.checks import CheckContext, RawFinding, run_checks, run_spec_checks
 from app.core.checks import registry as spec_registry
-from app.core.contracts import BodySignal, EndpointInfo
+from app.core.contracts import BodySignal, EndpointInfo, SensitivityClass
 from app.core.crawler import Crawler
 from app.core.cvss import compute_score, score_finding
 from app.core.engine import HttpEngine, HttpResult
@@ -59,7 +60,7 @@ _FORCE_CRIT_RULES = {"API-013", "INF-003"}
 # Host-level rules: they read only the host's TLS probe / HTTP->HTTPS check, so
 # they are reported once per scan with no endpoint (contract: endpoint_id null),
 # not once per endpoint.
-_HOST_RULES = {"TLS-001", "TLS-002", "TLS-003", "TLS-004", "TLS-005", "TLS-008"}
+_HOST_RULES = {"TLS-001", "TLS-002", "TLS-003", "TLS-004", "TLS-008"}
 
 
 class ScanError(Exception):
@@ -169,14 +170,17 @@ def body_signals(body: BodyClassification | None) -> set[BodySignal]:
     return {signal for signal, present in flags.items() if present}
 
 
-def _spec_findings(result: HttpResult, endpoint: EndpointInfo, *, is_target_root: bool,
-                   context_class: ContextClass, confidence: float | None,
-                   signals: set[BodySignal], ep_index: int) -> list[ScoredFinding]:
-    """Run the spec-registry checks and score them with environmental metrics."""
+def _spec_findings(result: HttpResult, endpoint: EndpointInfo, *,
+                   context_class: ContextClass | None, confidence: float | None,
+                   signals: set[BodySignal], ep_index: int | None,
+                   scope: str = "every_endpoint") -> list[ScoredFinding]:
+    """Run the spec-registry checks of ``scope`` and score them with environmental
+    metrics. Host-level findings (no endpoint, no class) are scored with the
+    contract's neutral class, MEDIUM."""
     out: list[ScoredFinding] = []
-    for raw in run_spec_checks(result, endpoint, is_target_root=is_target_root):
+    for raw in run_spec_checks(result, endpoint, scope=scope):
         spec = spec_registry.spec_for(raw.check_id)
-        score = score_finding(raw, context_class, signals)
+        score = score_finding(raw, context_class or ContextClass.MEDIUM, signals)
         text = str(raw.evidence.get("text") or spec.title or raw.check_id)
         out.append(ScoredFinding(
             raw=RawFinding(
@@ -205,7 +209,7 @@ def _spec_findings(result: HttpResult, endpoint: EndpointInfo, *, is_target_root
 
 
 async def _probe_endpoint(engine: HttpEngine, ep_url: str, result: HttpResult,
-                          is_api: bool) -> dict:
+                          is_api: bool, probe_origin: str) -> dict:
     """Run bounded auxiliary probes; return signals for the check context."""
     signals: dict = {
         "allowed_methods": set(),
@@ -225,12 +229,13 @@ async def _probe_endpoint(engine: HttpEngine, ep_url: str, result: HttpResult,
     except Exception as exc:  # noqa: BLE001
         logger.debug("OPTIONS probe failed: %s", exc)
 
-    probe_origin = "https://cawasma-probe.example"
-    # A real CORS preflight: the only response that carries Access-Control-Max-Age.
+    # A real CORS preflight: the only response that carries Access-Control-Max-Age,
+    # and the one COR-002/COR-003 judge (``probe_origin`` is unique per scan).
     try:
         pre = await engine.fetch(ep_url, method="OPTIONS", same_origin_only=True,
                                  extra_headers={"Origin": probe_origin,
                                                 "Access-Control-Request-Method": "GET"})
+        signals["preflight"] = pre
         signals["cors_preflight_acao"] = pre.headers.get("access-control-allow-origin")
         signals["cors_max_age"] = pre.headers.get("access-control-max-age")
         if not signals["cors_methods"]:
@@ -268,13 +273,18 @@ async def _probe_endpoint(engine: HttpEngine, ep_url: str, result: HttpResult,
 
 
 def _host_findings(target: str, seed: HttpResult, tls: TlsProbe | None,
-                   http_redirects: bool | None) -> list[ScoredFinding]:
-    """The host-level rules, once per scan, with no endpoint or sensitivity class."""
-    if tls is None and http_redirects is None:
-        return []
-    ctx = CheckContext(url=target, path=urlparse(target).path or "/", result=seed,
-                       tls=tls, http_scheme_redirects_https=http_redirects)
+                   http_probe: HttpResult | None) -> list[ScoredFinding]:
+    """Host-level findings, once per scan, with no endpoint or sensitivity class:
+    the legacy TLS rules on the TLS probe, and the ``target_root`` spec checks
+    (TLS-005) on the plain-HTTP probe."""
     out: list[ScoredFinding] = []
+    if http_probe is not None and http_probe.status_code is not None:
+        out += _spec_findings(http_probe, EndpointInfo(url=http_probe.requested_url, path="/"),
+                              context_class=None, confidence=None, signals=set(),
+                              ep_index=None, scope="target_root")
+    if tls is None:
+        return out
+    ctx = CheckContext(url=target, path=urlparse(target).path or "/", result=seed, tls=tls)
     for raw in run_checks(ctx):
         if raw.rule_id not in _HOST_RULES:
             continue
@@ -287,21 +297,6 @@ def _host_findings(target: str, seed: HttpResult, tls: TlsProbe | None,
             context_class=None, context_confidence=None, endpoint_index=None,
         ))
     return out
-
-
-async def _check_http_redirect(engine: HttpEngine, host: str) -> bool | None:
-    """Return True if http:// redirects to https://, False if not, None if N/A."""
-    try:
-        res = await engine.fetch(f"http://{host}/")
-        if res.error:
-            return None
-        if res.final_url.startswith("https://"):
-            return True
-        if any(u.startswith("https://") for u in res.redirect_chain):
-            return True
-        return False
-    except Exception:  # noqa: BLE001
-        return None
 
 
 async def run_pipeline(target: str, on_progress: ProgressFn | None = None,
@@ -348,7 +343,11 @@ async def run_pipeline(target: str, on_progress: ProgressFn | None = None,
         port = urlparse(target).port or 443
         tls = (await asyncio.to_thread(probe_tls, host, port, allow_private=allow_private)
                if probe else None)
-        http_redirects = await _check_http_redirect(engine, host) if probe else None
+        # TLS-005 judges the plain-HTTP probe itself, before any redirect.
+        http_probe = (await engine.fetch(f"http://{host}/", follow_redirects=False)
+                      if probe else None)
+        probe_origin = f"https://cawasma-{secrets.token_hex(6)}.example"   # COR-002
+        ml_classify = _ml_classifier()
 
         # --- Per-endpoint analysis --------------------------------------
         endpoints: list[EndpointAnalysis] = []
@@ -369,15 +368,22 @@ async def run_pipeline(target: str, on_progress: ProgressFn | None = None,
             if llm is not None:
                 expansions = await llm.expand_abbreviations(raw_tokens(de.path))
             cls = classifier.classify(de.path, extra_expansions=expansions)
-            body_class = classify_body(result.body, result.content_type)
+            info = EndpointInfo(url=de.url, path=de.path, method=de.method,
+                                status_code=result.status_code,
+                                content_type=result.content_type)
+            # The class comes from the ML contract module (Asim) when it loads;
+            # confidence and reason stay the built-in classifier's explanation.
+            context_class = ml_classify(info) if ml_classify else cls.context_class
+            body_class = classify_response(result.final_url, result.status_code,
+                                           result.content_type, result.headers, result.body)
             is_api = "/api" in de.path or "json" in (result.content_type or "").lower()
 
-            signals = (await _probe_endpoint(engine, de.url, result, is_api)
+            signals = (await _probe_endpoint(engine, de.url, result, is_api, probe_origin)
                        if probe else {})
 
             ctx = CheckContext(
                 url=de.url, path=de.path, result=result,
-                context_class=cls.context_class, body_class=body_class,
+                context_class=context_class, body_class=body_class,
                 allowed_methods=signals.get("allowed_methods", set()),
                 cors_acao=signals.get("cors_acao"),
                 cors_acac=signals.get("cors_acac"),
@@ -385,7 +391,6 @@ async def run_pipeline(target: str, on_progress: ProgressFn | None = None,
                 cors_preflight_acao=signals.get("cors_preflight_acao"),
                 cors_max_age=signals.get("cors_max_age"),
                 tls=tls,
-                http_scheme_redirects_https=http_redirects,
                 graphql_introspection=signals.get("graphql_introspection", False),
                 injection_error_reflected=signals.get("injection_error_reflected", False),
             )
@@ -394,7 +399,7 @@ async def run_pipeline(target: str, on_progress: ProgressFn | None = None,
                 url=de.url, path=de.path, method=de.method,
                 status_code=result.status_code, content_type=result.content_type,
                 response_time=result.response_time, discovered_by=de.discovered_by,
-                context_class=cls.context_class, context_confidence=cls.confidence,
+                context_class=context_class, context_confidence=cls.confidence,
                 context_reason=cls.reason,
                 headers=redact_headers(result.headers),
                 cookies=_parse_cookies(result.set_cookie_headers),
@@ -403,22 +408,20 @@ async def run_pipeline(target: str, on_progress: ProgressFn | None = None,
             ep_index = len(endpoints)
             endpoints.append(ep)
 
-            findings.extend(_spec_findings(
-                result,
-                EndpointInfo(url=de.url, path=de.path, method=de.method,
-                             status_code=result.status_code,
-                             content_type=result.content_type),
-                is_target_root=de.url.rstrip("/") == target.rstrip("/"),
-                context_class=cls.context_class, confidence=cls.confidence,
-                signals=body_signals(body_class), ep_index=ep_index,
-            ))
+            # Spec checks on the GET, and on the CORS preflight (OPTIONS checks).
+            for resp in (result, signals.get("preflight")):
+                if resp is not None:
+                    findings.extend(_spec_findings(
+                        resp, info, context_class=context_class, confidence=cls.confidence,
+                        signals=body_signals(body_class), ep_index=ep_index,
+                    ))
             for raw in run_checks(ctx):
                 if raw.rule_id in _HOST_RULES:
                     continue                      # reported once, below
                 bonus = body_class.bonus if raw.rule_id in _BONUS_RULES else 0.0
                 force = (raw.rule_id in _FORCE_CRIT_RULES) and body_class.credentials
                 score = compute_score(
-                    raw.base_score, cls.context_class, bonus, force_critical=force,
+                    raw.base_score, context_class, bonus, force_critical=force,
                 )
                 findings.append(ScoredFinding(
                     raw=raw,
@@ -427,17 +430,21 @@ async def run_pipeline(target: str, on_progress: ProgressFn | None = None,
                     response_bonus=score.response_bonus,
                     cawasma_final_score=score.cawasma_final_score,
                     severity=score.severity,
-                    context_class=cls.context_class,
+                    context_class=context_class,
                     context_confidence=cls.confidence,
                     endpoint_index=ep_index,
                 ))
 
-        findings.extend(_host_findings(target, seed, tls, http_redirects))
+        findings.extend(_host_findings(target, seed, tls, http_probe))
 
         # --- Attack-chain correlation -----------------------------------
         await report("correlating", 92, "Correlating attack chains")
-        present = {f.raw.rule_id for f in findings}
-        chains = correlate_chains(present)
+        chains = correlate(
+            [ChainMember(f.raw.rule_id, f.endpoint_index, urlparse(target).netloc.lower())
+             for f in findings],
+            [ChainEndpoint(e.url, e.context_class, frozenset(body_signals(e.body_class)))
+             for e in endpoints])
+        _mark_chain_members(findings, chains)
 
         stats = _build_stats(endpoints, findings, chains)
         await report("completed", 100, "Scan complete")
@@ -446,6 +453,34 @@ async def run_pipeline(target: str, on_progress: ProgressFn | None = None,
         target=target, host=host, endpoints=endpoints,
         findings=findings, chains=chains, tls=tls, stats=stats,
     )
+
+
+def _mark_chain_members(findings: list[ScoredFinding], chains: list[DetectedChain]) -> None:
+    """Each member's evidence names its chains (docs/chain-templates.md), so a
+    finding still explains itself on its own."""
+    for chain in chains:
+        for i in chain.member_indexes:
+            f = findings[i]
+            evidence = f.evidence or {"text": f.raw.evidence or f.raw.title}
+            evidence.setdefault("chains", []).append({"chain_id": chain.code, "name": chain.name})
+            f.evidence = evidence
+
+
+def _ml_classifier() -> Callable[[EndpointInfo], SensitivityClass] | None:
+    """``app.ml.sensitivity.classify`` if it imports and conforms to the ML
+    contract (contract rule 7); else None and the built-in class is used."""
+    try:
+        from app.core.contracts import builtin_analyze, check_conformance
+        from app.ml.sensitivity import classify
+    except Exception as exc:  # noqa: BLE001 - optional module
+        logger.warning("ML sensitivity classifier unavailable, using built-in: %s", exc)
+        return None
+    problems = check_conformance(classify, builtin_analyze)
+    if problems:
+        logger.error("ML sensitivity classifier breaks the contract, using built-in: %s",
+                     "; ".join(problems))
+        return None
+    return classify
 
 
 def _build_stats(endpoints, findings, chains) -> dict:

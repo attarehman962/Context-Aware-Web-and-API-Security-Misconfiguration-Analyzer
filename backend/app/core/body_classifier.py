@@ -11,7 +11,9 @@ validated with the Luhn checksum to cut false positives.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import Any
 
 from app.core.cvss import RESPONSE_BONUS
 from app.utils.redaction import safe_evidence
@@ -92,9 +94,57 @@ class BodyClassification:
         return self.credentials
 
 
+_SIGNAL_FIELDS = (("CREDENTIALS", "credentials", "Credential-like value detected in response"),
+                  ("PII", "pii", "Personally identifiable information detected"),
+                  ("FINANCIAL", "financial", "Financial data detected"),
+                  ("INTERNAL_IP", "internal_ip", "Internal/private IP address detected"))
+
+
+def classify_response(url: str, status_code: int | None, content_type: str | None,
+                      headers: dict[str, str], body: str | None) -> BodyClassification:
+    """The classification scans use: the ML contract's body classifier
+    (``app.ml.body_classifier``, Asim) when it loads, else :func:`classify_body`.
+
+    Both legacy rules (bonus, forced CRITICAL, API-013, INF-001) and the
+    environmental score read this one result, so they can't disagree. The
+    evidence is the classifier's already-redacted detections.
+    """
+    from app.core.contracts import ResponseInfo
+
+    detect = _ml_detect()
+    if detect is None:
+        return classify_body(body, content_type)
+    try:
+        found = detect(ResponseInfo(url=url, status_code=status_code or 0,
+                                    content_type=content_type, headers=headers,
+                                    body=body or ""))
+    except Exception:  # noqa: BLE001 - contract rule 1: a classifier bug can't stop a scan
+        return classify_body(body, content_type)
+    signals = {d.signal.value for d in found if d.signal is not None}
+    result = BodyClassification()
+    for signal, attr, reason in _SIGNAL_FIELDS:
+        if signal in signals:
+            setattr(result, attr, True)
+            result.bonus += RESPONSE_BONUS[attr]
+            result.reasons.append(reason)
+    if found:
+        result.evidence = "; ".join(f"{d.rule}: {d.evidence}" for d in found)[:300]
+    return result
+
+
+def _ml_detect() -> Callable[[Any], list[Any]] | None:
+    """``app.ml.body_classifier.detect``, or None when it can't be imported
+    (contract rule 7: the engine falls back to the built-in classifier)."""
+    try:
+        from app.ml.body_classifier import detect
+    except Exception:  # noqa: BLE001 - optional module
+        return None
+    return detect
+
+
 def classify_body(body: str | None, content_type: str | None = None
                   ) -> BodyClassification:
-    """Classify a response body and compute the response bonus."""
+    """Classify a response body and compute the response bonus (built-in regex)."""
     result = BodyClassification()
     if not body:
         return result

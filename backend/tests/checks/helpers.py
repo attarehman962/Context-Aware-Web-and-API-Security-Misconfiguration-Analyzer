@@ -21,12 +21,21 @@ URL = "https://shop.example.com/account"
 
 
 def response(url: str = URL, *, status: int = 200, headers: dict[str, str] | None = None,
-             body: str = "", method: str = "GET",
-             content_type: str = "text/html") -> ScanResponse:
-    """A normalised response, as the engine returns it (headers lowercased)."""
+             body: str = "", method: str = "GET", content_type: str = "text/html",
+             cookies: list[str] | None = None,
+             request_headers: dict[str, str] | None = None) -> ScanResponse:
+    """A normalised response, as the engine returns it (headers lowercased).
+
+    ``cookies`` are separate Set-Cookie headers (the engine keeps each one);
+    ``request_headers`` are what the engine sent (e.g. the CORS probe Origin).
+    """
+    hdrs = {k.lower(): v for k, v in (headers or {}).items()}
+    if cookies:
+        hdrs["set-cookie"] = cookies[-1]          # folded, as in a dict of headers
     return ScanResponse(requested_url=url, final_url=url, method=method, status_code=status,
-                        headers={k.lower(): v for k, v in (headers or {}).items()},
-                        body=body, content_type=content_type)
+                        headers=hdrs, body=body, content_type=content_type,
+                        set_cookie_headers=list(cookies or []),
+                        request_headers=dict(request_headers or {}))
 
 
 def endpoint(url: str = URL) -> EndpointInfo:

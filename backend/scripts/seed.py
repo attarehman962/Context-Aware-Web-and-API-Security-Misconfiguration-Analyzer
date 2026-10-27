@@ -8,7 +8,8 @@ feedback, so every table has rows.
 Nothing here is hand-scored: sensitivity classes come from the real endpoint
 classifier, body signals from the real body classifier (so evidence is
 redacted), scores from :func:`app.core.cvss.compute_score` with the catalog's
-CVSS v3.1 base vectors, and the chain from :func:`app.core.chains.correlate_chains`.
+CVSS v3.1 base vectors, and the chains from :func:`app.core.chains.correlate`
+over config/chains.yaml.
 OWASP/CWE mappings are illustrative until the catalog carries them
 (docs/db-decisions.md).
 
@@ -23,12 +24,14 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from urllib.parse import urlparse
 
 from sqlalchemy import select
 
 from app.core.body_classifier import BodyClassification, classify_body
-from app.core.chains import correlate_chains
+from app.core.chains import ChainEndpoint, ChainMember, correlate
 from app.core.checks.catalog import CATALOG
+from app.core.contracts import BodySignal
 from app.core.cvss import compute_score
 from app.core.cvss31 import base_score
 from app.core.pipeline import _BONUS_RULES, _FORCE_CRIT_RULES  # same rules as live scans
@@ -271,16 +274,28 @@ def _build_scan(
     return scan, findings
 
 
+# endpoints.body_signals JSON key -> contract signal (as result_service stores them)
+_SIGNALS = {"credentials": BodySignal.CREDENTIALS, "pii": BodySignal.PII,
+            "financial": BodySignal.FINANCIAL, "internal_ip": BodySignal.INTERNAL_IP}
+
+
 def _add_chains(scan: Scan, findings: list[Finding]) -> int:
-    by_check: dict[str, list[Finding]] = {}
-    for f in findings:
-        by_check.setdefault(f.check_id, []).append(f)
-    detected = correlate_chains(set(by_check))
+    """Correlate exactly as live scans do (core/chains.py over config/chains.yaml)."""
+    endpoints = list(dict.fromkeys(f.endpoint for f in findings if f.endpoint is not None))
+    index = {id(e): i for i, e in enumerate(endpoints)}
+    host = urlparse(scan.target_url).netloc.lower()
+    detected = correlate(
+        [ChainMember(f.check_id, index.get(id(f.endpoint)) if f.endpoint else None, host)
+         for f in findings],
+        [ChainEndpoint(e.url, e.context_class, frozenset(
+            sig for key, sig in _SIGNALS.items() if (e.body_signals or {}).get(key)))
+         for e in endpoints])
     for ch in detected:
         scan.attack_chains.append(AttackChain(
             chain_code=ch.code, name=ch.name, description=ch.description,
             template_composite_score=ch.composite_score, severity=ch.severity,
-            findings=[f for rid in ch.matched_rule_ids for f in by_check[rid]],
+            composite_vector=ch.composite_vector, evidence=ch.evidence,
+            findings=[findings[i] for i in ch.member_indexes],
         ))
     return len(detected)
 
