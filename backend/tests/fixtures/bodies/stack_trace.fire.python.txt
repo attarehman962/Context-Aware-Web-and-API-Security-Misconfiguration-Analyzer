@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/app/views.py", line 42, in get
+    user = db.query(uid)
+KeyError: 'uid'
