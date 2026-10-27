@@ -1,29 +1,105 @@
+# Ground truth for dvwa: starter list from the official docs, checked against a
+# passive observation of the pinned image. Every entry stays 'unverified'
+# until confirmed by hand. check_ids come from config/checks.yaml.
 target: dvwa
-base_url: http://127.0.0.1:3002
+base_url: http://dvwa:80
 status: starter-unverified
+evidence: observed/dvwa.json
+setup_note: Unauthenticated, every page but login/setup redirects to login.php; the database is created
+  on setup.php (POST, by hand).
 known_issues:
-  - endpoint: /vulnerabilities/sqli/
-    check_id: API-003
-    expected: present
-    source: "official docs: https://github.com/digininja/DVWA"
-    notes: "Starter hypothesis: intentionally vulnerable SQL injection page; check mapping needs manual confirmation."
-    verification: unverified
-  - endpoint: /vulnerabilities/xss_r/
-    check_id: HDR-002
-    expected: present
-    source: "official docs: https://github.com/digininja/DVWA"
-    notes: "Starter hypothesis: response is relevant to browser injection checks; verify CSP behavior without exploitation."
-    verification: unverified
-  - endpoint: /setup.php
-    check_id: API-003
-    expected: absent
-    source: "official docs: https://github.com/digininja/DVWA"
-    notes: "Setup page is intentionally exposed in the lab but is not an authenticated sensitive API endpoint."
-    verification: unverified
+- endpoint: /login.php
+  check_id: HDR-007
+  expected: present
+  source: 'official docs: https://github.com/digininja/DVWA; observed passive GET/OPTIONS, 2026-10-27
+    (observed/dvwa.json)'
+  notes: 'Server: Apache/2.4.25 (Debian).'
+  verification: unverified
+- endpoint: /login.php
+  check_id: HDR-002
+  expected: present
+  source: 'official docs: https://github.com/digininja/DVWA; observed passive GET/OPTIONS, 2026-10-27
+    (observed/dvwa.json)'
+  notes: No Content-Security-Policy.
+  verification: unverified
+- endpoint: /login.php
+  check_id: HDR-003
+  expected: present
+  source: 'official docs: https://github.com/digininja/DVWA; observed passive GET/OPTIONS, 2026-10-27
+    (observed/dvwa.json)'
+  notes: No X-Frame-Options.
+  verification: unverified
+- endpoint: /login.php
+  check_id: HDR-004
+  expected: present
+  source: 'official docs: https://github.com/digininja/DVWA; observed passive GET/OPTIONS, 2026-10-27
+    (observed/dvwa.json)'
+  notes: No X-Content-Type-Options.
+  verification: unverified
+- endpoint: /login.php
+  check_id: CKI-001
+  expected: present
+  source: 'official docs: https://github.com/digininja/DVWA; observed passive GET/OPTIONS, 2026-10-27
+    (observed/dvwa.json)'
+  notes: PHPSESSID set without HttpOnly.
+  verification: unverified
+- endpoint: /login.php
+  check_id: CKI-002
+  expected: present
+  source: 'official docs: https://github.com/digininja/DVWA; observed passive GET/OPTIONS, 2026-10-27
+    (observed/dvwa.json)'
+  notes: PHPSESSID set without Secure (plain HTTP target).
+  verification: unverified
+- endpoint: /login.php
+  check_id: CKI-003
+  expected: present
+  source: 'official docs: https://github.com/digininja/DVWA; observed passive GET/OPTIONS, 2026-10-27
+    (observed/dvwa.json)'
+  notes: PHPSESSID set without SameSite.
+  verification: unverified
+- endpoint: /login.php
+  check_id: API-001
+  expected: present
+  source: 'official docs: https://github.com/digininja/DVWA; observed passive GET/OPTIONS, 2026-10-27
+    (observed/dvwa.json)'
+  notes: Login exposes no rate-limit headers (brute-force module).
+  verification: unverified
+- endpoint: /config/
+  check_id: INF-002
+  expected: present
+  source: 'official docs: https://github.com/digininja/DVWA; observed passive GET/OPTIONS, 2026-10-27
+    (observed/dvwa.json)'
+  notes: Apache directory listing of /config/ (config.inc.php.dist visible).
+  verification: unverified
+- endpoint: /docs/
+  check_id: INF-002
+  expected: present
+  source: 'official docs: https://github.com/digininja/DVWA; observed passive GET/OPTIONS, 2026-10-27
+    (observed/dvwa.json)'
+  notes: Apache directory listing of /docs/.
+  verification: unverified
+- endpoint: /.git/HEAD
+  check_id: INF-004
+  expected: absent
+  source: 'official docs: https://github.com/digininja/DVWA; observed passive GET/OPTIONS, 2026-10-27
+    (observed/dvwa.json)'
+  notes: '404.'
+  verification: unverified
+- endpoint: /.env
+  check_id: INF-003
+  expected: absent
+  source: 'official docs: https://github.com/digininja/DVWA; observed passive GET/OPTIONS, 2026-10-27
+    (observed/dvwa.json)'
+  notes: '404.'
+  verification: unverified
 must_not_fire:
-  - API-001
-  - COR-003
-  - COR-002
-  - CKI-002
-  - CKI-001
-  - CKI-003
+- check_id: HDR-008
+  reason: No X-Powered-By observed (PHP expose_php off in this image).
+- check_id: COR-002
+  reason: No Access-Control-Allow-Origin on any observed preflight.
+- check_id: COR-003
+  reason: No CORS headers at all.
+- check_id: INF-003
+  reason: /.env is 404.
+- check_id: INF-004
+  reason: /.git/* is 404.

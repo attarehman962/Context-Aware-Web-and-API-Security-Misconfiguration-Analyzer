@@ -1,29 +1,93 @@
+# Ground truth for crapi: starter list from the official docs, checked against a
+# passive observation of the pinned image. Every entry stays 'unverified'
+# until confirmed by hand. check_ids come from config/checks.yaml.
 target: crapi
-base_url: http://127.0.0.1:3004
+base_url: http://crapi-web:80
 status: starter-unverified
+evidence: observed/crapi.json
 known_issues:
-  - endpoint: /identity/api/auth/login
-    check_id: API-001
-    expected: present
-    source: "official docs: https://github.com/OWASP/crAPI"
-    notes: "Starter hypothesis for authentication endpoint throttling; missing headers do not prove missing server-side rate limiting."
-    verification: unverified
-  - endpoint: /community/api/v2/community/posts/recent
-    check_id: API-003
-    expected: present
-    source: "official docs: https://github.com/OWASP/crAPI"
-    notes: "Starter hypothesis for an intentionally vulnerable community API; verify authentication and sensitivity."
-    verification: unverified
-  - endpoint: /identity/api/v2/user
-    check_id: API-003
-    expected: present
-    source: "official docs: https://github.com/OWASP/crAPI"
-    notes: "Starter hypothesis for user data access; verify only with the lab's documented safe setup."
-    verification: unverified
+- endpoint: /.env
+  check_id: INF-003
+  expected: present
+  source: 'official docs: https://github.com/OWASP/crAPI; observed passive GET/OPTIONS, 2026-10-27 (observed/crapi.json)'
+  notes: Served with 11 KEY=value lines incl. DB_PASSWORD and MONGO_DB_PASSWORD (values not recorded).
+  verification: unverified
+- endpoint: /
+  check_id: HDR-007
+  expected: present
+  source: 'official docs: https://github.com/OWASP/crAPI; observed passive GET/OPTIONS, 2026-10-27 (observed/crapi.json)'
+  notes: 'Server: openresty/1.27.1.2.'
+  verification: unverified
+- endpoint: /
+  check_id: HDR-002
+  expected: present
+  source: 'official docs: https://github.com/OWASP/crAPI; observed passive GET/OPTIONS, 2026-10-27 (observed/crapi.json)'
+  notes: No Content-Security-Policy.
+  verification: unverified
+- endpoint: /
+  check_id: HDR-003
+  expected: present
+  source: 'official docs: https://github.com/OWASP/crAPI; observed passive GET/OPTIONS, 2026-10-27 (observed/crapi.json)'
+  notes: The web front sends no X-Frame-Options (the APIs do).
+  verification: unverified
+- endpoint: /
+  check_id: HDR-004
+  expected: present
+  source: 'official docs: https://github.com/OWASP/crAPI; observed passive GET/OPTIONS, 2026-10-27 (observed/crapi.json)'
+  notes: The web front sends no nosniff (the APIs do).
+  verification: unverified
+- endpoint: /workshop/api/shop/products
+  check_id: COR-002
+  expected: present
+  source: 'official docs: https://github.com/OWASP/crAPI; observed passive GET/OPTIONS, 2026-10-27 (observed/crapi.json)'
+  notes: 'Preflight answers Access-Control-Allow-Origin: *.'
+  verification: unverified
+- endpoint: /identity/api/auth/login
+  check_id: API-001
+  expected: present
+  source: 'official docs: https://github.com/OWASP/crAPI; observed passive GET/OPTIONS, 2026-10-27 (observed/crapi.json)'
+  notes: 'No rate-limit headers on login (README: OTP brute force).'
+  verification: unverified
+- endpoint: /identity/api/v2/vehicle/vehicles
+  check_id: HDR-003
+  expected: absent
+  source: 'official docs: https://github.com/OWASP/crAPI; observed passive GET/OPTIONS, 2026-10-27 (observed/crapi.json)'
+  notes: 'API responses send X-Frame-Options: DENY.'
+  verification: unverified
+- endpoint: /identity/api/v2/vehicle/vehicles
+  check_id: HDR-004
+  expected: absent
+  source: 'official docs: https://github.com/OWASP/crAPI; observed passive GET/OPTIONS, 2026-10-27 (observed/crapi.json)'
+  notes: API responses send nosniff.
+  verification: unverified
+- endpoint: /identity/api/v2/vehicle/vehicles
+  check_id: API-003
+  expected: absent
+  source: 'official docs: https://github.com/OWASP/crAPI; observed passive GET/OPTIONS, 2026-10-27 (observed/crapi.json)'
+  notes: 401 without a token.
+  verification: unverified
+- endpoint: /workshop/api/shop/products
+  check_id: API-003
+  expected: absent
+  source: 'official docs: https://github.com/OWASP/crAPI; observed passive GET/OPTIONS, 2026-10-27 (observed/crapi.json)'
+  notes: 401 without a token.
+  verification: unverified
+- endpoint: /.git/HEAD
+  check_id: INF-004
+  expected: absent
+  source: 'official docs: https://github.com/OWASP/crAPI; observed passive GET/OPTIONS, 2026-10-27 (observed/crapi.json)'
+  notes: '404.'
+  verification: unverified
 must_not_fire:
-  - INF-003/INF-004/INF-005
-  - COR-003
-  - COR-002
-  - CKI-002
-  - CKI-001
-  - CKI-003
+- check_id: HDR-008
+  reason: No X-Powered-By.
+- check_id: COR-003
+  reason: Allow-Origin * never combined with Allow-Credentials.
+- check_id: CKI-001
+  reason: No cookies on unauthenticated responses (JWT in Authorization).
+- check_id: CKI-002
+  reason: As CKI-001.
+- check_id: CKI-003
+  reason: As CKI-001.
+- check_id: INF-004
+  reason: /.git/* is 404.

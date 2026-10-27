@@ -1,0 +1,321 @@
+{
+  "target": "juice-shop",
+  "base_url": "http://juice-shop:3000",
+  "observed_at": "2026-10-27T06:50:10+00:00",
+  "paths": {
+    "/": {
+      "GET": {
+        "status": 200,
+        "headers": {
+          "x-frame-options": "SAMEORIGIN",
+          "x-content-type-options": "nosniff",
+          "access-control-allow-origin": "*",
+          "content-type": "text/html; charset=UTF-8"
+        },
+        "cookies": [],
+        "body_bytes": 9984
+      },
+      "OPTIONS": {
+        "status": 204,
+        "headers": {
+          "access-control-allow-origin": "*"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/rest/products/search?q=": {
+      "GET": {
+        "status": 200,
+        "headers": {
+          "x-frame-options": "SAMEORIGIN",
+          "x-content-type-options": "nosniff",
+          "access-control-allow-origin": "*",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "cookies": [],
+        "body_bytes": 26957
+      },
+      "OPTIONS": {
+        "status": 204,
+        "headers": {
+          "access-control-allow-origin": "*"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/api/Products": {
+      "GET": {
+        "status": 200,
+        "headers": {
+          "x-frame-options": "SAMEORIGIN",
+          "x-content-type-options": "nosniff",
+          "access-control-allow-origin": "*",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "cookies": [],
+        "body_bytes": 26405
+      },
+      "OPTIONS": {
+        "status": 204,
+        "headers": {
+          "access-control-allow-origin": "*"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/api/Users": {
+      "GET": {
+        "status": 401,
+        "headers": {
+          "x-frame-options": "SAMEORIGIN",
+          "x-content-type-options": "nosniff",
+          "access-control-allow-origin": "*",
+          "content-type": "text/html; charset=utf-8"
+        },
+        "cookies": [],
+        "body_bytes": 972
+      },
+      "OPTIONS": {
+        "status": 204,
+        "headers": {
+          "access-control-allow-origin": "*"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/rest/user/login": {
+      "GET": {
+        "status": 500,
+        "headers": {
+          "x-frame-options": "SAMEORIGIN",
+          "x-content-type-options": "nosniff",
+          "access-control-allow-origin": "*",
+          "content-type": "text/html; charset=utf-8"
+        },
+        "cookies": [],
+        "body_bytes": 2432
+      },
+      "OPTIONS": {
+        "status": 204,
+        "headers": {
+          "access-control-allow-origin": "*"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/ftp": {
+      "GET": {
+        "status": 200,
+        "headers": {
+          "x-frame-options": "SAMEORIGIN",
+          "x-content-type-options": "nosniff",
+          "access-control-allow-origin": "*",
+          "content-type": "text/html; charset=utf-8"
+        },
+        "cookies": [],
+        "body_bytes": 11318
+      },
+      "OPTIONS": {
+        "status": 204,
+        "headers": {
+          "access-control-allow-origin": "*"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/ftp/acquisitions.md": {
+      "GET": {
+        "status": 200,
+        "headers": {
+          "x-frame-options": "SAMEORIGIN",
+          "x-content-type-options": "nosniff",
+          "access-control-allow-origin": "*",
+          "content-type": "text/markdown; charset=UTF-8"
+        },
+        "cookies": [],
+        "body_bytes": 909
+      },
+      "OPTIONS": {
+        "status": 204,
+        "headers": {
+          "access-control-allow-origin": "*"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/api-docs": {
+      "GET": {
+        "status": 301,
+        "headers": {
+          "content-security-policy": "default-src 'none'",
+          "x-frame-options": "SAMEORIGIN",
+          "x-content-type-options": "nosniff",
+          "access-control-allow-origin": "*",
+          "content-type": "text/html; charset=UTF-8",
+          "location": "/api-docs/"
+        },
+        "cookies": [],
+        "body_bytes": 158
+      },
+      "OPTIONS": {
+        "status": 204,
+        "headers": {
+          "access-control-allow-origin": "*"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/metrics": {
+      "GET": {
+        "status": 200,
+        "headers": {
+          "content-type": "text/plain; version=0.0.4; charset=utf-8"
+        },
+        "cookies": [],
+        "body_bytes": 26206
+      },
+      "OPTIONS": {
+        "status": 204,
+        "headers": {
+          "access-control-allow-origin": "*"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/encryptionkeys": {
+      "GET": {
+        "status": 200,
+        "headers": {
+          "x-frame-options": "SAMEORIGIN",
+          "x-content-type-options": "nosniff",
+          "access-control-allow-origin": "*",
+          "content-type": "text/html; charset=utf-8"
+        },
+        "cookies": [],
+        "body_bytes": 7953
+      },
+      "OPTIONS": {
+        "status": 204,
+        "headers": {
+          "access-control-allow-origin": "*"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/rest/admin/application-configuration": {
+      "GET": {
+        "status": 200,
+        "headers": {
+          "x-frame-options": "SAMEORIGIN",
+          "x-content-type-options": "nosniff",
+          "access-control-allow-origin": "*",
+          "content-type": "application/json; charset=utf-8"
+        },
+        "cookies": [],
+        "body_bytes": 36083
+      },
+      "OPTIONS": {
+        "status": 204,
+        "headers": {
+          "access-control-allow-origin": "*"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/.well-known/security.txt": {
+      "GET": {
+        "status": 200,
+        "headers": {
+          "x-frame-options": "SAMEORIGIN",
+          "x-content-type-options": "nosniff",
+          "access-control-allow-origin": "*",
+          "content-type": "text/plain; charset=utf-8"
+        },
+        "cookies": [],
+        "body_bytes": 483
+      },
+      "OPTIONS": {
+        "status": 204,
+        "headers": {
+          "access-control-allow-origin": "*"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/.env": {
+      "GET": {
+        "status": 200,
+        "headers": {
+          "x-frame-options": "SAMEORIGIN",
+          "x-content-type-options": "nosniff",
+          "access-control-allow-origin": "*",
+          "content-type": "text/html; charset=UTF-8"
+        },
+        "cookies": [],
+        "body_bytes": 9984
+      },
+      "OPTIONS": {
+        "status": 204,
+        "headers": {
+          "access-control-allow-origin": "*"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/.git/HEAD": {
+      "GET": {
+        "status": 200,
+        "headers": {
+          "x-frame-options": "SAMEORIGIN",
+          "x-content-type-options": "nosniff",
+          "access-control-allow-origin": "*",
+          "content-type": "text/html; charset=UTF-8"
+        },
+        "cookies": [],
+        "body_bytes": 9984
+      },
+      "OPTIONS": {
+        "status": 204,
+        "headers": {
+          "access-control-allow-origin": "*"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/.git/config": {
+      "GET": {
+        "status": 200,
+        "headers": {
+          "x-frame-options": "SAMEORIGIN",
+          "x-content-type-options": "nosniff",
+          "access-control-allow-origin": "*",
+          "content-type": "text/html; charset=UTF-8"
+        },
+        "cookies": [],
+        "body_bytes": 9984
+      },
+      "OPTIONS": {
+        "status": 204,
+        "headers": {
+          "access-control-allow-origin": "*"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    }
+  }
+}

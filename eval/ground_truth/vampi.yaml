@@ -1,30 +1,83 @@
+# Ground truth for vampi: starter list from the official docs, checked against a
+# passive observation of the pinned image. Every entry stays 'unverified'
+# until confirmed by hand. check_ids come from config/checks.yaml.
 target: vampi
-base_url: http://127.0.0.1:3003
+base_url: http://vampi:5000
 status: starter-unverified
+evidence: observed/vampi.json
+setup_note: GET /createdb once after start (VAmPI README) or every data route answers 500; observations
+  below were taken BEFORE that, so the data-route entries are hypotheses from the docs.
 known_issues:
-  - endpoint: /openapi.json
-    check_id: HDR-008
-    expected: absent
-    source: "official docs: https://github.com/erev0s/VAmPI"
-    notes: "OpenAPI exposure is intentional API documentation, not necessarily a framework version banner."
-    verification: unverified
-  - endpoint: /users/v1
-    check_id: API-003
-    expected: present
-    source: "official docs: https://github.com/erev0s/VAmPI"
-    notes: "Starter hypothesis for unauthenticated user API access; verify with a passive GET only."
-    verification: unverified
-  - endpoint: /books/v1
-    check_id: API-003
-    expected: present
-    source: "official docs: https://github.com/erev0s/VAmPI"
-    notes: "Starter hypothesis for intentionally exposed API data; verify response sensitivity manually."
-    verification: unverified
+- endpoint: /
+  check_id: HDR-007
+  expected: present
+  source: 'official docs: https://github.com/erev0s/VAmPI; observed passive GET/OPTIONS, 2026-10-27 (observed/vampi.json)'
+  notes: 'Server: Werkzeug/2.2.3 Python/3.11.15.'
+  verification: unverified
+- endpoint: /
+  check_id: HDR-002
+  expected: present
+  source: 'official docs: https://github.com/erev0s/VAmPI; observed passive GET/OPTIONS, 2026-10-27 (observed/vampi.json)'
+  notes: No Content-Security-Policy.
+  verification: unverified
+- endpoint: /
+  check_id: HDR-003
+  expected: present
+  source: 'official docs: https://github.com/erev0s/VAmPI; observed passive GET/OPTIONS, 2026-10-27 (observed/vampi.json)'
+  notes: No X-Frame-Options.
+  verification: unverified
+- endpoint: /
+  check_id: HDR-004
+  expected: present
+  source: 'official docs: https://github.com/erev0s/VAmPI; observed passive GET/OPTIONS, 2026-10-27 (observed/vampi.json)'
+  notes: No X-Content-Type-Options.
+  verification: unverified
+- endpoint: /users/v1/login
+  check_id: API-001
+  expected: present
+  source: 'official docs: https://github.com/erev0s/VAmPI; observed passive GET/OPTIONS, 2026-10-27 (observed/vampi.json)'
+  notes: 'No rate-limit headers (README: lack of resources & rate limiting).'
+  verification: unverified
+- endpoint: /users/v1/_debug
+  check_id: API-003
+  expected: present
+  source: 'official docs: https://github.com/erev0s/VAmPI'
+  notes: 'README: debug endpoint lists all users with passwords, unauthenticated. Needs /createdb first.'
+  verification: unverified
+- endpoint: /users/v1
+  check_id: API-003
+  expected: present
+  source: 'official docs: https://github.com/erev0s/VAmPI'
+  notes: 'README: user list readable without a token. Needs /createdb first.'
+  verification: unverified
+- endpoint: /books/v1
+  check_id: API-003
+  expected: present
+  source: 'official docs: https://github.com/erev0s/VAmPI'
+  notes: Book list readable without a token. Needs /createdb first.
+  verification: unverified
+- endpoint: /.env
+  check_id: INF-003
+  expected: absent
+  source: 'official docs: https://github.com/erev0s/VAmPI; observed passive GET/OPTIONS, 2026-10-27 (observed/vampi.json)'
+  notes: 404 problem+json.
+  verification: unverified
 must_not_fire:
-  - INF-003/INF-004/INF-005
-  - COR-003
-  - COR-002
-  - API-001
-  - CKI-002
-  - CKI-001
-  - CKI-003
+- check_id: HDR-008
+  reason: No X-Powered-By.
+- check_id: COR-002
+  reason: No Access-Control-Allow-Origin on any observed preflight.
+- check_id: COR-003
+  reason: No CORS headers.
+- check_id: CKI-001
+  reason: Bearer tokens, no cookies.
+- check_id: CKI-002
+  reason: As CKI-001.
+- check_id: CKI-003
+  reason: As CKI-001.
+- check_id: INF-002
+  reason: No directory listings (Flask app).
+- check_id: INF-003
+  reason: /.env is 404.
+- check_id: INF-004
+  reason: /.git/* is 404.
