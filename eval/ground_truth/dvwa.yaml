@@ -83,7 +83,8 @@ known_issues:
   expected: absent
   source: 'official docs: https://github.com/digininja/DVWA; observed passive GET/OPTIONS, 2026-10-27
     (observed/dvwa.json)'
-  notes: '404.'
+  notes: '404. Known spec false positive (2026-10-27): Apache''s 404 page quotes the path, and the INF-004
+    regex matches ''.git/HEAD'' in any body; the condition needs status 200. Keep ''absent''.'
   verification: unverified
 - endpoint: /.env
   check_id: INF-003

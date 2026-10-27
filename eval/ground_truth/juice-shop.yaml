@@ -37,37 +37,41 @@ known_issues:
 - endpoint: /rest/user/login
   check_id: API-001
   expected: present
-  source: 'official docs: https://pwning.owasp-juice.shop/companion-guide/latest/;
-    observed passive GET/OPTIONS, 2026-10-27 (observed/juice-shop.json)'
+  source: 'official docs: https://pwning.owasp-juice.shop/companion-guide/latest/; observed passive GET/OPTIONS,
+    2026-10-27 (observed/juice-shop.json)'
   notes: Login exposes no rate-limit headers (brute-force challenges).
   verification: unverified
 - endpoint: /ftp
   check_id: INF-002
   expected: present
-  source: 'official docs: https://pwning.owasp-juice.shop/companion-guide/latest/;
-    observed passive GET/OPTIONS, 2026-10-27 (observed/juice-shop.json)'
-  notes: Directory listing of /ftp (confidential document challenge). Check the listing page matches the
-    INF-002 regex (serve-index title format).
+  source: 'official docs: https://pwning.owasp-juice.shop/companion-guide/latest/; observed passive GET/OPTIONS,
+    2026-10-27 (observed/juice-shop.json)'
+  notes: 'Directory listing of /ftp (confidential document challenge). Check the listing page matches
+    the INF-002 regex (serve-index title format). Known spec false negative (2026-10-27): the INF-002
+    regex in checks.yaml only knows Apache''s ''Index of /''; this serve-index page is titled ''listing
+    directory /...''. Keep ''present'': a miss here is a real false negative.'
   verification: unverified
 - endpoint: /encryptionkeys
   check_id: INF-002
   expected: present
-  source: 'official docs: https://pwning.owasp-juice.shop/companion-guide/latest/;
-    observed passive GET/OPTIONS, 2026-10-27 (observed/juice-shop.json)'
-  notes: Directory listing exposing jwt.pub / premium.key.
+  source: 'official docs: https://pwning.owasp-juice.shop/companion-guide/latest/; observed passive GET/OPTIONS,
+    2026-10-27 (observed/juice-shop.json)'
+  notes: 'Directory listing exposing jwt.pub / premium.key. Known spec false negative (2026-10-27): the
+    INF-002 regex in checks.yaml only knows Apache''s ''Index of /''; this serve-index page is titled
+    ''listing directory /...''. Keep ''present'': a miss here is a real false negative.'
   verification: unverified
 - endpoint: /ftp/acquisitions.md
   check_id: API-003
   expected: present
-  source: 'official docs: https://pwning.owasp-juice.shop/companion-guide/latest/;
-    observed passive GET/OPTIONS, 2026-10-27 (observed/juice-shop.json)'
+  source: 'official docs: https://pwning.owasp-juice.shop/companion-guide/latest/; observed passive GET/OPTIONS,
+    2026-10-27 (observed/juice-shop.json)'
   notes: Confidential document readable without login.
   verification: unverified
 - endpoint: /metrics
   check_id: API-003
   expected: present
-  source: 'official docs: https://pwning.owasp-juice.shop/companion-guide/latest/;
-    observed passive GET/OPTIONS, 2026-10-27 (observed/juice-shop.json)'
+  source: 'official docs: https://pwning.owasp-juice.shop/companion-guide/latest/; observed passive GET/OPTIONS,
+    2026-10-27 (observed/juice-shop.json)'
   notes: Prometheus metrics exposed without login.
   verification: unverified
 - endpoint: /rest/admin/application-configuration
