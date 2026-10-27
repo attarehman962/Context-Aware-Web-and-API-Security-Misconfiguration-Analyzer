@@ -1,0 +1,226 @@
+{
+  "target": "crapi",
+  "base_url": "http://crapi-web:80",
+  "observed_at": "2026-10-27T06:50:10+00:00",
+  "paths": {
+    "/": {
+      "GET": {
+        "status": 200,
+        "headers": {
+          "server": "openresty/1.27.1.2",
+          "content-type": "text/html"
+        },
+        "cookies": [],
+        "body_bytes": 1205
+      },
+      "OPTIONS": {
+        "status": 405,
+        "headers": {
+          "server": "openresty/1.27.1.2",
+          "content-type": "text/html"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/login": {
+      "GET": {
+        "status": 404,
+        "headers": {
+          "server": "openresty/1.27.1.2",
+          "content-type": "text/html"
+        },
+        "cookies": [],
+        "body_bytes": 159
+      },
+      "OPTIONS": {
+        "status": 405,
+        "headers": {
+          "server": "openresty/1.27.1.2",
+          "content-type": "text/html"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/identity/api/auth/login": {
+      "GET": {
+        "status": 405,
+        "headers": {
+          "server": "openresty/1.27.1.2",
+          "x-frame-options": "DENY",
+          "x-content-type-options": "nosniff",
+          "content-type": "application/problem+json"
+        },
+        "cookies": [],
+        "body_bytes": 144
+      },
+      "OPTIONS": {
+        "status": 403,
+        "headers": {
+          "server": "openresty/1.27.1.2",
+          "x-frame-options": "DENY",
+          "x-content-type-options": "nosniff"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/identity/api/v2/user/dashboard": {
+      "GET": {
+        "status": 404,
+        "headers": {
+          "server": "openresty/1.27.1.2",
+          "x-frame-options": "DENY",
+          "x-content-type-options": "nosniff",
+          "content-type": "application/json"
+        },
+        "cookies": [],
+        "body_bytes": 58
+      },
+      "OPTIONS": {
+        "status": 200,
+        "headers": {
+          "server": "openresty/1.27.1.2",
+          "x-frame-options": "DENY",
+          "x-content-type-options": "nosniff",
+          "access-control-allow-origin": "*"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/community/api/v2/community/posts/recent": {
+      "GET": {
+        "status": 401,
+        "headers": {
+          "server": "openresty/1.27.1.2",
+          "access-control-allow-origin": "*",
+          "content-type": "application/json"
+        },
+        "cookies": [],
+        "body_bytes": 25
+      },
+      "OPTIONS": {
+        "status": 200,
+        "headers": {
+          "server": "openresty/1.27.1.2",
+          "access-control-allow-origin": "*"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/workshop/api/shop/products": {
+      "GET": {
+        "status": 401,
+        "headers": {
+          "server": "openresty/1.27.1.2",
+          "x-frame-options": "DENY",
+          "x-content-type-options": "nosniff",
+          "referrer-policy": "same-origin",
+          "content-type": "application/json"
+        },
+        "cookies": [],
+        "body_bytes": 33
+      },
+      "OPTIONS": {
+        "status": 200,
+        "headers": {
+          "server": "openresty/1.27.1.2",
+          "x-frame-options": "DENY",
+          "x-content-type-options": "nosniff",
+          "referrer-policy": "same-origin",
+          "access-control-allow-origin": "*",
+          "content-type": "text/html; charset=utf-8"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/identity/api/v2/vehicle/vehicles": {
+      "GET": {
+        "status": 401,
+        "headers": {
+          "server": "openresty/1.27.1.2",
+          "x-frame-options": "DENY",
+          "x-content-type-options": "nosniff",
+          "content-type": "application/json;charset=ISO-8859-1"
+        },
+        "cookies": [],
+        "body_bytes": 49
+      },
+      "OPTIONS": {
+        "status": 200,
+        "headers": {
+          "server": "openresty/1.27.1.2",
+          "x-frame-options": "DENY",
+          "x-content-type-options": "nosniff",
+          "access-control-allow-origin": "*"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/.env": {
+      "GET": {
+        "status": 200,
+        "headers": {
+          "server": "openresty/1.27.1.2",
+          "content-type": "application/octet-stream"
+        },
+        "cookies": [],
+        "body_bytes": 201
+      },
+      "OPTIONS": {
+        "status": 405,
+        "headers": {
+          "server": "openresty/1.27.1.2",
+          "content-type": "text/html"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/.git/HEAD": {
+      "GET": {
+        "status": 404,
+        "headers": {
+          "server": "openresty/1.27.1.2",
+          "content-type": "text/html"
+        },
+        "cookies": [],
+        "body_bytes": 159
+      },
+      "OPTIONS": {
+        "status": 405,
+        "headers": {
+          "server": "openresty/1.27.1.2",
+          "content-type": "text/html"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/.git/config": {
+      "GET": {
+        "status": 404,
+        "headers": {
+          "server": "openresty/1.27.1.2",
+          "content-type": "text/html"
+        },
+        "cookies": [],
+        "body_bytes": 159
+      },
+      "OPTIONS": {
+        "status": 405,
+        "headers": {
+          "server": "openresty/1.27.1.2",
+          "content-type": "text/html"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    }
+  }
+}

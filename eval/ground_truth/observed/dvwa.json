@@ -1,0 +1,420 @@
+{
+  "target": "dvwa",
+  "base_url": "http://dvwa:80",
+  "observed_at": "2026-10-27T06:50:10+00:00",
+  "paths": {
+    "/": {
+      "GET": {
+        "status": 302,
+        "headers": {
+          "server": "Apache/2.4.25 (Debian)",
+          "content-type": "text/html; charset=UTF-8",
+          "location": "login.php"
+        },
+        "cookies": [
+          {
+            "name": "PHPSESSID",
+            "httponly": false,
+            "secure": false,
+            "samesite": null
+          },
+          {
+            "name": "PHPSESSID",
+            "httponly": false,
+            "secure": false,
+            "samesite": null
+          },
+          {
+            "name": "security",
+            "httponly": false,
+            "secure": false,
+            "samesite": null
+          }
+        ],
+        "body_bytes": 0
+      },
+      "OPTIONS": {
+        "status": 302,
+        "headers": {
+          "server": "Apache/2.4.25 (Debian)",
+          "content-type": "text/html; charset=UTF-8",
+          "location": "login.php"
+        },
+        "cookies": [
+          {
+            "name": "PHPSESSID",
+            "httponly": false,
+            "secure": false,
+            "samesite": null
+          },
+          {
+            "name": "PHPSESSID",
+            "httponly": false,
+            "secure": false,
+            "samesite": null
+          },
+          {
+            "name": "security",
+            "httponly": false,
+            "secure": false,
+            "samesite": null
+          }
+        ],
+        "body_bytes": 0
+      }
+    },
+    "/login.php": {
+      "GET": {
+        "status": 200,
+        "headers": {
+          "server": "Apache/2.4.25 (Debian)",
+          "content-type": "text/html;charset=utf-8"
+        },
+        "cookies": [
+          {
+            "name": "PHPSESSID",
+            "httponly": false,
+            "secure": false,
+            "samesite": null
+          },
+          {
+            "name": "PHPSESSID",
+            "httponly": false,
+            "secure": false,
+            "samesite": null
+          },
+          {
+            "name": "security",
+            "httponly": false,
+            "secure": false,
+            "samesite": null
+          }
+        ],
+        "body_bytes": 1523
+      },
+      "OPTIONS": {
+        "status": 200,
+        "headers": {
+          "server": "Apache/2.4.25 (Debian)",
+          "content-type": "text/html;charset=utf-8"
+        },
+        "cookies": [
+          {
+            "name": "PHPSESSID",
+            "httponly": false,
+            "secure": false,
+            "samesite": null
+          },
+          {
+            "name": "PHPSESSID",
+            "httponly": false,
+            "secure": false,
+            "samesite": null
+          },
+          {
+            "name": "security",
+            "httponly": false,
+            "secure": false,
+            "samesite": null
+          }
+        ],
+        "body_bytes": 0
+      }
+    },
+    "/setup.php": {
+      "GET": {
+        "status": 200,
+        "headers": {
+          "server": "Apache/2.4.25 (Debian)",
+          "content-type": "text/html;charset=utf-8"
+        },
+        "cookies": [
+          {
+            "name": "PHPSESSID",
+            "httponly": false,
+            "secure": false,
+            "samesite": null
+          },
+          {
+            "name": "PHPSESSID",
+            "httponly": false,
+            "secure": false,
+            "samesite": null
+          },
+          {
+            "name": "security",
+            "httponly": false,
+            "secure": false,
+            "samesite": null
+          }
+        ],
+        "body_bytes": 4070
+      },
+      "OPTIONS": {
+        "status": 200,
+        "headers": {
+          "server": "Apache/2.4.25 (Debian)",
+          "content-type": "text/html;charset=utf-8"
+        },
+        "cookies": [
+          {
+            "name": "PHPSESSID",
+            "httponly": false,
+            "secure": false,
+            "samesite": null
+          },
+          {
+            "name": "PHPSESSID",
+            "httponly": false,
+            "secure": false,
+            "samesite": null
+          },
+          {
+            "name": "security",
+            "httponly": false,
+            "secure": false,
+            "samesite": null
+          }
+        ],
+        "body_bytes": 0
+      }
+    },
+    "/config/": {
+      "GET": {
+        "status": 200,
+        "headers": {
+          "server": "Apache/2.4.25 (Debian)",
+          "content-type": "text/html;charset=UTF-8"
+        },
+        "cookies": [],
+        "body_bytes": 1161
+      },
+      "OPTIONS": {
+        "status": 200,
+        "headers": {
+          "server": "Apache/2.4.25 (Debian)",
+          "content-type": "httpd/unix-directory"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/docs/": {
+      "GET": {
+        "status": 200,
+        "headers": {
+          "server": "Apache/2.4.25 (Debian)",
+          "content-type": "text/html;charset=UTF-8"
+        },
+        "cookies": [],
+        "body_bytes": 1129
+      },
+      "OPTIONS": {
+        "status": 200,
+        "headers": {
+          "server": "Apache/2.4.25 (Debian)",
+          "content-type": "httpd/unix-directory"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/phpinfo.php": {
+      "GET": {
+        "status": 302,
+        "headers": {
+          "server": "Apache/2.4.25 (Debian)",
+          "content-type": "text/html; charset=UTF-8",
+          "location": "login.php"
+        },
+        "cookies": [
+          {
+            "name": "PHPSESSID",
+            "httponly": false,
+            "secure": false,
+            "samesite": null
+          },
+          {
+            "name": "PHPSESSID",
+            "httponly": false,
+            "secure": false,
+            "samesite": null
+          },
+          {
+            "name": "security",
+            "httponly": false,
+            "secure": false,
+            "samesite": null
+          }
+        ],
+        "body_bytes": 0
+      },
+      "OPTIONS": {
+        "status": 302,
+        "headers": {
+          "server": "Apache/2.4.25 (Debian)",
+          "content-type": "text/html; charset=UTF-8",
+          "location": "login.php"
+        },
+        "cookies": [
+          {
+            "name": "PHPSESSID",
+            "httponly": false,
+            "secure": false,
+            "samesite": null
+          },
+          {
+            "name": "PHPSESSID",
+            "httponly": false,
+            "secure": false,
+            "samesite": null
+          },
+          {
+            "name": "security",
+            "httponly": false,
+            "secure": false,
+            "samesite": null
+          }
+        ],
+        "body_bytes": 0
+      }
+    },
+    "/robots.txt": {
+      "GET": {
+        "status": 200,
+        "headers": {
+          "server": "Apache/2.4.25 (Debian)",
+          "content-type": "text/plain"
+        },
+        "cookies": [],
+        "body_bytes": 26
+      },
+      "OPTIONS": {
+        "status": 200,
+        "headers": {
+          "server": "Apache/2.4.25 (Debian)",
+          "content-type": "text/plain"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/vulnerabilities/sqli/": {
+      "GET": {
+        "status": 302,
+        "headers": {
+          "server": "Apache/2.4.25 (Debian)",
+          "content-type": "text/html; charset=UTF-8",
+          "location": "../../login.php"
+        },
+        "cookies": [
+          {
+            "name": "PHPSESSID",
+            "httponly": false,
+            "secure": false,
+            "samesite": null
+          },
+          {
+            "name": "PHPSESSID",
+            "httponly": false,
+            "secure": false,
+            "samesite": null
+          },
+          {
+            "name": "security",
+            "httponly": false,
+            "secure": false,
+            "samesite": null
+          }
+        ],
+        "body_bytes": 0
+      },
+      "OPTIONS": {
+        "status": 302,
+        "headers": {
+          "server": "Apache/2.4.25 (Debian)",
+          "content-type": "text/html; charset=UTF-8",
+          "location": "../../login.php"
+        },
+        "cookies": [
+          {
+            "name": "PHPSESSID",
+            "httponly": false,
+            "secure": false,
+            "samesite": null
+          },
+          {
+            "name": "PHPSESSID",
+            "httponly": false,
+            "secure": false,
+            "samesite": null
+          },
+          {
+            "name": "security",
+            "httponly": false,
+            "secure": false,
+            "samesite": null
+          }
+        ],
+        "body_bytes": 0
+      }
+    },
+    "/.git/HEAD": {
+      "GET": {
+        "status": 404,
+        "headers": {
+          "server": "Apache/2.4.25 (Debian)",
+          "content-type": "text/html; charset=iso-8859-1"
+        },
+        "cookies": [],
+        "body_bytes": 277
+      },
+      "OPTIONS": {
+        "status": 200,
+        "headers": {
+          "server": "Apache/2.4.25 (Debian)"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/.env": {
+      "GET": {
+        "status": 404,
+        "headers": {
+          "server": "Apache/2.4.25 (Debian)",
+          "content-type": "text/html; charset=iso-8859-1"
+        },
+        "cookies": [],
+        "body_bytes": 272
+      },
+      "OPTIONS": {
+        "status": 200,
+        "headers": {
+          "server": "Apache/2.4.25 (Debian)"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/.git/config": {
+      "GET": {
+        "status": 404,
+        "headers": {
+          "server": "Apache/2.4.25 (Debian)",
+          "content-type": "text/html; charset=iso-8859-1"
+        },
+        "cookies": [],
+        "body_bytes": 279
+      },
+      "OPTIONS": {
+        "status": 200,
+        "headers": {
+          "server": "Apache/2.4.25 (Debian)"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    }
+  }
+}

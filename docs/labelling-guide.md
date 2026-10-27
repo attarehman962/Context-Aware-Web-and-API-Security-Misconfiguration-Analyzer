@@ -12,7 +12,7 @@ Public content with no user-specific or operational data.
 Examples:
 
 - `/`
-- `/assets/app.js`
+- `/api/products` (public catalogue)
 - `/about`
 
 ## MEDIUM
@@ -61,6 +61,30 @@ Examples:
 6. Keep the same decision for normalized ID variants such as `/users/1` and
    `/users/:id`.
 
-The labeller stores the class, labeler, and optional notes in
-`eval/labels/endpoints_labelled.csv`. Skipped rows remain available on the
-next run.
+## Using the labeller
+
+```bash
+make eval-up && make eval-collect     # fills eval/labels/endpoints_raw.csv
+python eval/labels/label.py           # asks your name once, then one key per path
+```
+
+Press `1`-`4` for the class (a note may follow on the same line: `3 login
+form`), `s` to skip, `q` to stop. Every answer is saved at once, and the next
+run resumes at the first unlabelled path; skipped rows come back then. Static
+files (scripts, styles, images) are not in the list: they have no sensitivity.
+
+## Inter-rater agreement
+
+A second person labels the same random sample into their own file, without
+looking at the first labels:
+
+```bash
+python eval/labels/label.py --sample 50 --seed 13          # first labeller
+python eval/labels/label.py --labeler neelam --sample 50 --seed 13 \
+    --output eval/labels/endpoints_labelled_neelam.csv     # second labeller
+```
+
+The same `--seed` gives both the same 50 paths. Compare the two files with
+Cohen's kappa; below about 0.6, re-read the definitions above together,
+settle the disagreements, and add a rule for each kind of disagreement to the
+consistency rules.

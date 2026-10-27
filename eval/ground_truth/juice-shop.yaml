@@ -1,29 +1,140 @@
+# Ground truth for juice-shop: starter list from the official docs, checked against a
+# passive observation of the pinned image. Every entry stays 'unverified'
+# until confirmed by hand. check_ids come from config/checks.yaml.
 target: juice-shop
-base_url: http://127.0.0.1:3001
+base_url: http://juice-shop:3000
 status: starter-unverified
+evidence: observed/juice-shop.json
 known_issues:
-  - endpoint: /rest/products/search?q=
-    check_id: API-003
-    expected: present
-    source: "official docs: https://pwning.owasp-juice.shop/companion-guide/latest/part2/injection.html"
-    notes: "Starter hypothesis for unauthenticated product search; verify response and scope manually."
-    verification: unverified
-  - endpoint: /ftp
-    check_id: INF-002
-    expected: present
-    source: "official docs: https://pwning.owasp-juice.shop/companion-guide/latest/part2/miscellaneous.html"
-    notes: "Starter hypothesis for exposed file listing; verify the response is a directory index."
-    verification: unverified
-  - endpoint: /rest/user/whoami
-    check_id: API-003
-    expected: absent
-    source: "official docs: https://pwning.owasp-juice.shop/companion-guide/latest/part2/authentication.html"
-    notes: "Unauthenticated identity endpoint should not be treated as sensitive data access without manual confirmation."
-    verification: unverified
+- endpoint: /
+  check_id: HDR-002
+  expected: present
+  source: 'official docs: https://pwning.owasp-juice.shop/companion-guide/latest/; observed passive GET/OPTIONS,
+    2026-10-27 (observed/juice-shop.json)'
+  notes: No Content-Security-Policy on the app shell.
+  verification: unverified
+- endpoint: /
+  check_id: HDR-005
+  expected: present
+  source: 'official docs: https://pwning.owasp-juice.shop/companion-guide/latest/; observed passive GET/OPTIONS,
+    2026-10-27 (observed/juice-shop.json)'
+  notes: No Referrer-Policy.
+  verification: unverified
+- endpoint: /
+  check_id: HDR-006
+  expected: present
+  source: 'official docs: https://pwning.owasp-juice.shop/companion-guide/latest/; observed passive GET/OPTIONS,
+    2026-10-27 (observed/juice-shop.json)'
+  notes: No Permissions-Policy.
+  verification: unverified
+- endpoint: /
+  check_id: COR-002
+  expected: present
+  source: 'official docs: https://pwning.owasp-juice.shop/companion-guide/latest/; observed passive GET/OPTIONS,
+    2026-10-27 (observed/juice-shop.json)'
+  notes: 'Preflight answers Access-Control-Allow-Origin: * (no credentials).'
+  verification: unverified
+- endpoint: /rest/user/login
+  check_id: API-001
+  expected: present
+  source: 'official docs: https://pwning.owasp-juice.shop/companion-guide/latest/; observed passive GET/OPTIONS,
+    2026-10-27 (observed/juice-shop.json)'
+  notes: Login exposes no rate-limit headers (brute-force challenges).
+  verification: unverified
+- endpoint: /ftp
+  check_id: INF-002
+  expected: present
+  source: 'official docs: https://pwning.owasp-juice.shop/companion-guide/latest/; observed passive GET/OPTIONS,
+    2026-10-27 (observed/juice-shop.json)'
+  notes: 'Directory listing of /ftp (confidential document challenge). Check the listing page matches
+    the INF-002 regex (serve-index title format). Known spec false negative (2026-10-27): the INF-002
+    regex in checks.yaml only knows Apache''s ''Index of /''; this serve-index page is titled ''listing
+    directory /...''. Keep ''present'': a miss here is a real false negative.'
+  verification: unverified
+- endpoint: /encryptionkeys
+  check_id: INF-002
+  expected: present
+  source: 'official docs: https://pwning.owasp-juice.shop/companion-guide/latest/; observed passive GET/OPTIONS,
+    2026-10-27 (observed/juice-shop.json)'
+  notes: 'Directory listing exposing jwt.pub / premium.key. Known spec false negative (2026-10-27): the
+    INF-002 regex in checks.yaml only knows Apache''s ''Index of /''; this serve-index page is titled
+    ''listing directory /...''. Keep ''present'': a miss here is a real false negative.'
+  verification: unverified
+- endpoint: /ftp/acquisitions.md
+  check_id: API-003
+  expected: present
+  source: 'official docs: https://pwning.owasp-juice.shop/companion-guide/latest/; observed passive GET/OPTIONS,
+    2026-10-27 (observed/juice-shop.json)'
+  notes: Confidential document readable without login.
+  verification: unverified
+- endpoint: /metrics
+  check_id: API-003
+  expected: present
+  source: 'official docs: https://pwning.owasp-juice.shop/companion-guide/latest/; observed passive GET/OPTIONS,
+    2026-10-27 (observed/juice-shop.json)'
+  notes: Prometheus metrics exposed without login.
+  verification: unverified
+- endpoint: /rest/admin/application-configuration
+  check_id: API-003
+  expected: present
+  source: 'official docs: https://pwning.owasp-juice.shop/companion-guide/latest/; observed passive GET/OPTIONS,
+    2026-10-27 (observed/juice-shop.json)'
+  notes: Admin configuration readable without login.
+  verification: unverified
+- endpoint: /
+  check_id: HDR-003
+  expected: absent
+  source: 'official docs: https://pwning.owasp-juice.shop/companion-guide/latest/; observed passive GET/OPTIONS,
+    2026-10-27 (observed/juice-shop.json)'
+  notes: 'X-Frame-Options: SAMEORIGIN is sent.'
+  verification: unverified
+- endpoint: /
+  check_id: HDR-004
+  expected: absent
+  source: 'official docs: https://pwning.owasp-juice.shop/companion-guide/latest/; observed passive GET/OPTIONS,
+    2026-10-27 (observed/juice-shop.json)'
+  notes: 'X-Content-Type-Options: nosniff is sent.'
+  verification: unverified
+- endpoint: /
+  check_id: HDR-007
+  expected: absent
+  source: 'official docs: https://pwning.owasp-juice.shop/companion-guide/latest/; observed passive GET/OPTIONS,
+    2026-10-27 (observed/juice-shop.json)'
+  notes: No Server header.
+  verification: unverified
+- endpoint: /api/Users
+  check_id: API-003
+  expected: absent
+  source: 'official docs: https://pwning.owasp-juice.shop/companion-guide/latest/; observed passive GET/OPTIONS,
+    2026-10-27 (observed/juice-shop.json)'
+  notes: Answers 401 without a token.
+  verification: unverified
+- endpoint: /.env
+  check_id: INF-003
+  expected: absent
+  source: 'official docs: https://pwning.owasp-juice.shop/companion-guide/latest/; observed passive GET/OPTIONS,
+    2026-10-27 (observed/juice-shop.json)'
+  notes: 'SPA catch-all: answers its index page (soft 404), not an env file.'
+  verification: unverified
+- endpoint: /.git/HEAD
+  check_id: INF-004
+  expected: absent
+  source: 'official docs: https://pwning.owasp-juice.shop/companion-guide/latest/; observed passive GET/OPTIONS,
+    2026-10-27 (observed/juice-shop.json)'
+  notes: SPA catch-all page, not git metadata.
+  verification: unverified
 must_not_fire:
-  - CKI-002
-  - CKI-001
-  - CKI-003
-  - COR-003
-  - COR-002
-  - API-001
+- check_id: HDR-008
+  reason: No X-Powered-By on any observed response.
+- check_id: COR-003
+  reason: Allow-Origin * is never combined with Allow-Credentials.
+- check_id: CKI-001
+  reason: No cookies are set on unauthenticated responses (the token cookie is set client-side after login).
+- check_id: CKI-002
+  reason: As CKI-001.
+- check_id: CKI-003
+  reason: As CKI-001.
+- check_id: INF-003
+  reason: No .env file; /.env is the SPA index page.
+- check_id: INF-004
+  reason: No .git metadata; /.git/* is the SPA index page.

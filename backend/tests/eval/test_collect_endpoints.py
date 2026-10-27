@@ -12,7 +12,10 @@ from tests.eval.conftest import load_eval_script
 collector = load_eval_script("labels/collect_endpoints.py")
 
 PAGES = {
-    "/": '<a href="/users/1">u</a><a href="/users/2">u</a><a href="/about">a</a>',
+    "/": '<a href="/users/1">u</a><a href="/users/2">u</a><a href="/about">a</a>'
+         '<script src="/main.js"></script><img src="/logo.png"><link href="/site.css">',
+    "/main.js": 'fetch("/api/Products/42");const u=`/rest/user/${id}/basket`;'
+                'http.get("/identity/api/auth/login");const x="https://cdn.example/api/x";',
     "/about": "<p>about</p>",
     "/users/1": "{}",
     "/users/2": "{}",
@@ -67,3 +70,12 @@ def test_unknown_target_name_is_rejected(tmp_path):
 @pytest.mark.parametrize("arg", ["demo=file:///etc/passwd", "no-equals-sign"])
 def test_base_url_must_be_http(arg, tmp_path):
     assert collector.main(["--base-url", arg, "--output", str(tmp_path / "x.csv")]) == 2
+
+
+def test_spa_routes_come_from_javascript_and_assets_are_skipped(site, tmp_path):
+    out = tmp_path / "raw.csv"
+    assert collector.main(["--base-url", f"demo={site}", "--output", str(out)]) == 0
+    paths = {r["path"] for r in _rows(out)}
+    assert {"/api/Products/:id", "/rest/user/:id/basket", "/identity/api/auth/login"} <= paths
+    assert not {"/main.js", "/logo.png", "/site.css"} & paths     # assets aren't endpoints
+    assert not any("cdn.example" in p for p in paths)               # off-origin URLs ignored

@@ -1,0 +1,187 @@
+{
+  "target": "vampi",
+  "base_url": "http://vampi:5000",
+  "observed_at": "2026-10-27T06:50:10+00:00",
+  "paths": {
+    "/": {
+      "GET": {
+        "status": 200,
+        "headers": {
+          "server": "Werkzeug/2.2.3 Python/3.11.15",
+          "content-type": "application/json"
+        },
+        "cookies": [],
+        "body_bytes": 271
+      },
+      "OPTIONS": {
+        "status": 200,
+        "headers": {
+          "server": "Werkzeug/2.2.3 Python/3.11.15",
+          "content-type": "text/html; charset=utf-8"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/openapi.json": {
+      "GET": {
+        "status": 200,
+        "headers": {
+          "server": "Werkzeug/2.2.3 Python/3.11.15",
+          "content-type": "application/json"
+        },
+        "cookies": [],
+        "body_bytes": 29537
+      },
+      "OPTIONS": {
+        "status": 200,
+        "headers": {
+          "server": "Werkzeug/2.2.3 Python/3.11.15",
+          "content-type": "text/html; charset=utf-8"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/users/v1": {
+      "GET": {
+        "status": 500,
+        "headers": {
+          "server": "Werkzeug/2.2.3 Python/3.11.15",
+          "content-type": "text/html; charset=utf-8"
+        },
+        "cookies": [],
+        "body_bytes": 47506
+      },
+      "OPTIONS": {
+        "status": 200,
+        "headers": {
+          "server": "Werkzeug/2.2.3 Python/3.11.15",
+          "content-type": "text/html; charset=utf-8"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/users/v1/_debug": {
+      "GET": {
+        "status": 500,
+        "headers": {
+          "server": "Werkzeug/2.2.3 Python/3.11.15",
+          "content-type": "text/html; charset=utf-8"
+        },
+        "cookies": [],
+        "body_bytes": 47540
+      },
+      "OPTIONS": {
+        "status": 200,
+        "headers": {
+          "server": "Werkzeug/2.2.3 Python/3.11.15",
+          "content-type": "text/html; charset=utf-8"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/books/v1": {
+      "GET": {
+        "status": 500,
+        "headers": {
+          "server": "Werkzeug/2.2.3 Python/3.11.15",
+          "content-type": "text/html; charset=utf-8"
+        },
+        "cookies": [],
+        "body_bytes": 46926
+      },
+      "OPTIONS": {
+        "status": 200,
+        "headers": {
+          "server": "Werkzeug/2.2.3 Python/3.11.15",
+          "content-type": "text/html; charset=utf-8"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/users/v1/login": {
+      "GET": {
+        "status": 500,
+        "headers": {
+          "server": "Werkzeug/2.2.3 Python/3.11.15",
+          "content-type": "text/html; charset=utf-8"
+        },
+        "cookies": [],
+        "body_bytes": 44535
+      },
+      "OPTIONS": {
+        "status": 200,
+        "headers": {
+          "server": "Werkzeug/2.2.3 Python/3.11.15",
+          "content-type": "text/html; charset=utf-8"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/.env": {
+      "GET": {
+        "status": 404,
+        "headers": {
+          "server": "Werkzeug/2.2.3 Python/3.11.15",
+          "content-type": "application/problem+json"
+        },
+        "cookies": [],
+        "body_bytes": 205
+      },
+      "OPTIONS": {
+        "status": 404,
+        "headers": {
+          "server": "Werkzeug/2.2.3 Python/3.11.15",
+          "content-type": "application/problem+json"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/.git/HEAD": {
+      "GET": {
+        "status": 404,
+        "headers": {
+          "server": "Werkzeug/2.2.3 Python/3.11.15",
+          "content-type": "application/problem+json"
+        },
+        "cookies": [],
+        "body_bytes": 205
+      },
+      "OPTIONS": {
+        "status": 404,
+        "headers": {
+          "server": "Werkzeug/2.2.3 Python/3.11.15",
+          "content-type": "application/problem+json"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    },
+    "/.git/config": {
+      "GET": {
+        "status": 404,
+        "headers": {
+          "server": "Werkzeug/2.2.3 Python/3.11.15",
+          "content-type": "application/problem+json"
+        },
+        "cookies": [],
+        "body_bytes": 205
+      },
+      "OPTIONS": {
+        "status": 404,
+        "headers": {
+          "server": "Werkzeug/2.2.3 Python/3.11.15",
+          "content-type": "application/problem+json"
+        },
+        "cookies": [],
+        "body_bytes": 0
+      }
+    }
+  }
+}
