@@ -54,6 +54,11 @@ documentation page.
   `user@domain.com`); **organisational mailboxes** (`security@`, `privacy@`,
   `support@`, `no-reply@`, ...), which are published on purpose; addresses an
   app already masked (`***in@shop.com`); image names like `logo@2x.png`.
+- **Emails in JSON display copy**: inside a prose value (5+ words) under
+  `description`, `hint`, `text`, `help`, `title`, `label`, `tooltip`, `message`,
+  `instructions` or `summary` (Juice Shop's challenge texts name its demo
+  accounts). Trade-off: a user's email typed into a free-text `message` is
+  missed. `"email": "..."` fields, other keys and HTML pages are unaffected.
 - **Cards**: published payment-provider test numbers (`4111 1111 1111 1111`,
   `4242 4242 4242 4242`, `5555 5555 5555 4444`, ...): they are test data
   wherever they appear. Example IBANs from ISO/bank documentation.
@@ -97,10 +102,10 @@ configuration), `mail.com` is a real provider (VAmPI's user emails now count),
 octet-stream bodies are sniffed (crAPI `/.env` was missed), and HTML stack
 frames are recognised (all 14 traces were missed).
 
-Open for tuning: emails inside prose (`description`/`hint` text) are the only
-false positives left; a rule that skips emails inside HTML markup in JSON
-string values would remove them, at the risk of missing emails in rendered
-profile pages. Loopback could carry a lower weight than RFC 1918.
+Second pass, same responses, after adding the JSON display-copy rule: the
+4 PII false positives are gone; PII is now **9 hits, 0 false positives**,
+everything else unchanged. Still open: loopback could carry a lower weight
+than RFC 1918.
 
 ## Not wired in yet
 
