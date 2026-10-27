@@ -100,8 +100,9 @@ Asim can confirm.
 
 ## Legacy catalog
 
-The 58 original rules (`backend/app/core/checks/catalog.py` plus the `@rule`
-functions in `headers.py`, `cookies.py`, ...) still run in the pipeline. Moving
+Of the 58 original rules (`backend/app/core/checks/catalog.py` plus the `@rule`
+functions in `headers.py`, `cookies.py`, ...), 16 have moved to this registry and
+42 still run in the pipeline (`docs/check-coverage.md` lists which). Moving
 a check to this registry means: spec in `checks.yaml` (same `check_id`, see
 `docs/check-specs-review.md`), implementation and tests here, then delete the
 old `@rule` function. Until a check moves, both systems keep their own

@@ -1,0 +1,2 @@
+[{"name": "Login Admin", "description": "Log in with the (non-existing) accountant <i>acc0unt4nt@shop-mail.pk</i> without ever registering that user."},
+ {"id": 9, "text": "The shop will not even let you register as jim@shop-mail.pk, as this would make it unsolvable."}]

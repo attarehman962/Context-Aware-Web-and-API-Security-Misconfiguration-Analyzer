@@ -3,6 +3,8 @@
 Several of these cannot be confirmed in unauthenticated black-box mode (BOLA,
 mass assignment, JWT internals). Those fire only on a genuine surface signal and
 always carry a ``limitation`` note (spec section 47).
+
+API-004 moved to ``checks/spec/disclosure.py``.
 """
 from __future__ import annotations
 
@@ -47,13 +49,6 @@ def api_003_unauth_data(ctx: CheckContext) -> RawFinding | None:
         body = ctx.result.body
         if re.search(r'"\w+"\s*:\s*\[', body) or '"data"' in body or '"users"' in body:
             return make("API-003", "API returned a data collection without authentication.")
-    return None
-
-
-@rule
-def api_004_verbose_error(ctx: CheckContext) -> RawFinding | None:
-    if _STACK_TRACE.search(ctx.result.body):
-        return make("API-004", "Response body contains a stack trace / verbose error.")
     return None
 
 

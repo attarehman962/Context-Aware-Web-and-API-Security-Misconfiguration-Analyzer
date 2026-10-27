@@ -54,4 +54,4 @@ def test_results_rank_findings_by_final_score_desc():
     assert [(f.final_score, f.check_id) for f in results.findings] == [
         (10.0, "INF-003"), (3.7, "HDR-001"), (3.7, "HDR-003"),
     ]
-    assert results.contract_version == "1.1.0"
+    assert results.contract_version == "1.2.0"

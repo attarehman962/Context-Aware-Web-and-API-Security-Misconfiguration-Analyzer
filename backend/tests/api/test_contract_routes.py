@@ -90,7 +90,8 @@ async def test_results_are_ranked_with_drill_down_fields(client, seeded):
 
     [chain] = results.chains
     members = {f.id for f in results.findings if chain.id in f.chain_ids}
-    assert members == set(chain.finding_ids) and len(members) == 2
+    # C005 (config/chains.yaml): the exposed .env that leaks credentials.
+    assert members == set(chain.finding_ids) and len(members) == 1
     env = next(f for f in results.findings if f.check_id == "INF-003")
     assert {s.value for s in env.body_signals} == {"CREDENTIALS", "INTERNAL_IP"}
     assert env.sensitivity_class is not None and env.evidence["text"]

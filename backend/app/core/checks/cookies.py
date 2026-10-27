@@ -1,4 +1,7 @@
-"""Cookie checks CKI-001..CKI-006 (spec section 13)."""
+"""Cookie checks CKI-001..CKI-006 (spec section 13).
+
+CKI-001..CKI-003 moved to ``checks/spec/cookies.py``.
+"""
 from __future__ import annotations
 
 from app.core.checks.base import CheckContext, RawFinding, make, query_names, rule
@@ -14,33 +17,6 @@ def _parse_cookie(raw: str) -> dict:
     attrs = {p.split("=", 1)[0].lower(): (p.split("=", 1)[1] if "=" in p else True)
              for p in parts[1:]}
     return {"name": name, "value": value, "attrs": attrs}
-
-
-@rule
-def cki_001_httponly(ctx: CheckContext) -> RawFinding | None:
-    for raw in ctx.result.set_cookie_headers:
-        c = _parse_cookie(raw)
-        if "httponly" not in c["attrs"]:
-            return make("CKI-001", f"Cookie '{c['name']}' lacks HttpOnly.")
-    return None
-
-
-@rule
-def cki_002_secure(ctx: CheckContext) -> RawFinding | None:
-    for raw in ctx.result.set_cookie_headers:
-        c = _parse_cookie(raw)
-        if "secure" not in c["attrs"]:
-            return make("CKI-002", f"Cookie '{c['name']}' lacks Secure.")
-    return None
-
-
-@rule
-def cki_003_samesite(ctx: CheckContext) -> RawFinding | None:
-    for raw in ctx.result.set_cookie_headers:
-        c = _parse_cookie(raw)
-        if "samesite" not in c["attrs"]:
-            return make("CKI-003", f"Cookie '{c['name']}' lacks SameSite.")
-    return None
 
 
 @rule

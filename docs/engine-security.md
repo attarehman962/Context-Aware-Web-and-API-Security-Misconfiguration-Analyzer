@@ -19,7 +19,9 @@ Every request goes through two independent checks.
 
 The TLS probe (`core/tls.py`) opens raw sockets outside httpx, so it applies
 the same rule itself: it resolves and validates the host, then connects to the
-validated IP (on the target's own port).
+validated IP (on the target's own port). SSLyze, which enumerates protocols and
+cipher suites, is given that IP explicitly (`ServerNetworkLocation(ip_address=...)`),
+so it never does its own DNS lookup.
 
 **Active probes stay on the target's origin.** The wordlist, OPTIONS, CORS and
 injection probes call `fetch(..., same_origin_only=True)`: a redirect to

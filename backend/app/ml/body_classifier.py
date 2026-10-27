@@ -227,6 +227,25 @@ _BASIC_AUTH = re.compile(r"\bBasic\s+([A-Za-z0-9+/]{8,}={0,2})(?![A-Za-z0-9+/=])
 _URL_USERINFO = re.compile(
     r"(?i)\b((?:https?|ftp|postgres(?:ql)?|mysql|mariadb|mongodb(?:\+srv)?|rediss?|amqps?"
     r"|mssql|sqlserver|jdbc:[a-z0-9]+)://)([^\s:@/\"'<>]+):([^\s@/\"'<>]+)@([^\s/\"'<>?#]+)")
+_USERINFO_CACHE: list[Any] = [None, []]
+
+
+def _userinfo_matches(text: str) -> list[re.Match[str]]:
+    """URL-credential matches, searched only around each "://" and computed once
+    per body (the credential and PII detectors both need them)."""
+    if _USERINFO_CACHE[0] is text:
+        return _USERINFO_CACHE[1]
+    found: list[re.Match[str]] = []
+    idx = text.find("://")
+    while idx != -1:
+        m = _URL_USERINFO.search(text, max(0, idx - 24), idx + 600)
+        if m is not None and m.start() <= idx and (not found or m.start() >= found[-1].end()):
+            found.append(m)
+        idx = text.find("://", idx + 3)
+    _USERINFO_CACHE[:] = [text, found]
+    return found
+
+
 _ADO_PASSWORD = re.compile(
     r"(?i)\b(?:server|data source|host)\s*=[^;\"'<>\n]{1,100};[^\"'<>\n]{0,200}?"
     r"\b(?:password|pwd)\s*=\s*([^;\"'<>\n]+)")
@@ -262,7 +281,7 @@ def _credentials(text: str) -> Iterator[Detection]:
         if sep and user.isprintable() and password and not _is_placeholder(password):
             yield Detection("credential", "http-basic-auth",
                             f"Basic {_MASK} (user {mask(user, 1)})")
-    for m in _URL_USERINFO.finditer(text) if "://" in text else ():
+    for m in _userinfo_matches(text):
         scheme, user, password, host = m.groups()
         if not _is_placeholder(password):
             rule = "url-credentials" if scheme.lower().startswith(("http", "ftp")) \
@@ -284,17 +303,18 @@ _PEM_PRIVATE = re.compile(r"-----BEGIN ((?:RSA |EC |DSA |OPENSSH |ENCRYPTED |PGP
                           r"PRIVATE KEY(?: BLOCK)?)-----")
 _JWT = re.compile(r"(?<![A-Za-z0-9_-])(eyJ[A-Za-z0-9_-]{8,})\.(eyJ[A-Za-z0-9_-]{8,})"
                   r"\.([A-Za-z0-9_-]{16,})(?![A-Za-z0-9_-])")
-_VENDOR_KEYS = [
-    ("stripe-secret-key", re.compile(r"\b((?:sk|rk)_live_[A-Za-z0-9]{20,})\b")),
-    ("github-token", re.compile(r"\b(gh[pousr]_[A-Za-z0-9]{36,})\b")),
-    ("slack-token", re.compile(r"\b(xox[abprs]-[A-Za-z0-9-]{10,})\b")),
-    ("google-api-key", re.compile(r"\b(AIza[0-9A-Za-z_-]{35})\b")),
-    ("sendgrid-key", re.compile(r"\b(SG\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43})\b")),
-    ("npm-token", re.compile(r"\b(npm_[A-Za-z0-9]{36})\b")),
-]
+# One pass for all vendor formats; the named group says which one matched.
+_VENDOR_KEY = re.compile(
+    r"\b(?:(?P<stripe_secret_key>(?:sk|rk)_live_[A-Za-z0-9]{20,})"
+    r"|(?P<github_token>gh[pousr]_[A-Za-z0-9]{36,})"
+    r"|(?P<slack_token>xox[abprs]-[A-Za-z0-9-]{10,})"
+    r"|(?P<google_api_key>AIza[0-9A-Za-z_-]{35})"
+    r"|(?P<sendgrid_key>SG\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43})"
+    r"|(?P<npm_token>npm_[A-Za-z0-9]{36}))\b")
 # Generic keys are found keyword-first (fast), then the name and value around it.
-_KEY_WORD = re.compile(r"(?i)api[_-]?key|apikey|secret|access[_-]?key|access[_-]?token"
-                       r"|auth[_-]?token|client[_-]?secret|private[_-]?key|token")
+_KEY_WORD = re.compile(r"(?i)(?:api[_-]?key|apikey|secret|access[_-]?key|access[_-]?token"
+                       r"|auth[_-]?token|client[_-]?secret|private[_-]?key|token)"
+                       r"(?=[A-Za-z0-9_.-]{0,40}[\"']?\s*[:=])")
 _KEY_REST = re.compile(
     r"""[A-Za-z0-9_.-]{0,40}["']?\s*[:=]\s*["']?([A-Za-z0-9_\-+/=.]{16,256})["']?""")
 _KEY_NAME_CHARS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.-")
@@ -334,10 +354,10 @@ def _secret_keys(text: str) -> Iterator[Detection]:
         if _jwt_ok(m.group(1)):
             yield Detection("secret_key", "jwt", f"{m.group(1)[:6]}{_MASK}.{_MASK}.{_MASK}")
     found = set()
-    for rule, pattern in _VENDOR_KEYS:
-        for m in pattern.finditer(text):
-            found.add(m.group(1))
-            yield Detection("secret_key", rule, mask(m.group(1)))
+    for m in _VENDOR_KEY.finditer(text):
+        rule = str(m.lastgroup)
+        found.add(m.group(rule))
+        yield Detection("secret_key", rule.replace("_", "-"), mask(m.group(rule)))
     for kw in _KEY_WORD.finditer(text):
         rest = _KEY_REST.match(text, kw.end())
         if rest is None:
@@ -364,8 +384,10 @@ _PHONE = re.compile(
     r"|\d{3}[.-]\d{3}[.-]\d{4}"                                      # 555-123-4567
     r"|03\d{2}[\s-]?\d{7}"                                           # 0300-1234567 (PK mobile)
     r")(?![\w./-]*\d)")
-_CNIC = re.compile(r"(?<![\d-])(\d{5})-(\d{7})-(\d)(?![\d-])")
-_SSN = re.compile(r"(?<![\d-])(?!000|666|9\d\d)(\d{3})-(?!00)(\d{2})-(?!0000)(\d{4})(?![\d-])")
+# Pakistan CNIC (5-7-1) and US SSN (3-2-4) in one pass.
+_NATIONAL_ID = re.compile(
+    r"(?<![\d-])(?:(?P<cnic>\d{5}-\d{7}-\d)"
+    r"|(?P<ssn>(?!000|666|9\d\d)\d{3}-(?!00)\d{2}-(?!0000)\d{4}))(?![\d-])")
 _NAME_FIELD = re.compile(
     r'(?i)"(full_?name|first_?name|last_?name|sur_?name|given_?name|family_?name'
     r'|customer_?name|owner_?name|account_?name|holder_?name|display_?name|name)"\s*:\s*'
@@ -373,6 +395,12 @@ _NAME_FIELD = re.compile(
 _PERSONAL_FIELD = re.compile(
     r'(?i)"(?:e-?mail|phone|mobile|tel|address|street|dob|date_?of_?birth|birth_?date'
     r'|ssn|cnic|national_?id|passport)\w*"\s*:')
+# JSON display copy: an email quoted in a challenge description or a hint is
+# documentation, not someone's record. Only prose values (5+ words) under these
+# keys; "email": "..." fields, other keys and HTML pages are scanned as usual.
+_PROSE_FIELD = re.compile(
+    r'"(?:description|hint|text|help|instructions?|summary|title|label|tooltip|message)"'
+    r'\s*:\s*"((?:[^"\\]|\\.){20,5000})"', re.I)
 _NAME_WINDOW = 400
 _MAX_NAME_CANDIDATES = 20
 
@@ -391,25 +419,27 @@ def _phone_placeholder(digits: str) -> bool:
 
 def _pii(text: str) -> Iterator[Detection]:
     # "postgres://app:pw@db.internal" is a credential, not the email "pw@db.internal".
-    userinfo = [m.span() for m in _URL_USERINFO.finditer(text)] if "://" in text else []
+    userinfo = [m.span() for m in _userinfo_matches(text)]
+    prose = ([m.span(1) for m in _PROSE_FIELD.finditer(text) if m.group(1).count(" ") >= 4]
+             if text.lstrip()[:1] in ("{", "[") else [])
     for m in _EMAIL.finditer(text):
         local, domain, tld = m.groups()
         if tld.lower() in _FILE_TLDS or _email_placeholder(local, domain):
             continue
-        if any(a <= m.start() < b for a, b in userinfo):
+        if any(a <= m.start() < b for a, b in userinfo + prose):
             continue
         yield Detection("pii", "email", f"{local[0]}***@{domain}")
     for m in _PHONE.finditer(text):
         digits = re.sub(r"\D", "", m.group(0))
         if 10 <= len(digits) <= 15 and not _phone_placeholder(digits):
             yield Detection("pii", "phone", f"{'*' * (len(digits) - 2)}{digits[-2:]}")
-    for m in _CNIC.finditer(text):
-        digits = "".join(m.groups())
-        if len(set(digits)) > 2 and digits not in ("1234512345671", "1234567890123"):
-            yield Detection("pii", "national-id-cnic", f"*****-*******-{m.group(3)}")
-    for m in _SSN.finditer(text):
-        if m.group(0) not in ("123-45-6789", "078-05-1120"):   # documentation SSNs
-            yield Detection("pii", "national-id-ssn", f"***-**-{m.group(3)[-2:]}**")
+    for m in _NATIONAL_ID.finditer(text):
+        if m.group("cnic"):
+            digits = m.group("cnic").replace("-", "")
+            if len(set(digits)) > 2 and digits not in ("1234512345671", "1234567890123"):
+                yield Detection("pii", "national-id-cnic", f"*****-*******-{digits[-1]}")
+        elif m.group("ssn") not in ("123-45-6789", "078-05-1120"):   # documentation SSNs
+            yield Detection("pii", "national-id-ssn", f"***-**-{m.group('ssn')[-4:-2]}**")
     yield from _person_names(text)
 
 

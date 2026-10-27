@@ -1,99 +1,124 @@
-CAWASMA - Docker commands
-=========================
-Run all commands from the project root (the folder with docker-compose.yml).
-Services: api, worker, postgres, redis (+ frontend via --profile frontend)
+CAWASMA - basic commands
+========================
+Run everything from the project root (the folder with docker-compose.yml).
+Services: api, worker, postgres, redis, frontend (--profile frontend),
+          demo-target (docker-compose.demo.yml)
 
 
-START / STOP
-------------
-docker compose up --build          Build images and start everything (logs in terminal)
-docker compose up -d --build       Same, but in the background (detached)
-docker compose up -d               Start without rebuilding (no code/Dockerfile changes)
-docker compose stop                Stop containers (keeps them and all data)
-docker compose start               Start stopped containers again
-docker compose down                Stop and remove containers (database data is KEPT)
-docker compose restart api         Restart one service (api, worker, postgres, redis)
+FULL SETUP (everything, one command)
+------------------------------------
+docker compose -f docker-compose.yml -f docker-compose.demo.yml --profile frontend up -d --build --wait
+        Builds and starts api, worker, postgres, redis, the Next.js frontend and
+        the HTTPS demo target; waits until all are healthy.
+        First build takes several minutes (downloads the NLP models).
 
+INSTALL_ML=false docker compose -f docker-compose.yml -f docker-compose.demo.yml --profile frontend up -d --build --wait
+        Same, faster build without the NLP stack (keyword classifier only).
 
-STATUS / LOGS
--------------
-docker compose ps                  List containers and their status/health
-docker compose logs -f             Follow logs of all services (Ctrl+C to exit)
-docker compose logs -f api         Follow logs of one service
-docker compose logs --tail 100 worker   Last 100 log lines of the worker
-docker stats                       Live CPU / RAM usage per container
+docker compose -f docker-compose.yml -f docker-compose.demo.yml --profile frontend down
+        Stop everything (database data is KEPT).
 
-
-REBUILD
--------
-docker compose build                     Rebuild images (after Dockerfile/requirements changes)
-docker compose build --no-cache          Full rebuild from scratch (slow; use if a build is broken)
-docker compose up -d --build api worker  Rebuild and restart only the backend
-
-
-RUN COMMANDS INSIDE CONTAINERS
-------------------------------
-docker compose exec api sh                        Open a shell in the api container
-docker compose exec api alembic upgrade head      Apply database migrations
-make test                                         Run the test suite (host venv)
-docker compose exec postgres psql -U cawasma -d cawasma   Open the Postgres console (\q to quit)
-docker compose exec redis redis-cli               Open the Redis console
-
-
-DATABASE (PostgreSQL)
----------------------
-Tables: scans, endpoints, findings, attack_chains, headers, cookies, tls_info,
-        ai_insights, feedback, alembic_version
-
-Open the console:
-docker compose exec postgres psql -U cawasma -d cawasma
-
-Inside psql:
-\dt                                List all tables
-\d scans                           Show columns of a table
-SELECT * FROM scans ORDER BY created_at DESC LIMIT 5;   Latest scans (end with ;)
-SELECT count(*) FROM findings;     Count rows
-\x                                 Toggle expanded display (easier to read wide rows)
-\q                                 Quit
-
-Run a single query without opening the console:
-docker compose exec postgres psql -U cawasma -d cawasma -c "SELECT count(*) FROM scans;"
-
-Migrations (Alembic, run in the api container):
-docker compose exec api alembic current            Show the current migration
-docker compose exec api alembic history            List all migrations
-docker compose exec api alembic upgrade head       Apply all pending migrations
-docker compose exec api alembic downgrade -1       Undo the last migration
-docker compose exec api alembic revision --autogenerate -m "describe change"
-                                                   Create a new migration after changing models
-
-Backup / restore:
-docker compose exec -T postgres pg_dump -U cawasma cawasma > backup.sql         Back up to backup.sql
-docker compose exec -T postgres psql -U cawasma -d cawasma < backup.sql         Restore from backup.sql
-
-Clear all scan data but keep the tables (careful):
-docker compose exec postgres psql -U cawasma -d cawasma -c "TRUNCATE scans CASCADE;"
-
-Recreate the database from scratch (ALL DATA LOST):
-docker compose down -v
-docker compose up -d --build       (the api re-runs migrations on startup)
-
-Connect from a GUI tool (DBeaver, pgAdmin, TablePlus):
-host: localhost   port: 5446   database: cawasma   user: cawasma   password: (POSTGRES_PASSWORD in .env)
+Smaller setups:
+docker compose up -d --build --wait                         Backend only (api, worker, postgres, redis)
+docker compose --profile frontend up -d --build --wait      Backend + frontend
+make up / make down                                         Backend only, via the Makefile
 
 
 URLS
 ----
-Frontend:       http://localhost:5173
-API:            http://localhost:8000
-API docs:       http://localhost:8000/docs
+Frontend:        http://localhost:3000
+API:             http://localhost:8000
+API docs:        http://localhost:8000/docs
+Health:          http://localhost:8000/health
+Demo target:     https://demo-target:8443/   (enter this as the scan URL; only the api container can reach it)
 Postgres (host): localhost:5446   user: cawasma   db: cawasma
 Redis (host):    localhost:6379
 
 
-RESET / CLEANUP  (careful)
+RUN A SCAN (from the terminal)
+------------------------------
+curl -s -X POST http://localhost:8000/api/scan -H 'Content-Type: application/json' \
+  -d '{"url": "https://demo-target:8443/", "authorisation_confirmed": true}'
+        Start a scan; copy the scan_id from the reply.
+
+curl -s http://localhost:8000/api/results/<scan_id> | jq '.scan.status'
+        Poll until DONE or FAILED.
+
+curl -s http://localhost:8000/api/results/<scan_id> | jq '.findings[] | {check_id, severity_bucket, final_score}'
+        Findings, highest score first. The demo target gives one: HDR-001 Missing HSTS, 5.3.
+
+curl -s 'http://localhost:8000/api/scans?limit=5' | jq '.items[] | {scan_id, url, status}'
+        Scan history, newest first.
+
+curl -s -OJ 'http://localhost:8000/api/results/<scan_id>/export?format=csv'
+        Download results (format = json | csv | html | pdf).
+
+
+STATUS / LOGS
+-------------
+docker compose ps                  List containers and their health
+docker compose logs -f api         Follow logs of one service (api, worker, frontend, demo-target...)
+docker compose logs --tail 100 worker   Last 100 log lines
+docker stats                       Live CPU / RAM per container
+(add  -f docker-compose.yml -f docker-compose.demo.yml --profile frontend  to see the demo/frontend services)
+
+
+START / STOP / REBUILD
+----------------------
+docker compose stop                Stop containers (keeps them and all data)
+docker compose start               Start stopped containers again
+docker compose restart api         Restart one service
+docker compose up -d --build api worker   Rebuild and restart only the backend
+docker compose build --no-cache    Full rebuild from scratch (slow; when a build is broken)
+
+
+DATABASE (PostgreSQL)
+---------------------
+docker compose exec postgres psql -U cawasma -d cawasma     Open the console (\q to quit)
+    \dt                            List tables
+    \d findings                    Columns of a table
+    SELECT * FROM scans ORDER BY created_at DESC LIMIT 5;
+docker compose exec postgres psql -U cawasma -d cawasma -c "SELECT count(*) FROM scans;"
+
+make migrate                       Apply migrations (alembic upgrade head in the api container)
+docker compose exec api alembic current      Current migration
+make seed                          Load sample data (1 target, 2 scans, 16 findings)
+make reset                         Drop everything, migrate, seed (ALL DATA LOST)
+
+docker compose exec -T postgres pg_dump -U cawasma cawasma > backup.sql     Back up
+docker compose exec -T postgres psql -U cawasma -d cawasma < backup.sql     Restore
+
+
+DEVELOPMENT (on the host)
 -------------------------
+make install                       Create .venv with the backend + dev dependencies
+make test                          Backend tests (SQLite)
+TEST_DATABASE_URL=postgresql+asyncpg://cawasma:cawasma@localhost:5446/cawasma_test make test
+                                   Backend tests against Postgres (as CI does)
+make lint                          ruff + mypy
+make validate-config               Check config/checks.yaml, cvss_mapping.yaml, chains.yaml
+make openapi                       Regenerate docs/openapi.json after an API change
+
+cd frontend && npm ci              Install frontend dependencies
+cd frontend && npm run dev         Frontend dev server on http://localhost:3000
+cd frontend && npm test            Frontend unit tests
+cd frontend && npm run lint && npm run typecheck
+
+make eval-up / make eval-down      Asim's evaluation targets (Juice Shop, DVWA, VAmPI, crAPI)
+
+
+GIT (team workflow)
+-------------------
+git checkout main && git pull                  Update main
+git checkout -b atta/pNN-topic                 New branch (name/phase/topic; CI checks the format)
+git add -A && git commit -m "message"          Commit
+git push -u origin atta/pNN-topic              Push, then open a pull request (no direct pushes to main)
+git config user.name && git config user.email  Check who you are committing as
+
+
+RESET / CLEANUP  (careful)
+--------------------------
 docker compose down -v             Remove containers AND the database volume (ALL DATA LOST)
-docker image prune -f              Delete unused (dangling) images to free disk space
-docker system df                   Show how much disk Docker is using
-docker system prune                Delete stopped containers, unused networks and dangling images
+docker image prune -f              Delete dangling images
+docker system df                   Disk used by Docker
+docker system prune                Delete stopped containers, unused networks, dangling images

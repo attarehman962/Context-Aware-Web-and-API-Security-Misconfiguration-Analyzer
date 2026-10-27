@@ -15,9 +15,16 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Query, Response, status
 from app.api import mock
 from app.api.errors import ApiError
 from app.api.schemas.common import ErrorResponse, Page, PaginationMeta
-from app.api.schemas.contract import ExportFormat, ScanRequest, ScanResults, ScanStatus
+from app.api.schemas.contract import (
+    ExportFormat,
+    FindingDetail,
+    ScanRequest,
+    ScanResults,
+    ScanStatus,
+)
 from app.config import settings
 from app.core.reports import ReportFormatUnavailable
+from app.db.models.enums import FindingCategory, Severity
 from app.db.models.enums import ScanStatus as ScanState
 from app.db.session import SessionDep
 from app.dependencies import PaginationParams, pagination
@@ -90,17 +97,57 @@ async def start_scan(body: ScanRequest, session: SessionDep, response: Response,
     summary="Scan status and results",
     responses={200: _example(mock.RESULTS[mock.DONE_ID]), **_errors(404, 422)},
 )
-async def get_results(scan_id: uuid.UUID, session: SessionDep) -> ScanResults:
+async def get_results(
+    scan_id: uuid.UUID, session: SessionDep,
+    severity: list[Severity] | None = Query(
+        None, description="Since 1.2. Keep these severity buckets (repeat the parameter)."),
+    category: list[FindingCategory] | None = Query(
+        None, description="Since 1.2. Keep these categories (repeat the parameter)."),
+    owasp: list[str] | None = Query(
+        None, description="Since 1.2. Keep findings mapped to any of these OWASP ids, "
+                          "e.g. A05:2021 or API8:2023 (case-insensitive)."),
+    in_chain: bool | None = Query(
+        None, description="Since 1.2. true: only attack-chain members; false: only others."),
+    page: int | None = Query(None, ge=1, description="Since 1.2. Paginate findings."),
+    limit: int | None = Query(None, ge=1, le=500,
+                              description="Since 1.2. Findings per page (default 50)."),
+) -> ScanResults:
     """Always 200 for a known scan. ``findings`` and ``chains`` stay empty until
-    ``scan.status`` is ``DONE``."""
+    ``scan.status`` is ``DONE``. Filters combine with AND (values of one filter
+    with OR); ``severity_counts`` and ``chains`` always cover the whole scan, and
+    ``findings_meta.total`` counts the filtered findings."""
     if settings.MOCK_API:
         if scan_id not in mock.RESULTS:
             raise _not_found()
-        return mock.RESULTS[scan_id]
-    results = await contract_service.get_results(session, scan_id)
-    if results is None:
-        raise _not_found()
-    return results
+        results = mock.RESULTS[scan_id]
+    else:
+        found = await contract_service.get_results(session, scan_id)
+        if found is None:
+            raise _not_found()
+        results = found
+    flt = contract_service.FindingFilter(
+        severity=frozenset(severity or ()), category=frozenset(category or ()),
+        owasp=frozenset(owasp or ()), in_chain=in_chain)
+    return contract_service.select_findings(results, flt, page, limit)
+
+
+@router.get(
+    "/results/{scan_id}/findings/{finding_id}",
+    response_model=FindingDetail,
+    summary="One finding with its endpoint, score breakdown and chains",
+    responses={200: _example(mock.finding_detail(mock.DONE_ID, mock.CHAIN_MEMBER_ID)),
+               **_errors(404, 422)},
+)
+async def get_finding(scan_id: uuid.UUID, finding_id: uuid.UUID,
+                      session: SessionDep) -> FindingDetail:
+    """Since 1.2. 404 when the scan or the finding (in that scan) doesn't exist."""
+    if settings.MOCK_API:
+        detail = mock.finding_detail(scan_id, finding_id)
+    else:
+        detail = await contract_service.get_finding_detail(session, scan_id, finding_id)
+    if detail is None:
+        raise ApiError(status.HTTP_404_NOT_FOUND, "NOT_FOUND", "Finding not found.")
+    return detail
 
 
 @router.get(

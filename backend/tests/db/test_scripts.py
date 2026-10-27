@@ -63,7 +63,9 @@ async def test_seed_matches_the_documented_sample(seeded_scope):
         chain = (await s.execute(select(AttackChain))).scalar_one()
         await s.refresh(chain, ["findings"])
         assert chain.chain_code == "C005"
-        assert {f.check_id for f in chain.findings} == {"INF-003", "HDR-007"}
+        assert {f.check_id for f in chain.findings} == {"INF-003"}   # chains.yaml C005
+        assert chain.composite_vector and chain.evidence["context"] == {
+            "body_signals": ["CREDENTIALS"]}
 
         issues = {tuple(t.issues) for t in (await s.execute(select(TlsInfo))).scalars()}
         assert issues == {(), ("TLS-001",)}   # only the rescan offered TLS 1.1

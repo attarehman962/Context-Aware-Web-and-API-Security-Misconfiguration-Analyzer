@@ -15,7 +15,7 @@ load_implementations()
 
 
 def _spec(resp, cls=SensitivityClass.LOW, signals=frozenset()):
-    return pipeline._spec_findings(resp, endpoint(resp.final_url), is_target_root=True,
+    return pipeline._spec_findings(resp, endpoint(resp.final_url),
                                    context_class=cls, confidence=0.9,
                                    signals=set(signals), ep_index=0)
 

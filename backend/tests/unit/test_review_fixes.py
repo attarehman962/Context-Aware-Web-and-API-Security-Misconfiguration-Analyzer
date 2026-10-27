@@ -205,7 +205,9 @@ def test_host_level_tls_findings_are_reported_once_without_an_endpoint():
                         status_code=200)
     tls = TlsProbe(host="site.example", reachable=True, protocols_offered=["TLSv1.1"],
                    cert_not_after=datetime.now(UTC) + timedelta(days=200))
-    found = pipeline._host_findings(SITE + "/", seed, tls, http_redirects=False)
+    http_probe = ScanResponse(requested_url="http://site.example/",
+                              final_url="http://site.example/", method="GET", status_code=200)
+    found = pipeline._host_findings(SITE + "/", seed, tls, http_probe)
     assert sorted(f.raw.rule_id for f in found) == ["TLS-001", "TLS-005"]
     assert all(f.endpoint_index is None and f.context_class is None for f in found)
     assert pipeline._host_findings(SITE + "/", seed, None, None) == []
