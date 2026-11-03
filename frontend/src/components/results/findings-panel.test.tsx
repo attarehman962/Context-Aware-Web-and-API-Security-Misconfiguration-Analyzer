@@ -1,44 +1,11 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import type { Finding } from "@/lib/api-types";
-import { NO_FILTERS, type FindingsView } from "@/lib/findings";
-import { resultsDone } from "@/mocks/fixtures";
+import { NO_FILTERS } from "@/lib/findings";
 import { LARGE_SCAN_SIZE, largeScanResults } from "@/mocks/large-scan";
 
-import { FindingsPanel } from "./findings-panel";
-
-const DEFAULT_VIEW: FindingsView = { rankBy: "final", filters: NO_FILTERS };
-
-/** The panel is controlled; this holds the view like the URL hook does. */
-function Harness({
-  findings = resultsDone.findings,
-  initial = DEFAULT_VIEW,
-  onViewChange,
-  virtualize,
-}: {
-  findings?: Finding[];
-  initial?: FindingsView;
-  onViewChange?: (view: FindingsView) => void;
-  virtualize?: boolean;
-}) {
-  const [view, setView] = useState(initial);
-  return (
-    <FindingsPanel
-      findings={findings}
-      chains={resultsDone.chains}
-      targetUrl={resultsDone.scan.url}
-      view={view}
-      onViewChange={(next) => {
-        setView(next);
-        onViewChange?.(next);
-      }}
-      virtualize={virtualize}
-    />
-  );
-}
+import { Harness } from "./findings-panel.harness";
 
 function rows() {
   return screen.queryAllByRole("article");
