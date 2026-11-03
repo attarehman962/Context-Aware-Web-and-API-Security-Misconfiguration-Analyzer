@@ -7,7 +7,7 @@
 
 import { useMutation, useQuery, type Query } from "@tanstack/react-query";
 
-import { createScan, getResults } from "./api";
+import { createScan, getFindingDetail, getResults } from "./api";
 import type {
   Finding,
   ScanRequest,
@@ -21,6 +21,8 @@ export const POLL_INTERVAL_MS = 2_000;
 
 export const queryKeys = {
   results: (scanId: string) => ["results", scanId] as const,
+  finding: (scanId: string, findingId: string) =>
+    ["results", scanId, "finding", findingId] as const,
 };
 
 export function isFinished(scan: ScanStatus): boolean {
@@ -55,6 +57,24 @@ export function useScanResults(scanId: string) {
     // A finished scan never changes.
     staleTime: (query: Query<ScanResults>) =>
       query.state.data && isFinished(query.state.data.scan) ? Infinity : 0,
+  });
+}
+
+/**
+ * One finding's drill-down (contract 1.2). Fetched only while `enabled`
+ * (the finding is expanded); a finished scan's findings never change.
+ */
+export function useFindingDetail(
+  scanId: string,
+  findingId: string,
+  { enabled = true }: { enabled?: boolean } = {},
+) {
+  return useQuery({
+    queryKey: queryKeys.finding(scanId, findingId),
+    queryFn: async ({ signal }) =>
+      unwrap(await getFindingDetail(scanId, findingId, { signal })),
+    enabled,
+    staleTime: Infinity,
   });
 }
 
