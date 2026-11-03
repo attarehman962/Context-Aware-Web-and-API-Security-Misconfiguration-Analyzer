@@ -9,7 +9,13 @@ import {
 import { createMockServer } from "@/mocks/node";
 import { QUEUED_MS, SCAN_DURATION_MS } from "@/mocks/scenario";
 
-import { createScan, getExportUrl, getResults, type ApiResult } from "./api";
+import {
+  createScan,
+  getExportUrl,
+  getFindingDetail,
+  getResults,
+  type ApiResult,
+} from "./api";
 
 const T0 = Date.parse("2026-10-26T10:00:00Z");
 let clock = T0;
@@ -106,7 +112,7 @@ describe("getResults", () => {
     expect(results.scan.status).toBe("DONE");
     const scores = results.findings.map((f) => f.final_score);
     expect(scores).toEqual([...scores].sort((a, b) => b - a));
-    expect(results.chains[0].finding_ids).toHaveLength(2);
+    expect(results.chains.map((c) => c.chain_code)).toEqual(["C005", "C002"]);
   });
 
   it("returns the RUNNING and FAILED examples", async () => {
@@ -259,7 +265,7 @@ describe("getExportUrl", () => {
       "id,check_id,title,category,severity_bucket,final_score,base_score,cvss_vector," +
         "sensitivity_class,body_signals,owasp_map,cwe_map,endpoint_url,chain_ids",
     );
-    expect(rows).toHaveLength(8);
+    expect(rows).toHaveLength(10);
   });
 
   it("answers 409 before DONE", async () => {
@@ -271,5 +277,84 @@ describe("getExportUrl", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("application/pdf");
     expect(await response.text()).toMatch(/^%PDF-/);
+  });
+});
+
+describe("getResults with filters (contract 1.2)", () => {
+  it("filters, pages and reports findings_meta; counts stay whole-scan", async () => {
+    const results = expectOk(
+      await getResults(DONE_SCAN_ID, {
+        query: {
+          severity: ["MEDIUM", "LOW"],
+          in_chain: true,
+          page: 1,
+          limit: 1,
+        },
+      }),
+    );
+    expect(results.findings.map((f) => f.check_id)).toEqual(["HDR-007"]);
+    expect(results.findings_meta).toEqual({
+      total: 2,
+      page: 1,
+      limit: 1,
+      pages: 2,
+      filters: { severity: ["LOW", "MEDIUM"], in_chain: true },
+    });
+    expect(results.scan.severity_counts.medium).toBe(4);
+    expect(results.chains).toHaveLength(2);
+  });
+
+  it("returns the 1.1 body without parameters", async () => {
+    const results = expectOk(await getResults(DONE_SCAN_ID));
+    expect(results.findings_meta).toBeNull();
+    expect(results.findings).toHaveLength(10);
+  });
+
+  it("rejects an unknown severity (422)", async () => {
+    expect(
+      expectError(
+        await getResults(DONE_SCAN_ID, {
+          query: { severity: ["URGENT" as never] },
+        }),
+      ),
+    ).toMatchObject({ status: 422, code: "VALIDATION_ERROR" });
+  });
+});
+
+describe("getFindingDetail (contract 1.2)", () => {
+  const CHAIN_MEMBER = "f0000000-0000-4000-8000-00000000000a"; // INF-007
+
+  it("returns the finding with endpoint, check text and chains", async () => {
+    const detail = expectOk(await getFindingDetail(DONE_SCAN_ID, CHAIN_MEMBER));
+    expect(detail.check_id).toBe("INF-007");
+    expect(detail.endpoint).toMatchObject({
+      path: "/api/v1/orders",
+      method: "GET",
+      status_code: 500,
+      sensitivity_class: "MEDIUM",
+      sensitivity_reason: ["Contains generic API/data tokens"],
+    });
+    expect(detail.chains.map((c) => c.chain_code)).toEqual(["C002"]);
+    expect(detail.chains[0].finding_ids).toHaveLength(2);
+    expect(detail.description).toMatch(/development error page/);
+  });
+
+  it("has no endpoint for a host-level finding", async () => {
+    const tls = "f0000000-0000-4000-8000-000000000004";
+    expect(
+      expectOk(await getFindingDetail(DONE_SCAN_ID, tls)).endpoint,
+    ).toBeNull();
+  });
+
+  it("returns NOT_FOUND for a finding outside the scan", async () => {
+    expect(
+      expectError(await getFindingDetail(DONE_SCAN_ID, UNKNOWN_ID)),
+    ).toMatchObject({ status: 404, code: "NOT_FOUND" });
+  });
+
+  it("returns VALIDATION_ERROR for an id that is not a UUID", async () => {
+    expect(
+      expectError(await getFindingDetail(DONE_SCAN_ID, "not-a-uuid")),
+    ).toMatchObject({ status: 422, code: "VALIDATION_ERROR" });
   });
 });

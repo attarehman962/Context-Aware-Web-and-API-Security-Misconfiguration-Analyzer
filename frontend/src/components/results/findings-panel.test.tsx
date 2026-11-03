@@ -60,12 +60,14 @@ describe("FindingsPanel: sorting and the base/final toggle", () => {
     ).toBeChecked();
     expect(order()).toEqual([
       "API-003",
-      "HDR-002",
       "INF-003",
       "CKI-003",
       "TLS-001",
+      "HDR-002",
       "HDR-001",
       "HDR-007",
+      "INF-007",
+      "TLS-009",
       "HDR-012",
     ]);
   });
@@ -84,10 +86,12 @@ describe("FindingsPanel: sorting and the base/final toggle", () => {
       "API-003",
       "INF-003",
       "TLS-001",
+      "CKI-003",
       "HDR-002",
       "HDR-001",
       "HDR-007",
-      "CKI-003",
+      "INF-007",
+      "TLS-009",
       "HDR-012",
     ]);
     expect(
@@ -97,28 +101,28 @@ describe("FindingsPanel: sorting and the base/final toggle", () => {
     await user.click(
       screen.getByRole("radio", { name: "Context-aware score" }),
     );
-    expect(order()[1]).toBe("HDR-002");
+    expect(order()[2]).toBe("CKI-003");
   });
 
   it("shows each row's rank and how far the other ranking moves it", async () => {
     const user = userEvent.setup();
     render(<Harness />);
     const cookie = row("CKI-003");
-    expect(cookie).toHaveAttribute("data-rank", "4");
-    expect(within(cookie).getByText("#4")).toBeInTheDocument();
+    expect(cookie).toHaveAttribute("data-rank", "3");
+    expect(within(cookie).getByText("#3")).toBeInTheDocument();
     expect(
-      within(cookie).getByText(/places higher than by base score \(#7\)/),
+      within(cookie).getByText(/place higher than by base score \(#4\)/),
     ).toBeInTheDocument();
     expect(
-      within(cookie).getByText("Raised from Medium by context"),
+      within(row("API-003")).getByText("Raised from High by context"),
     ).toBeVisible();
 
     await user.click(screen.getByRole("radio", { name: "Base score" }));
     const cookieBase = row("CKI-003");
-    expect(cookieBase).toHaveAttribute("data-rank", "7");
+    expect(cookieBase).toHaveAttribute("data-rank", "4");
     expect(
       within(cookieBase).getByText(
-        /places lower than by context-aware score \(#4\)/,
+        /place lower than by context-aware score \(#3\)/,
       ),
     ).toBeInTheDocument();
   });
@@ -126,13 +130,14 @@ describe("FindingsPanel: sorting and the base/final toggle", () => {
   it("colours the band and badge by the score being ranked by", async () => {
     const user = userEvent.setup();
     render(<Harness />);
-    const band = () => row("HDR-002").querySelector("[data-band]");
+    // .env exposure: base 7.5 (High), raised to 10.0 (Critical) by context.
+    const band = () => row("INF-003").querySelector("[data-band]");
     expect(band()).toHaveAttribute("data-band", "CRITICAL");
-    expect(within(row("HDR-002")).getByText("Critical")).toBeInTheDocument();
+    expect(within(row("INF-003")).getByText("Critical")).toBeInTheDocument();
 
     await user.click(screen.getByRole("radio", { name: "Base score" }));
-    expect(band()).toHaveAttribute("data-band", "MEDIUM");
-    expect(within(row("HDR-002")).getByText("Medium")).toBeInTheDocument();
+    expect(band()).toHaveAttribute("data-band", "HIGH");
+    expect(within(row("INF-003")).getByText("High")).toBeInTheDocument();
   });
 });
 
@@ -142,18 +147,18 @@ describe("FindingsPanel: filters", () => {
     render(<Harness />);
     await user.click(screen.getByRole("checkbox", { name: /Critical/ }));
     await user.click(screen.getByRole("checkbox", { name: /Low/ }));
-    expect(order()).toEqual(["API-003", "HDR-002", "INF-003", "HDR-007"]);
-    expect(screen.getByText("Showing 4 of 8 findings")).toBeInTheDocument();
+    expect(order()).toEqual(["API-003", "INF-003", "TLS-009"]);
+    expect(screen.getByText("Showing 3 of 10 findings")).toBeInTheDocument();
 
     await user.click(screen.getByRole("checkbox", { name: /Critical/ }));
-    expect(order()).toEqual(["HDR-007"]);
+    expect(order()).toEqual(["TLS-009"]);
   });
 
   it("filters by category and OWASP id", async () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.selectOptions(screen.getByLabelText("Category"), "TLS");
-    expect(order()).toEqual(["TLS-001"]);
+    expect(order()).toEqual(["TLS-001", "TLS-009"]);
 
     await user.selectOptions(screen.getByLabelText("Category"), "");
     await user.selectOptions(screen.getByLabelText("OWASP"), "API2:2023");
@@ -166,9 +171,12 @@ describe("FindingsPanel: filters", () => {
     await user.click(
       screen.getByRole("checkbox", { name: "Only findings in attack chains" }),
     );
-    expect(order()).toEqual(["INF-003", "HDR-007"]);
+    expect(order()).toEqual(["INF-003", "HDR-007", "INF-007"]);
     expect(
       within(row("INF-003")).getByText("In chain C005"),
+    ).toBeInTheDocument();
+    expect(
+      within(row("INF-007")).getByText("In chain C002"),
     ).toBeInTheDocument();
   });
 
@@ -177,7 +185,9 @@ describe("FindingsPanel: filters", () => {
     const onViewChange = vi.fn();
     render(<Harness onViewChange={onViewChange} />);
     await user.type(screen.getByLabelText("Endpoint contains"), "/api/");
-    await waitFor(() => expect(order()).toEqual(["API-003", "HDR-002"]));
+    await waitFor(() =>
+      expect(order()).toEqual(["API-003", "HDR-002", "INF-007"]),
+    );
     // One update for the whole word, not one per keystroke.
     expect(onViewChange).toHaveBeenCalledTimes(1);
   });
@@ -188,15 +198,15 @@ describe("FindingsPanel: filters", () => {
       <Harness
         initial={{
           rankBy: "base",
-          filters: { ...NO_FILTERS, severities: ["CRITICAL"] },
+          filters: { ...NO_FILTERS, severities: ["HIGH"] },
         }}
       />,
     );
-    expect(order()).toEqual(["API-003", "INF-003", "HDR-002"]);
+    expect(order()).toEqual(["TLS-001", "CKI-003"]);
     await user.click(
       screen.getByRole("radio", { name: "Context-aware score" }),
     );
-    expect(order()).toEqual(["API-003", "HDR-002", "INF-003"]);
+    expect(order()).toEqual(["CKI-003", "TLS-001"]);
   });
 
   it("starts from a view taken from the URL", () => {
@@ -230,7 +240,7 @@ describe("FindingsPanel: filters", () => {
 
     const clear = screen.getAllByRole("button", { name: "Clear filters" });
     await user.click(clear[clear.length - 1]);
-    expect(rows()).toHaveLength(8);
+    expect(rows()).toHaveLength(10);
     expect(screen.getByLabelText("Category")).toHaveValue("");
   });
 });
