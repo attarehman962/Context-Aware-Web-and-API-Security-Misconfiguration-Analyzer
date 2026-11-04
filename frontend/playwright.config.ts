@@ -41,7 +41,8 @@ export default defineConfig({
     : [
         {
           name: "chromium",
-          testIgnore: /(real-stack|eval-flow)\.spec\.ts/,
+          // e2e/demo/ is the demo recorder (playwright.demo.config.ts).
+          testIgnore: [/(real-stack|eval-flow)\.spec\.ts/, /[\\/]demo[\\/]/],
           use: { ...devices["Desktop Chrome"] },
         },
       ],

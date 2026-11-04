@@ -19,6 +19,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:real": "node scripts/e2e-real.mjs",
+    "demo:record": "playwright test --config playwright.demo.config.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
