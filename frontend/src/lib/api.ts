@@ -12,6 +12,8 @@
 import type {
   ApiErrorCode,
   ExportFormat,
+  FindingDetail,
+  ResultsQuery,
   ScanRequest,
   ScanResults,
   ScanStatus,
@@ -59,11 +61,42 @@ export function createScan(
 /** `GET /api/results/{id}`: status, and findings + chains once DONE. */
 export function getResults(
   scanId: string,
-  options: RequestOptions = {},
+  options: RequestOptions & { query?: ResultsQuery } = {},
 ): Promise<ApiResult<ScanResults>> {
-  return request<ScanResults>(`/api/results/${encodeURIComponent(scanId)}`, {
-    signal: options.signal,
-  });
+  const search = resultsSearch(options.query);
+  return request<ScanResults>(
+    `/api/results/${encodeURIComponent(scanId)}${search}`,
+    { signal: options.signal },
+  );
+}
+
+/**
+ * `GET /api/results/{id}/findings/{finding_id}` (since 1.2): one finding with
+ * its endpoint, check description, impact, references and chains.
+ */
+export function getFindingDetail(
+  scanId: string,
+  findingId: string,
+  options: RequestOptions = {},
+): Promise<ApiResult<FindingDetail>> {
+  return request<FindingDetail>(
+    `/api/results/${encodeURIComponent(scanId)}/findings/${encodeURIComponent(findingId)}`,
+    { signal: options.signal },
+  );
+}
+
+/** Filters repeat their parameter (?severity=HIGH&severity=LOW). */
+function resultsSearch(query: ResultsQuery = {}): string {
+  const params = new URLSearchParams();
+  for (const v of query.severity ?? []) params.append("severity", v);
+  for (const v of query.category ?? []) params.append("category", v);
+  for (const v of query.owasp ?? []) params.append("owasp", v);
+  if (query.in_chain !== undefined)
+    params.set("in_chain", String(query.in_chain));
+  if (query.page !== undefined) params.set("page", String(query.page));
+  if (query.limit !== undefined) params.set("limit", String(query.limit));
+  const search = params.toString();
+  return search ? `?${search}` : "";
 }
 
 /** Download link for a finished scan's report; use it as `<a href download>`. */

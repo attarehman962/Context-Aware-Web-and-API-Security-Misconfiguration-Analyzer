@@ -78,9 +78,31 @@ export interface paths {
     /**
      * Scan status and results
      * @description Always 200 for a known scan. ``findings`` and ``chains`` stay empty until
-     *     ``scan.status`` is ``DONE``.
+     *     ``scan.status`` is ``DONE``. Filters combine with AND (values of one filter
+     *     with OR); ``severity_counts`` and ``chains`` always cover the whole scan, and
+     *     ``findings_meta.total`` counts the filtered findings.
      */
     get: operations["get_results_api_results__scan_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/results/{scan_id}/findings/{finding_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * One finding with its endpoint, score breakdown and chains
+     * @description Since 1.2. 404 when the scan or the finding (in that scan) doesn't exist.
+     */
+    get: operations["get_finding_api_results__scan_id__findings__finding_id__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -280,12 +302,23 @@ export interface components {
       description?: string | null;
       /**
        * Composite Score
-       * @description Documented template score, not computed.
+       * @description CVSS v3.1 base score of composite_vector (always above every member's score).
        */
       composite_score: number;
       severity: components["schemas"]["Severity"];
       /** Finding Ids */
       finding_ids: string[];
+      /**
+       * Composite Vector
+       * @description Since 1.2. The chain's own CVSS v3.1 vector (config/chains.yaml).
+       * @example CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H
+       */
+      composite_vector?: string | null;
+      /**
+       * Evidence
+       * @description Since 1.2. Why it fired: scope (kind, value), the matched check ids per group, and the context (sensitivity class or body signal) that satisfied the template.
+       */
+      evidence?: Record<string, unknown> | null;
     };
     /** ChainResponse */
     ChainResponse: {
@@ -321,6 +354,46 @@ export interface components {
      * @enum {string}
      */
     DiscoveryMethod: "SEED" | "HTML" | "JAVASCRIPT" | "WORDLIST" | "RECURSIVE";
+    /**
+     * EndpointDetail
+     * @description Since 1.2: the endpoint of a finding, for the drill-down.
+     */
+    EndpointDetail: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Url */
+      url: string;
+      /** Path */
+      path: string;
+      /** Method */
+      method: string;
+      /** Status Code */
+      status_code?: number | null;
+      /** Content Type */
+      content_type?: string | null;
+      sensitivity_class?: components["schemas"]["ContextClass"] | null;
+      /** Sensitivity Confidence */
+      sensitivity_confidence?: number | null;
+      /** Sensitivity Reason */
+      sensitivity_reason?: string[];
+      /** Body Signals */
+      body_signals?: components["schemas"]["BodySignal"][];
+      /**
+       * Security Headers
+       * @description Security-relevant response headers (redacted).
+       */
+      security_headers?: {
+        [key: string]: string;
+      };
+      /**
+       * Cookies
+       * @description Cookie metadata: name, flags, scope. Never values.
+       */
+      cookies?: Record<string, unknown>[];
+    };
     /** EndpointResponse */
     EndpointResponse: {
       /**
@@ -487,6 +560,116 @@ export interface components {
       | "AUTH"
       | "INFO_DISCLOSURE";
     /**
+     * FindingDetail
+     * @description Since 1.2: body of ``GET /api/results/{scan_id}/findings/{finding_id}``.
+     */
+    FindingDetail: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Check Id
+       * @example HDR-001
+       */
+      check_id: string;
+      /** Title */
+      title: string;
+      category: components["schemas"]["FindingCategory"];
+      /**
+       * Endpoint Id
+       * @description Null for host-level findings (e.g. TLS).
+       */
+      endpoint_id?: string | null;
+      /** Endpoint Url */
+      endpoint_url?: string | null;
+      /**
+       * Owasp Map
+       * @example [
+       *       "API8:2023"
+       *     ]
+       */
+      owasp_map: string[];
+      /**
+       * Cwe Map
+       * @example [
+       *       "CWE-319"
+       *     ]
+       */
+      cwe_map: string[];
+      /**
+       * Cvss Vector
+       * @example CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N
+       */
+      cvss_vector: string;
+      /**
+       * Base Score
+       * @description Official CVSS v3.1 base score.
+       */
+      base_score: number;
+      /**
+       * Final Score
+       * @description CAWASMA context-aware score (not official CVSS).
+       */
+      final_score: number;
+      /**
+       * Final Vector
+       * @description Since 1.1. The base vector plus the CR/IR/AR environmental requirements final_score was computed from (CVSS v3.1 environmental score). Null for findings still scored by the interim formula.
+       * @example CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N/CR:M/IR:M/AR:L
+       */
+      final_vector?: string | null;
+      /**
+       * Score Reasons
+       * @description Since 1.1. Why each requirement was set; empty when final_vector is null.
+       * @example [
+       *       "sensitivity:LOW",
+       *       "no-context-change",
+       *       "base:5.9",
+       *       "environmental:5.9"
+       *     ]
+       */
+      score_reasons?: string[];
+      severity_bucket: components["schemas"]["Severity"];
+      /**
+       * Evidence
+       * @description Redacted. Always has 'text'; other keys depend on the check.
+       */
+      evidence: Record<string, unknown>;
+      /** @description Sensitivity class of the endpoint (null for host-level findings). */
+      sensitivity_class?: components["schemas"]["ContextClass"] | null;
+      /**
+       * Body Signals
+       * @description Sensitive data seen in the endpoint's response.
+       */
+      body_signals?: components["schemas"]["BodySignal"][];
+      /**
+       * Chain Ids
+       * @description Ids of chains in ScanResults.chains this finding belongs to.
+       */
+      chain_ids?: string[];
+      /** Recommendation */
+      recommendation?: string | null;
+      /**
+       * Limitation
+       * @description Set when black-box testing cannot confirm the finding; show it.
+       */
+      limitation?: string | null;
+      /** Description */
+      description?: string | null;
+      /** Impact */
+      impact?: string | null;
+      /** References */
+      references?: string[];
+      /** @description Null for host-level findings. */
+      endpoint?: components["schemas"]["EndpointDetail"] | null;
+      /**
+       * Chains
+       * @description The chains this finding belongs to.
+       */
+      chains?: components["schemas"]["Chain"][];
+    };
+    /**
      * FindingResponse
      * @description Public finding shape.
      *
@@ -544,6 +727,31 @@ export interface components {
        * Format: date-time
        */
       created_at: string;
+    };
+    /**
+     * FindingsMeta
+     * @description Since 1.2: what the findings list holds after filters and pagination.
+     */
+    FindingsMeta: {
+      /**
+       * Total
+       * @description Findings matching the filters (all pages).
+       */
+      total: number;
+      /**
+       * Page
+       * @description Null when not paginated.
+       */
+      page?: number | null;
+      /** Limit */
+      limit?: number | null;
+      /** Pages */
+      pages?: number | null;
+      /**
+       * Filters
+       * @description The filters applied, as given.
+       */
+      filters?: Record<string, unknown>;
     };
     /** HTTPValidationError */
     HTTPValidationError: {
@@ -764,17 +972,19 @@ export interface components {
     ScanResults: {
       /**
        * Contract Version
-       * @default 1.1.0
+       * @default 1.2.0
        */
       contract_version: string;
       scan: components["schemas"]["app__api__schemas__contract__ScanStatus"];
       /**
        * Findings
-       * @description Ranked by final_score, highest first (ties: check_id). Empty until status is DONE.
+       * @description Ranked by final_score, highest first (ties: check_id). Empty until status is DONE. Filtered/paginated when the request asks.
        */
       findings: components["schemas"]["Finding"][];
       /** Chains */
       chains?: components["schemas"]["Chain"][];
+      /** @description Since 1.2. Set when the request filters or paginates: the filtered total and the page. Null otherwise and in exports. */
+      findings_meta?: components["schemas"]["FindingsMeta"] | null;
     };
     /** ScanStatusResponse */
     ScanStatusResponse: {
@@ -1032,7 +1242,20 @@ export interface operations {
   };
   get_results_api_results__scan_id__get: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description Since 1.2. Keep these severity buckets (repeat the parameter). */
+        severity?: components["schemas"]["Severity"][] | null;
+        /** @description Since 1.2. Keep these categories (repeat the parameter). */
+        category?: components["schemas"]["FindingCategory"][] | null;
+        /** @description Since 1.2. Keep findings mapped to any of these OWASP ids, e.g. A05:2021 or API8:2023 (case-insensitive). */
+        owasp?: string[] | null;
+        /** @description Since 1.2. true: only attack-chain members; false: only others. */
+        in_chain?: boolean | null;
+        /** @description Since 1.2. Paginate findings. */
+        page?: number | null;
+        /** @description Since 1.2. Findings per page (default 50). */
+        limit?: number | null;
+      };
       header?: never;
       path: {
         scan_id: string;
@@ -1049,7 +1272,7 @@ export interface operations {
         content: {
           /**
            * @example {
-           *       "contract_version": "1.1.0",
+           *       "contract_version": "1.2.0",
            *       "scan": {
            *         "scan_id": "11111111-1111-4111-8111-111111111111",
            *         "url": "https://shop.example.com",
@@ -1065,10 +1288,10 @@ export interface operations {
            *         "started_at": "2026-10-20T09:00:02Z",
            *         "completed_at": "2026-10-20T09:01:14Z",
            *         "severity_counts": {
-           *           "critical": 3,
+           *           "critical": 2,
            *           "high": 2,
-           *           "medium": 1,
-           *           "low": 1,
+           *           "medium": 3,
+           *           "low": 0,
            *           "info": 0
            *         }
            *       },
@@ -1104,37 +1327,6 @@ export interface operations {
            *           "limitation": "Confirm the endpoint is intended to be protected."
            *         },
            *         {
-           *           "id": "f0000000-0000-4000-8000-000000000003",
-           *           "check_id": "HDR-002",
-           *           "title": "Missing Content-Security-Policy",
-           *           "category": "HEADERS",
-           *           "endpoint_id": "3b3c0ea4-8488-5200-bd5e-02da6f80df16",
-           *           "endpoint_url": "https://shop.example.com/api/payment/checkout",
-           *           "owasp_map": [
-           *             "API8:2023"
-           *           ],
-           *           "cwe_map": [
-           *             "CWE-693"
-           *           ],
-           *           "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
-           *           "base_score": 6.1,
-           *           "final_score": 10,
-           *           "score_reasons": [],
-           *           "severity_bucket": "CRITICAL",
-           *           "evidence": {
-           *             "text": "Missing Content-Security-Policy on /api/payment/checkout",
-           *             "header": "Content-Security-Policy",
-           *             "present": false
-           *           },
-           *           "sensitivity_class": "CRITICAL",
-           *           "body_signals": [
-           *             "PII",
-           *             "FINANCIAL"
-           *           ],
-           *           "chain_ids": [],
-           *           "recommendation": "Define a restrictive Content-Security-Policy."
-           *         },
-           *         {
            *           "id": "f0000000-0000-4000-8000-000000000001",
            *           "check_id": "INF-003",
            *           "title": ".env file exposed",
@@ -1155,7 +1347,13 @@ export interface operations {
            *           "evidence": {
            *             "text": ".env file exposed on /.env",
            *             "status": 200,
-           *             "body_excerpt": "DB_HOST=10.0.3.17\nDB_PASSWORD=[REDACTED]"
+           *             "body_excerpt": "DB_HOST=10.0.3.17\nDB_PASSWORD=[REDACTED]",
+           *             "chains": [
+           *               {
+           *                 "chain_id": "C005",
+           *                 "name": "Exposed configuration leaks live credentials"
+           *               }
+           *             ]
            *           },
            *           "sensitivity_class": "LOW",
            *           "body_signals": [
@@ -1180,10 +1378,18 @@ export interface operations {
            *           "cwe_map": [
            *             "CWE-1275"
            *           ],
-           *           "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:N/A:N",
-           *           "base_score": 4.3,
+           *           "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:H/A:N",
+           *           "base_score": 7.1,
            *           "final_score": 8.6,
-           *           "score_reasons": [],
+           *           "final_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:H/A:N/CR:H/IR:H/AR:H",
+           *           "score_reasons": [
+           *             "sensitivity:CRITICAL",
+           *             "CR:H<-sensitivity:CRITICAL",
+           *             "IR:H<-sensitivity:CRITICAL",
+           *             "AR:H<-sensitivity:CRITICAL",
+           *             "base:7.1",
+           *             "environmental:8.6"
+           *           ],
            *           "severity_bucket": "HIGH",
            *           "evidence": {
            *             "text": "Cookie missing SameSite attribute on /admin/login",
@@ -1220,6 +1426,47 @@ export interface operations {
            *           "chain_ids": [],
            *           "recommendation": "Disable TLS 1.0/1.1; require TLS 1.2+.",
            *           "limitation": "Depends on protocol probe; may be inconclusive if the client's OpenSSL disables legacy protocols."
+           *         },
+           *         {
+           *           "id": "f0000000-0000-4000-8000-000000000003",
+           *           "check_id": "HDR-002",
+           *           "title": "Missing Content-Security-Policy",
+           *           "category": "HEADERS",
+           *           "endpoint_id": "3b3c0ea4-8488-5200-bd5e-02da6f80df16",
+           *           "endpoint_url": "https://shop.example.com/api/payment/checkout",
+           *           "owasp_map": [
+           *             "API8:2023"
+           *           ],
+           *           "cwe_map": [
+           *             "CWE-693"
+           *           ],
+           *           "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N",
+           *           "base_score": 5.4,
+           *           "final_score": 6.4,
+           *           "final_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N/CR:H/IR:H/AR:H",
+           *           "score_reasons": [
+           *             "sensitivity:CRITICAL",
+           *             "signal:FINANCIAL",
+           *             "signal:PII",
+           *             "CR:H<-sensitivity:CRITICAL+signal:FINANCIAL+signal:PII",
+           *             "IR:H<-sensitivity:CRITICAL+signal:FINANCIAL",
+           *             "AR:H<-sensitivity:CRITICAL",
+           *             "base:5.4",
+           *             "environmental:6.4"
+           *           ],
+           *           "severity_bucket": "MEDIUM",
+           *           "evidence": {
+           *             "text": "Missing Content-Security-Policy on /api/payment/checkout",
+           *             "header": "Content-Security-Policy",
+           *             "present": false
+           *           },
+           *           "sensitivity_class": "CRITICAL",
+           *           "body_signals": [
+           *             "PII",
+           *             "FINANCIAL"
+           *           ],
+           *           "chain_ids": [],
+           *           "recommendation": "Define a restrictive Content-Security-Policy."
            *         },
            *         {
            *           "id": "f0000000-0000-4000-8000-000000000007",
@@ -1270,9 +1517,15 @@ export interface operations {
            *           ],
            *           "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
            *           "base_score": 5.3,
-           *           "final_score": 3.2,
-           *           "score_reasons": [],
-           *           "severity_bucket": "LOW",
+           *           "final_score": 5.3,
+           *           "final_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N/CR:X/IR:X/AR:X",
+           *           "score_reasons": [
+           *             "sensitivity:LOW",
+           *             "no-context-change",
+           *             "base:5.3",
+           *             "environmental:5.3"
+           *           ],
+           *           "severity_bucket": "MEDIUM",
            *           "evidence": {
            *             "text": "Server version disclosure on /",
            *             "header": "Server",
@@ -1280,9 +1533,7 @@ export interface operations {
            *           },
            *           "sensitivity_class": "LOW",
            *           "body_signals": [],
-           *           "chain_ids": [
-           *             "c0050000-0000-4000-8000-000000000001"
-           *           ],
+           *           "chain_ids": [],
            *           "recommendation": "Remove or genericize the 'Server' header."
            *         }
            *       ],
@@ -1290,19 +1541,175 @@ export interface operations {
            *         {
            *           "id": "c0050000-0000-4000-8000-000000000001",
            *           "chain_code": "C005",
-           *           "name": ".env Exposure -> Version Leak -> Full Compromise",
-           *           "description": "An exposed .env combined with version disclosure can lead to full compromise.",
-           *           "composite_score": 9.8,
+           *           "name": "Exposed configuration leaks live credentials",
+           *           "description": "A .env file or Git metadata is served and the response itself contains credentials, so the secrets are directly usable against the application and the services behind it.",
+           *           "composite_score": 10,
            *           "severity": "CRITICAL",
            *           "finding_ids": [
-           *             "f0000000-0000-4000-8000-000000000001",
-           *             "f0000000-0000-4000-8000-000000000006"
-           *           ]
+           *             "f0000000-0000-4000-8000-000000000001"
+           *           ],
+           *           "composite_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H",
+           *           "evidence": {
+           *             "scope": {
+           *               "kind": "endpoint",
+           *               "value": "https://shop.example.com/.env"
+           *             },
+           *             "groups": [
+           *               [
+           *                 "INF-003"
+           *               ]
+           *             ],
+           *             "context": {
+           *               "body_signals": [
+           *                 "CREDENTIALS"
+           *               ]
+           *             },
+           *             "composite_cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H"
+           *           }
            *         }
            *       ]
            *     }
            */
           "application/json": components["schemas"]["ScanResults"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  get_finding_api_results__scan_id__findings__finding_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        scan_id: string;
+        finding_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "id": "f0000000-0000-4000-8000-000000000001",
+           *       "check_id": "INF-003",
+           *       "title": ".env file exposed",
+           *       "category": "INFO_DISCLOSURE",
+           *       "endpoint_id": "f9817110-212d-59e9-88b0-f3f42e264569",
+           *       "endpoint_url": "https://shop.example.com/.env",
+           *       "owasp_map": [
+           *         "API8:2023"
+           *       ],
+           *       "cwe_map": [
+           *         "CWE-538"
+           *       ],
+           *       "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+           *       "base_score": 7.5,
+           *       "final_score": 10,
+           *       "score_reasons": [],
+           *       "severity_bucket": "CRITICAL",
+           *       "evidence": {
+           *         "text": ".env file exposed on /.env",
+           *         "status": 200,
+           *         "body_excerpt": "DB_HOST=10.0.3.17\nDB_PASSWORD=[REDACTED]",
+           *         "chains": [
+           *           {
+           *             "chain_id": "C005",
+           *             "name": "Exposed configuration leaks live credentials"
+           *           }
+           *         ]
+           *       },
+           *       "sensitivity_class": "LOW",
+           *       "body_signals": [
+           *         "CREDENTIALS",
+           *         "INTERNAL_IP"
+           *       ],
+           *       "chain_ids": [
+           *         "c0050000-0000-4000-8000-000000000001"
+           *       ],
+           *       "recommendation": "Block access to dotfiles; move secrets out of web root.",
+           *       "description": ".env file exposed on /.env",
+           *       "impact": "Environment file may expose secrets and credentials.",
+           *       "references": [
+           *         "https://owasp.org/www-project-web-security-testing-guide/"
+           *       ],
+           *       "endpoint": {
+           *         "id": "f9817110-212d-59e9-88b0-f3f42e264569",
+           *         "url": "https://shop.example.com/.env",
+           *         "path": "/.env",
+           *         "method": "GET",
+           *         "status_code": 200,
+           *         "content_type": "text/html; charset=utf-8",
+           *         "sensitivity_class": "LOW",
+           *         "sensitivity_confidence": 0.9,
+           *         "sensitivity_reason": [
+           *           "mock: keyword match on the path"
+           *         ],
+           *         "body_signals": [
+           *           "CREDENTIALS",
+           *           "INTERNAL_IP"
+           *         ],
+           *         "security_headers": {
+           *           "Server": "nginx/1.18.0 (Ubuntu)"
+           *         },
+           *         "cookies": []
+           *       },
+           *       "chains": [
+           *         {
+           *           "id": "c0050000-0000-4000-8000-000000000001",
+           *           "chain_code": "C005",
+           *           "name": "Exposed configuration leaks live credentials",
+           *           "description": "A .env file or Git metadata is served and the response itself contains credentials, so the secrets are directly usable against the application and the services behind it.",
+           *           "composite_score": 10,
+           *           "severity": "CRITICAL",
+           *           "finding_ids": [
+           *             "f0000000-0000-4000-8000-000000000001"
+           *           ],
+           *           "composite_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H",
+           *           "evidence": {
+           *             "scope": {
+           *               "kind": "endpoint",
+           *               "value": "https://shop.example.com/.env"
+           *             },
+           *             "groups": [
+           *               [
+           *                 "INF-003"
+           *               ]
+           *             ],
+           *             "context": {
+           *               "body_signals": [
+           *                 "CREDENTIALS"
+           *               ]
+           *             },
+           *             "composite_cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H"
+           *           }
+           *         }
+           *       ]
+           *     }
+           */
+          "application/json": components["schemas"]["FindingDetail"];
         };
       };
       /** @description Not Found */
@@ -1467,10 +1874,10 @@ export interface operations {
            *           "started_at": "2026-10-20T09:00:02Z",
            *           "completed_at": "2026-10-20T09:01:14Z",
            *           "severity_counts": {
-           *             "critical": 3,
+           *             "critical": 2,
            *             "high": 2,
-           *             "medium": 1,
-           *             "low": 1,
+           *             "medium": 3,
+           *             "low": 0,
            *             "info": 0
            *           }
            *         },

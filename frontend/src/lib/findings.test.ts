@@ -25,12 +25,14 @@ describe("rankFindings", () => {
   it("ranks by final_score, ties by check_id", () => {
     expect(ids(rankFindings(findings))).toEqual([
       "API-003", // 10.0
-      "HDR-002", // 10.0
       "INF-003", // 10.0
       "CKI-003", // 8.6
       "TLS-001", // 7.4
+      "HDR-002", // 6.4
       "HDR-001", // 5.3
-      "HDR-007", // 3.2
+      "HDR-007", // 5.3
+      "INF-007", // 5.3
+      "TLS-009", // 3.1
       "HDR-012", // 0.0
     ]);
   });
@@ -40,11 +42,13 @@ describe("rankFindings", () => {
       "API-003", // 7.5 / 10.0
       "INF-003", // 7.5 / 10.0
       "TLS-001", // 7.4
-      "HDR-002", // 6.1
-      "HDR-001", // 5.3 / 5.3
-      "HDR-007", // 5.3 / 3.2
-      "CKI-003", // 4.3
-      "HDR-012", // 3.1
+      "CKI-003", // 7.1
+      "HDR-002", // 5.4
+      "HDR-001", // 5.3
+      "HDR-007", // 5.3
+      "INF-007", // 5.3
+      "TLS-009", // 3.1 / 3.1
+      "HDR-012", // 3.1 / 0.0
     ]);
   });
 
@@ -52,10 +56,11 @@ describe("rankFindings", () => {
     const byFinal = rankFindings(findings, "final");
     const byBase = rankFindings(findings, "base");
     const cki = byFinal.find((r) => r.finding.check_id === "CKI-003")!;
-    expect(cki).toMatchObject({ finalRank: 4, baseRank: 7 });
+    expect(cki).toMatchObject({ finalRank: 3, baseRank: 4 });
     expect(byBase.find((r) => r.finding.check_id === "CKI-003")).toEqual(cki);
-    expect(byFinal.map((r) => r.finalRank)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
-    expect(byBase.map((r) => r.baseRank)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    const ranks = Array.from({ length: findings.length }, (_, i) => i + 1);
+    expect(byFinal.map((r) => r.finalRank)).toEqual(ranks);
+    expect(byBase.map((r) => r.baseRank)).toEqual(ranks);
   });
 
   it("measures the severity shift from the base rating", () => {
@@ -64,15 +69,17 @@ describe("rankFindings", () => {
     );
     expect(shift).toEqual({
       "API-003": 1, // HIGH -> CRITICAL
-      "HDR-002": 2, // MEDIUM -> CRITICAL
       "INF-003": 1, // HIGH -> CRITICAL
-      "CKI-003": 1, // MEDIUM -> HIGH
+      "CKI-003": 0, // HIGH, 7.1 -> 8.6
       "TLS-001": 0,
+      "HDR-002": 0, // MEDIUM, 5.4 -> 6.4
       "HDR-001": 0,
-      "HDR-007": -1, // MEDIUM -> LOW
-      "HDR-012": -1, // LOW -> INFO
+      "HDR-007": 0,
+      "INF-007": 0,
+      "TLS-009": 0,
+      "HDR-012": -1, // LOW -> INFO (interim formula)
     });
-    expect(severityShifts(rankFindings(findings))).toEqual({ up: 4, down: 2 });
+    expect(severityShifts(rankFindings(findings))).toEqual({ up: 2, down: 1 });
   });
 
   it("does not modify its input", () => {
@@ -84,7 +91,7 @@ describe("rankFindings", () => {
 
 describe("applyFilters", () => {
   it("keeps everything without filters", () => {
-    expect(filter({})).toHaveLength(8);
+    expect(filter({})).toHaveLength(10);
     expect(hasFilters(NO_FILTERS)).toBe(false);
   });
 
@@ -92,7 +99,7 @@ describe("applyFilters", () => {
     expect(filter({ severities: ["HIGH", "LOW"] })).toEqual([
       "CKI-003",
       "TLS-001",
-      "HDR-007",
+      "TLS-009",
     ]);
   });
 
@@ -104,32 +111,44 @@ describe("applyFilters", () => {
       "HDR-012",
     ]);
     expect(filter({ owasp: "API2:2023" })).toEqual(["API-003"]);
-    expect(filter({ chainsOnly: true })).toEqual(["INF-003", "HDR-007"]);
+    expect(filter({ owasp: "A05:2021" })).toEqual(["INF-007"]);
+    expect(filter({ chainsOnly: true })).toEqual([
+      "INF-003",
+      "HDR-007",
+      "INF-007",
+    ]);
   });
 
   it("searches endpoints case-insensitively and skips host-level findings", () => {
-    expect(filter({ endpoint: "  /API/ " })).toEqual(["API-003", "HDR-002"]);
+    expect(filter({ endpoint: "  /API/ " })).toEqual([
+      "API-003",
+      "HDR-002",
+      "INF-007",
+    ]);
     expect(filter({ endpoint: "shop.example.com" })).not.toContain("TLS-001");
   });
 
   it("combines filters (all must match) and keeps the ranking", () => {
-    expect(filter({ severities: ["CRITICAL"], category: "HEADERS" })).toEqual([
+    expect(filter({ severities: ["MEDIUM"], category: "HEADERS" })).toEqual([
       "HDR-002",
+      "HDR-001",
+      "HDR-007",
     ]);
+    expect(filter({ category: "TLS", chainsOnly: true })).toEqual([]);
     expect(
       ids(
         applyFilters(rankFindings(findings, "base"), {
           ...NO_FILTERS,
-          severities: ["CRITICAL"],
+          severities: ["HIGH"],
         }),
       ),
-    ).toEqual(["API-003", "INF-003", "HDR-002"]);
+    ).toEqual(["TLS-001", "CKI-003"]);
   });
 
   it("lists the filter values present in the scan", () => {
     expect(filterOptions(findings)).toEqual({
       categories: ["COOKIES", "HEADERS", "INFO_DISCLOSURE", "REST_API", "TLS"],
-      owasp: ["API2:2023", "API8:2023"],
+      owasp: ["A02:2021", "A05:2021", "API2:2023", "API8:2023"],
       hasChains: true,
     });
   });

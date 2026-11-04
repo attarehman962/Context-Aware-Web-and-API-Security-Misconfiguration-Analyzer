@@ -30,6 +30,7 @@ import {
   scanList,
   scanQueued,
 } from "./fixtures";
+import { findingDetail } from "./finding-detail";
 import { LARGE_SCAN_ID, largeScanResults } from "./large-scan";
 import {
   simulatedResults,
@@ -129,9 +130,32 @@ export function createHandlers({ now = Date.now }: HandlerOptions = {}) {
       });
     }),
 
-    http.get("*/api/results/:scanId", ({ params }) => {
+    http.get("*/api/results/:scanId", ({ params, request }) => {
       const found = lookup(String(params.scanId));
-      return found instanceof Response ? found : HttpResponse.json(found);
+      if (found instanceof Response) return found;
+      const selected = selectFindings(found, new URL(request.url).searchParams);
+      return selected instanceof Response
+        ? selected
+        : HttpResponse.json(selected);
+    }),
+
+    http.get("*/api/results/:scanId/findings/:findingId", ({ params }) => {
+      const findingId = String(params.findingId);
+      if (!UUID.test(findingId)) {
+        return validationError([
+          {
+            loc: ["path", "finding_id"],
+            msg: "Input should be a valid UUID",
+            type: "uuid_parsing",
+          },
+        ]);
+      }
+      const found = lookup(String(params.scanId));
+      if (found instanceof Response) return found;
+      const detail = findingDetail(found, findingId);
+      return detail
+        ? HttpResponse.json(detail)
+        : apiError(404, "NOT_FOUND", "Finding not found.");
     }),
 
     http.get("*/api/results/:scanId/export", ({ params, request }) => {
@@ -208,6 +232,99 @@ export function createHandlers({ now = Date.now }: HandlerOptions = {}) {
 }
 
 export const handlers = createHandlers();
+
+const SEVERITIES = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"];
+const CATEGORIES = [
+  "HEADERS",
+  "COOKIES",
+  "CORS",
+  "TLS",
+  "REST_API",
+  "AUTH",
+  "INFO_DISCLOSURE",
+];
+
+/**
+ * Filters and paging of GET /api/results/{id} (contract 1.2), as the backend's
+ * select_findings: values of one filter OR-ed, filters AND-ed, then paged;
+ * severity_counts and chains stay whole-scan; no parameters = the 1.1 body.
+ */
+function selectFindings(
+  results: ScanResults,
+  query: URLSearchParams,
+): ScanResults | Response {
+  const severity = query.getAll("severity");
+  const category = query.getAll("category");
+  const owasp = query.getAll("owasp").map((o) => o.toUpperCase());
+  const inChain = query.get("in_chain");
+  const page = query.get("page");
+  const limit = query.get("limit");
+  if (
+    severity.length + category.length + owasp.length === 0 &&
+    inChain === null &&
+    page === null &&
+    limit === null
+  ) {
+    return results;
+  }
+
+  const issues: ValidationIssue[] = [];
+  const bad = (field: string, msg: string, type: string) =>
+    issues.push({ loc: ["query", field], msg, type });
+  if (severity.some((v) => !SEVERITIES.includes(v))) {
+    bad("severity", `Input should be ${SEVERITIES.join(", ")}`, "enum");
+  }
+  if (category.some((v) => !CATEGORIES.includes(v))) {
+    bad("category", `Input should be ${CATEGORIES.join(", ")}`, "enum");
+  }
+  if (inChain !== null && !["true", "false"].includes(inChain)) {
+    bad("in_chain", "Input should be a valid boolean", "bool_parsing");
+  }
+  const pageNo = page === null ? null : Number(page);
+  const limitNo = limit === null ? null : Number(limit);
+  if (pageNo !== null && !(Number.isInteger(pageNo) && pageNo >= 1)) {
+    bad(
+      "page",
+      "Input should be greater than or equal to 1",
+      "greater_than_equal",
+    );
+  }
+  if (
+    limitNo !== null &&
+    !(Number.isInteger(limitNo) && limitNo >= 1 && limitNo <= 500)
+  ) {
+    bad("limit", "Input should be between 1 and 500", "less_than_equal");
+  }
+  if (issues.length > 0) return validationError(issues);
+
+  const kept = results.findings.filter(
+    (f) =>
+      (severity.length === 0 || severity.includes(f.severity_bucket)) &&
+      (category.length === 0 || category.includes(f.category)) &&
+      (owasp.length === 0 ||
+        f.owasp_map.some((o) => owasp.includes(o.toUpperCase()))) &&
+      (inChain === null || f.chain_ids.length > 0 === (inChain === "true")),
+  );
+  const paged = pageNo !== null || limitNo !== null;
+  const p = pageNo ?? 1;
+  const l = limitNo ?? 50;
+  const filters: Record<string, unknown> = {};
+  if (severity.length) filters.severity = [...new Set(severity)].sort();
+  if (category.length) filters.category = [...new Set(category)].sort();
+  if (owasp.length) filters.owasp = [...new Set(query.getAll("owasp"))].sort();
+  if (inChain !== null) filters.in_chain = inChain === "true";
+  return {
+    ...results,
+    findings: paged ? kept.slice((p - 1) * l, p * l) : kept,
+    findings_meta: {
+      total: kept.length,
+      page: paged ? p : null,
+      limit: paged ? l : null,
+      pages: paged ? Math.ceil(kept.length / l) : null,
+      filters,
+    },
+  };
+}
 
 const MINIMAL_PDF = [
   "%PDF-1.4",

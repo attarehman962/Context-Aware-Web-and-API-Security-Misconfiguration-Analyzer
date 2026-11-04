@@ -25,12 +25,55 @@ export type ScanState = Schemas["app__db__models__enums__ScanStatus"];
 export type ScanOptions = Sent<Schemas["ScanOptions"]>;
 export type Finding = Sent<Schemas["Finding"]>;
 export type Chain = Sent<Schemas["Chain"]>;
+/** Since 1.2: set when GET /api/results/{id} was called with filters/paging. */
+export type FindingsMeta = Schemas["FindingsMeta"];
 export type ScanResults = {
   contract_version: string;
   scan: ScanStatus;
   findings: Finding[];
   chains: Chain[];
+  findings_meta?: FindingsMeta | null;
 };
+/** Since 1.2: GET /api/results/{scan_id}/findings/{finding_id}. */
+export type EndpointDetail = Sent<Schemas["EndpointDetail"]>;
+export type FindingDetail = Omit<
+  Sent<Schemas["FindingDetail"]>,
+  "endpoint" | "chains"
+> & { endpoint: EndpointDetail | null; chains: Chain[] };
+
+/** Filters and paging of GET /api/results/{id} (since 1.2). */
+export interface ResultsQuery {
+  severity?: Severity[];
+  category?: string[];
+  owasp?: string[];
+  in_chain?: boolean;
+  page?: number;
+  limit?: number;
+}
+
+/**
+ * `Chain.evidence` (since 1.2) is typed as a free-form object in openapi.json;
+ * this is its documented shape (docs/api-contract.md, "Chain fields").
+ */
+export interface ChainEvidence {
+  scope?: { kind: "endpoint" | "host" | "scan"; value: string };
+  groups?: string[][];
+  context?: {
+    endpoint_sensitivity?: SensitivityClass[];
+    body_signals?: BodySignal[];
+  };
+  composite_cvss_vector?: string;
+}
+
+/** One entry of `EndpointDetail.cookies`: metadata only, never the value. */
+export interface CookieMeta {
+  name: string;
+  http_only: boolean;
+  secure: boolean;
+  same_site: string;
+  domain: string | null;
+  path: string | null;
+}
 export type ScanList = {
   items: ScanStatus[];
   meta: Sent<Schemas["PaginationMeta"]>;

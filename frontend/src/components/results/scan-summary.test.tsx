@@ -37,11 +37,11 @@ describe("ScanSummary", () => {
     const critical = within(counts)
       .getAllByRole("listitem")
       .find((li) => li.getAttribute("data-severity-count") === "CRITICAL")!;
-    expect(critical).toHaveTextContent("3");
+    expect(critical).toHaveTextContent("2");
 
     const shift = screen.getByTestId("context-shift");
-    expect(shift).toHaveTextContent("4 findings moved up a severity");
-    expect(shift).toHaveTextContent("2 findings moved down");
+    expect(shift).toHaveTextContent("2 findings moved up a severity");
+    expect(shift).toHaveTextContent("1 finding moved down");
   });
 
   it("leaves out counts until the scan is done", () => {
