@@ -116,3 +116,31 @@ describe("submitErrors", () => {
     ).toMatch(/could not start the scan/);
   });
 });
+
+describe("submitErrors: contract 1.3", () => {
+  it("says how long to wait after a 429", () => {
+    expect(
+      submitErrors({
+        kind: "client",
+        status: 429,
+        code: "RATE_LIMITED",
+        message: "Too many scans.",
+        retryAfter: 42,
+      }).form,
+    ).toEqual({
+      title: "Too many scans started",
+      message: "Wait 42 s, then start the scan again.",
+    });
+  });
+
+  it("explains a 503 queue outage", () => {
+    expect(
+      submitErrors({
+        kind: "server",
+        status: 503,
+        code: "QUEUE_UNAVAILABLE",
+        message: "The scan queue is down.",
+      }).form?.title,
+    ).toBe("The scan queue is not running");
+  });
+});

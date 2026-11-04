@@ -12,6 +12,7 @@ import { QUEUED_MS, SCAN_DURATION_MS } from "@/mocks/scenario";
 import {
   createScan,
   getExportUrl,
+  cancelScan,
   getFindingDetail,
   getResults,
   type ApiResult,
@@ -356,5 +357,65 @@ describe("getFindingDetail (contract 1.2)", () => {
     expect(
       expectError(await getFindingDetail(DONE_SCAN_ID, "not-a-uuid")),
     ).toMatchObject({ status: 422, code: "VALIDATION_ERROR" });
+  });
+});
+
+describe("cancelScan (contract 1.3)", () => {
+  it("cancels a queued scan, then answers 409 SCAN_FINISHED", async () => {
+    const { scan_id } = expectOk(
+      await createScan({
+        url: "https://target.example",
+        authorisation_confirmed: true,
+      }),
+    );
+    expect(expectOk(await cancelScan(scan_id)).status).toBe("QUEUED");
+    const after = expectOk(await getResults(scan_id)).scan;
+    expect(after).toMatchObject({
+      status: "FAILED",
+      error: "Cancelled by the user.",
+    });
+    expect(expectError(await cancelScan(scan_id))).toMatchObject({
+      status: 409,
+      code: "SCAN_FINISHED",
+    });
+  });
+
+  it("returns NOT_FOUND for an unknown scan", async () => {
+    expect(expectError(await cancelScan(UNKNOWN_ID))).toMatchObject({
+      status: 404,
+      code: "NOT_FOUND",
+    });
+  });
+});
+
+describe("rate limiting (contract 1.3)", () => {
+  it("passes Retry-After on with a 429", async () => {
+    server.use(
+      http.post("*/api/scan", () =>
+        HttpResponse.json(
+          {
+            success: false,
+            error: {
+              code: "RATE_LIMITED",
+              message: "Too many scans; retry in 42 s.",
+            },
+          },
+          { status: 429, headers: { "Retry-After": "42" } },
+        ),
+      ),
+    );
+    expect(
+      expectError(
+        await createScan({
+          url: "https://target.example",
+          authorisation_confirmed: true,
+        }),
+      ),
+    ).toMatchObject({
+      kind: "client",
+      status: 429,
+      code: "RATE_LIMITED",
+      retryAfter: 42,
+    });
   });
 });
