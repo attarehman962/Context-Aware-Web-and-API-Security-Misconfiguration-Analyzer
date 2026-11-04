@@ -2,7 +2,14 @@
 
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { ArrowDown, ArrowUp, ChevronDown, Link2 } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  Suspense,
+  lazy,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { ScoreDisplay } from "@/components/score-display";
 import { SeverityBadge } from "@/components/severity-badge";
@@ -14,9 +21,20 @@ import {
   type RankedFinding,
 } from "@/lib/findings";
 import { SEVERITY } from "@/lib/severity";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
-import { FindingDetail } from "./finding-detail";
+/**
+ * The drill-down (CVSS tables, standards, chains, evidence) is the biggest
+ * part of this page and most visits open few findings, so it loads on the
+ * first open. Hovering or focusing "Why this score?" starts the download
+ * early, so it is usually there by the click.
+ */
+const loadDetail = () => import("./finding-detail");
+const FindingDetail = lazy(() =>
+  loadDetail().then((m) => ({ default: m.FindingDetail })),
+);
+const preloadDetail = () => void loadDetail();
 
 /** Lists longer than this render only the rows in view. */
 export const VIRTUALIZE_AFTER = 60;
@@ -92,15 +110,29 @@ export function FindingsList({
       open={expanded.has(r.finding.id)}
       onToggle={() => onToggle(r.finding.id)}
       detail={
-        <FindingDetail
-          id={`${rowId(r.finding.id)}-detail`}
-          scanId={scanId}
-          finding={r.finding}
-          chains={chains}
-          findingsById={findingsById}
-          targetUrl={targetUrl}
-          onShowFinding={onShowFinding}
-        />
+        <Suspense
+          fallback={
+            <div
+              id={`${rowId(r.finding.id)}-detail`}
+              role="status"
+              className="flex flex-col gap-2 border-t p-4"
+            >
+              <span className="sr-only">Loading details…</span>
+              <Skeleton className="h-5 w-2/3 motion-reduce:animate-none" />
+              <Skeleton className="h-24 w-full motion-reduce:animate-none" />
+            </div>
+          }
+        >
+          <FindingDetail
+            id={`${rowId(r.finding.id)}-detail`}
+            scanId={scanId}
+            finding={r.finding}
+            chains={chains}
+            findingsById={findingsById}
+            targetUrl={targetUrl}
+            onShowFinding={onShowFinding}
+          />
+        </Suspense>
       }
     />
   );
@@ -296,6 +328,8 @@ function FindingRow({
           aria-expanded={open}
           aria-controls={`${rowId(f.id)}-detail`}
           onClick={onToggle}
+          onPointerEnter={preloadDetail}
+          onFocus={preloadDetail}
           className="flex w-full items-center gap-1.5 border-t px-3 py-2 text-left text-xs font-medium text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset"
         >
           <ChevronDown

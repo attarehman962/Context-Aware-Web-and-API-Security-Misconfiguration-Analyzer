@@ -23,6 +23,8 @@ async function open(user: ReturnType<typeof userEvent.setup>, checkId: string) {
   await user.click(
     within(row(checkId)).getByRole("button", { name: /Why this score\?/ }),
   );
+  // The drill-down is lazy-loaded on first open.
+  await within(row(checkId)).findByTestId("score-story");
   return row(checkId);
 }
 

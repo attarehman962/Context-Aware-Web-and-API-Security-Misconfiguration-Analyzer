@@ -3,7 +3,7 @@
  * (GET /api/scan/{id}/events, contract 1.3) replaces 2 s polling while it
  * works, polling takes over when it drops, and a scan can be cancelled.
  * The mock clock runs fast (20x: a 10 s scan takes half a second; the live
- * test uses 4x so its progress stays on screen long enough to read).
+ * test uses 2x so its progress stays on screen long enough to read).
  */
 
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -41,7 +41,10 @@ const server = createMockServer({ now: clock, liveStream: () => behaviour });
 let resultsCalls = 0;
 let streamCalls = 0;
 
-beforeAll(() => {
+beforeAll(async () => {
+  // The page lazy-loads its progress panel; load it once up front so the
+  // first test is not racing Vitest's on-demand transform of that module.
+  await import("./results/live-progress");
   server.listen({ onUnhandledRequest: "error" });
   server.events.on("request:start", ({ request }) => {
     const path = new URL(request.url).pathname;
@@ -86,17 +89,23 @@ const findingsHeading = (timeout = 5000) =>
 
 describe("scan page: live status over SSE", () => {
   it("shows steps and counts as events arrive, then the results", async () => {
-    speed = 4;
+    // 2x: the 10 s simulated scan runs 5 s, long enough to read its progress
+    // after the lazy-loaded panel appears.
+    speed = 2;
     const scanId = await startScan();
     renderScan(scanId);
 
-    await waitFor(() =>
-      expect(badge()).toHaveAttribute("data-live-mode", "live"),
+    await waitFor(
+      () => expect(badge()).toHaveAttribute("data-live-mode", "live"),
+      { timeout: 5000 },
     );
-    await waitFor(() =>
-      expect(
-        Number(screen.getByTestId("endpoints-checked").textContent),
-      ).toBeGreaterThan(0),
+    // The progress panel is lazy-loaded; give it and the first counts time.
+    await waitFor(
+      () =>
+        expect(
+          Number(screen.getByTestId("endpoints-checked").textContent),
+        ).toBeGreaterThan(0),
+      { timeout: 5000 },
     );
     expect(
       Number(screen.getByTestId("endpoints-found").textContent),
@@ -121,7 +130,7 @@ describe("scan page: live status over SSE", () => {
     // Initial load + the fetch after the final event; no 2 s polling.
     expect(resultsCalls).toBeLessThanOrEqual(3);
     expect(streamCalls).toBe(1);
-  });
+  }, 15_000);
 
   it("does not open a stream for a finished scan", async () => {
     renderScan("11111111-1111-4111-8111-111111111111");

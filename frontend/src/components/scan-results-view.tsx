@@ -1,14 +1,15 @@
 "use client";
 
-import { RotateCcw, RotateCw, WifiOff } from "lucide-react";
+import { Download, RotateCcw, RotateCw, WifiOff } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useMemo, useRef } from "react";
 
 import { ErrorState } from "@/components/error-state";
 import { LoadingSkeleton } from "@/components/loading-skeleton";
-import { ExportMenu } from "@/components/results/export-menu";
+
 import { FindingsPanel } from "@/components/results/findings-panel";
-import { LiveScanProgress } from "@/components/results/live-progress";
+
 import { ScanSummary } from "@/components/results/scan-summary";
 import { Button } from "@/components/ui/button";
 import { rankFindings } from "@/lib/findings";
@@ -23,6 +24,29 @@ import { ApiRequestError, MAX_RETRIES } from "@/lib/query-client";
 import { useFindingsView } from "@/lib/use-findings-view";
 import { wasCancelled } from "@/lib/live-status";
 import { useLiveScan } from "@/lib/use-live-scan";
+
+// Loaded only when needed: the export menu (Base UI menu and its positioning
+// code) and the live progress panel (only while a scan runs).
+const ExportMenu = dynamic(
+  () => import("@/components/results/export-menu").then((m) => m.ExportMenu),
+  {
+    loading: () => (
+      <Button variant="outline" disabled>
+        <Download aria-hidden />
+        Export
+      </Button>
+    ),
+  },
+);
+const LiveScanProgress = dynamic(
+  () =>
+    import("@/components/results/live-progress").then(
+      (m) => m.LiveScanProgress,
+    ),
+  {
+    loading: () => <LoadingSkeleton variant="card" label="Loading progress…" />,
+  },
+);
 
 /**
  * One scan: follows it live over the SSE stream while it is queued or
