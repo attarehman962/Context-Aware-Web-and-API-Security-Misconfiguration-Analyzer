@@ -5,9 +5,12 @@ import { defineConfig, devices } from "@playwright/test";
 // Set E2E_BASE_URL to test an already-running app instead, e.g. the
 // docker compose frontend: E2E_BASE_URL=http://localhost:3000 npm run test:e2e
 //
-// The `real-stack` project scans Atta's demo target through the real API and
-// runs only via `npm run test:e2e:real` (scripts/e2e-real.mjs), which serves
-// the app on :3000 (allowed by the API's CORS list) against the live API.
+// `npm run test:e2e` builds the app in mock mode (MSW, no backend), so every
+// page has data for the flows and the axe accessibility checks.
+//
+// The `real-stack` project scans through the real API and runs only via
+// `npm run test:e2e:real` (scripts/e2e-real.mjs), which serves the app on
+// :3000 (allowed by the API's CORS list) against the live API.
 const PORT = Number(process.env.E2E_PORT ?? 3100);
 const baseURL = process.env.E2E_BASE_URL ?? `http://localhost:${PORT}`;
 const realStack = process.env.E2E_REAL_STACK === "1";
@@ -42,7 +45,10 @@ export default defineConfig({
     ? undefined
     : {
         command: "npm run build && npm run start",
-        env: { PORT: String(PORT) },
+        env: {
+          PORT: String(PORT),
+          NEXT_PUBLIC_USE_MOCK: realStack ? "false" : "true",
+        },
         url: baseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 180_000,

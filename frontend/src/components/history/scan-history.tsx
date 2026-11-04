@@ -78,7 +78,7 @@ export function ScanHistory() {
   const page = paginate(matching, view.page);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex min-w-0 flex-col gap-4">
       <SearchBox
         value={view.query}
         onChange={(query) => setView({ query, page: 1 })}
@@ -149,8 +149,10 @@ function HistoryTable({
   scans: ScanStatus[];
   onOpen: (scanId: string) => void;
 }) {
+  // relative: the cells' sr-only labels are absolutely positioned; without a
+  // positioned wrapper they escape the scroll box and widen the page.
   return (
-    <div className="overflow-x-auto rounded-xl border">
+    <div className="relative w-full min-w-0 overflow-x-auto rounded-xl border">
       <table className="w-full text-left text-sm">
         <caption className="sr-only">Past scans, newest first</caption>
         <thead className="border-b bg-muted/50 text-muted-foreground">

@@ -232,7 +232,7 @@ function VectorSection({ finding }: { finding: Finding }) {
         <VectorError vector={context.vector} error={context.error} />
       )}
       {rows.length > 0 && (
-        <div className="overflow-x-auto rounded-lg border bg-card">
+        <div className="relative overflow-x-auto rounded-lg border bg-card">
           <table className="w-full text-left text-sm">
             <caption className="sr-only">
               CVSS metrics of the base vector and of the context-aware vector
@@ -306,7 +306,10 @@ function VectorRow({
     >
       <th scope="row" className="px-2 py-1 font-normal">
         <span className="font-mono text-xs">{row.code}</span>{" "}
-        <span className="text-muted-foreground">{row.name}</span>
+        {/* Grey on the highlight tint fails 4.5:1; changed rows use their own colour. */}
+        <span className={row.changed ? undefined : "text-muted-foreground"}>
+          {row.name}
+        </span>
       </th>
       <td className="px-2 py-1">{row.base ?? "—"}</td>
       <td className="px-2 py-1">
