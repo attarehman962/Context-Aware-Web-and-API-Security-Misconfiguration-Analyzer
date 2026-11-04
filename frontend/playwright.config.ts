@@ -29,15 +29,19 @@ export default defineConfig({
     ? [
         {
           name: "real-stack",
-          testMatch: /real-stack\.spec\.ts/,
+          // Demo target (real-stack) and the full flow on an eval target
+          // (eval-flow, which sets its own longer timeout).
+          testMatch: /(real-stack|eval-flow)\.spec\.ts/,
           timeout: 180_000,
+          // A retry would re-run a scan of up to 20 minutes; fail fast instead.
+          retries: 0,
           use: { ...devices["Desktop Chrome"] },
         },
       ]
     : [
         {
           name: "chromium",
-          testIgnore: /real-stack\.spec\.ts/,
+          testIgnore: /(real-stack|eval-flow)\.spec\.ts/,
           use: { ...devices["Desktop Chrome"] },
         },
       ],
