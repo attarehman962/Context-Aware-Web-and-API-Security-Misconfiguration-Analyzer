@@ -275,3 +275,19 @@ def test_tls008_hostname_mismatch():
 def test_tls_rules_never_fire_without_a_probe():
     for rule_id in ("TLS-001", "TLS-002", "TLS-003", "TLS-004", "TLS-008"):
         assert_rule_no_fire(rule_id, context(tls=None))
+
+
+def test_a_check_with_a_spec_reports_the_spec_vector():
+    """One check id, one base vector: a legacy rule whose id has a checks.yaml
+    spec (the five blocked ones) reports the spec's vector, not the catalog's."""
+    from app.core.checks.base import make
+    from app.core.checks.catalog import CATALOG
+    from app.core.checks.registry import load_specs
+    from app.core.cvss31 import base_score
+
+    specs = load_specs()
+    for rule_id in sorted(set(CATALOG) & set(specs)):
+        finding = make(rule_id, "evidence")
+        assert finding.cvss_vector == specs[rule_id].base_cvss_vector, rule_id
+        assert finding.base_score == base_score(specs[rule_id].base_cvss_vector), rule_id
+    assert make("HDR-009").cvss_vector == CATALOG["HDR-009"].cvss_vector    # no spec

@@ -51,7 +51,7 @@ formula), 0 not implemented. Tests: 62 pass,
 | HDR-006 | Missing Permissions-Policy | yes | spec registry (`security_headers`) | yes | 3 | pass |
 | HDR-007 | Server Version Banner | yes | spec registry (`security_headers`) | yes | 2 | pass |
 | HDR-008 | Framework Version Banner | yes | spec registry (`security_headers`) | yes | 2 | pass |
-| HDR-009 | Missing Cross-Origin-Opener-Policy | no | legacy `@rule` (`headers`) | yes | 3 | pass |
+| HDR-009 | Missing Cross-Origin-Opener-Policy | no | legacy `@rule` (`headers`) | yes | 4 | pass |
 | HDR-010 | Missing Cross-Origin-Resource-Policy | no | legacy `@rule` (`headers`) | yes | 3 | pass |
 | HDR-011 | Weak cache control on sensitive endpoint | no | legacy `@rule` (`headers`) | yes | 1 | pass |
 | HDR-012 | Missing Expect-CT / CT enforcement | no | legacy `@rule` (`headers`) | yes | 1 | pass |

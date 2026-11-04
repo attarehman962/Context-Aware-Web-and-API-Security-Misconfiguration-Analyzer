@@ -83,22 +83,37 @@ def rule(fn: DetectFn) -> DetectFn:
     return fn
 
 
+def base_vector(rule_id: str) -> str:
+    """The check's base vector: Asim's checks.yaml spec when the id has one, else
+    the catalog's. The five specs still run as legacy rules, and one check id must
+    carry one vector whichever way it runs."""
+    from app.core.checks.registry import load_specs
+    from app.core.specs import SpecError
+
+    try:
+        spec = load_specs().get(rule_id)
+    except SpecError:                   # no or invalid checks.yaml: catalog only
+        spec = None
+    return spec.base_cvss_vector if spec is not None else CATALOG[rule_id].cvss_vector
+
+
 def make(rule_id: str, evidence: str | None = None) -> RawFinding:
     """Build a RawFinding from catalog metadata + runtime evidence.
 
-    The base score is computed from the catalog's CVSS vector, never taken from
-    its hand-written ``base_score``: 31 entries disagree with their own vector
-    (``make validate-config`` lists them), and the API promises that
+    The base score is computed from the vector (:func:`base_vector`), never taken
+    from the catalog's hand-written ``base_score``: 31 entries disagree with their
+    own vector (``make validate-config`` lists them), and the API promises that
     ``base_score`` is the official score of ``cvss_vector``.
     """
     meta = CATALOG[rule_id]
-    score = vector_base_score(meta.cvss_vector)
+    vector = base_vector(rule_id)
+    score = vector_base_score(vector)
     return RawFinding(
         rule_id=meta.rule_id,
         title=meta.name,
         category=meta.category,
         base_severity=severity_for(score),
-        cvss_vector=meta.cvss_vector,
+        cvss_vector=vector,
         base_score=score,
         evidence=evidence,
         impact=meta.impact,
