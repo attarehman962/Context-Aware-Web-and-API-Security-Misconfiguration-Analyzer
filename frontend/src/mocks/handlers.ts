@@ -9,7 +9,7 @@
  * Paths match on any origin (`*`), so they work whatever the API base URL is.
  */
 
-import { http, HttpResponse } from "msw";
+import { http, HttpResponse, ws } from "msw";
 
 import type {
   ApiErrorCode,
@@ -33,6 +33,7 @@ import {
 import { findingDetail } from "./finding-detail";
 import { LARGE_SCAN_ID, largeScanResults } from "./large-scan";
 import {
+  simulatedEvents,
   simulatedResults,
   simulatedScanIds,
   startSimulatedScan,
@@ -64,12 +65,29 @@ const CSV_COLUMNS = [
   "chain_ids",
 ] as const;
 
+/** Live progress socket, any origin (backend app/api/routes/ws.py). */
+const liveSocket = ws.link(/\/ws\/scans\/[^/?#]+$/);
+/** How often a simulated scan's socket sends the events due by then. */
+export const LIVE_TICK_MS = 300;
+
+/**
+ * How the mock live socket behaves: `normal` streams progress like the
+ * backend; `drop` closes at once; `error` sends the backend's "poll status"
+ * error. Tests use the last two to check the fallback to polling.
+ */
+export type LiveSocketBehaviour = "normal" | "drop" | "error";
+
 export interface HandlerOptions {
   /** Clock for the simulated scans; tests pass a fake one. */
   now?: () => number;
+  /** Read on every connection, so a test can change it between cases. */
+  liveSocket?: () => LiveSocketBehaviour;
 }
 
-export function createHandlers({ now = Date.now }: HandlerOptions = {}) {
+export function createHandlers({
+  now = Date.now,
+  liveSocket: liveBehaviour = () => "normal",
+}: HandlerOptions = {}) {
   function findResults(id: string): ScanResults | null {
     switch (id) {
       case DONE_SCAN_ID:
@@ -102,6 +120,60 @@ export function createHandlers({ now = Date.now }: HandlerOptions = {}) {
   }
 
   return [
+    liveSocket.addEventListener("connection", ({ client }) => {
+      const id = decodeURIComponent(client.url.pathname.split("/").pop() ?? "");
+      const send = (message: object) => client.send(JSON.stringify(message));
+      const behaviour = liveBehaviour();
+      if (behaviour === "drop") {
+        client.close();
+        return;
+      }
+      if (behaviour === "error") {
+        send({
+          type: "error",
+          message: "progress stream unavailable; poll status",
+        });
+        client.close();
+        return;
+      }
+      const results = UUID.test(id) ? findResults(id) : null;
+      if (!results) {
+        send({
+          type: "error",
+          message: UUID.test(id) ? "scan not found" : "invalid scan id",
+        });
+        client.close();
+        return;
+      }
+      const { scan } = results;
+      const terminal = scan.status === "DONE" || scan.status === "FAILED";
+      send({
+        type: "snapshot",
+        scan_id: id,
+        // The socket still uses the old public name for DONE.
+        status: scan.status === "DONE" ? "COMPLETED" : scan.status,
+        percent: scan.progress,
+        stage: scan.stage,
+        terminal,
+      });
+      if (terminal) {
+        client.close();
+        return;
+      }
+      // Fixed example scans never move; simulated ones replay the pipeline.
+      let sent = 0;
+      const timer = setInterval(() => {
+        const due = simulatedEvents(id, now());
+        for (const event of due.slice(sent)) send({ scan_id: id, ...event });
+        sent = due.length;
+        if (due.at(-1)?.stage === "completed") {
+          clearInterval(timer);
+          client.close();
+        }
+      }, LIVE_TICK_MS);
+      client.addEventListener("close", () => clearInterval(timer));
+    }),
+
     http.post("*/api/scan", async ({ request }) => {
       const body: unknown = await request.json().catch(() => undefined);
       const issues = validateScanRequest(body);
