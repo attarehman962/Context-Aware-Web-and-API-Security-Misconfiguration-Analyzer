@@ -26,6 +26,17 @@ const PAGES: {
     ready: (p) => p.locator("tbody tr").first().waitFor(),
   },
   {
+    name: "evaluation",
+    path: "/evaluation",
+    // Open every "Show the numbers" table so axe checks those too.
+    ready: async (p) => {
+      await p.getByRole("heading", { level: 1, name: "Evaluation" }).waitFor();
+      await p.evaluate(() =>
+        document.querySelectorAll("details").forEach((d) => (d.open = true)),
+      );
+    },
+  },
+  {
     name: "results",
     path: DONE,
     ready: (p) => p.getByRole("heading", { name: "Findings" }).waitFor(),
