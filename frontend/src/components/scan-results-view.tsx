@@ -1,6 +1,6 @@
 "use client";
 
-import { RotateCw, WifiOff } from "lucide-react";
+import { RotateCcw, RotateCw, WifiOff } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef } from "react";
 
@@ -11,6 +11,7 @@ import { LiveScanProgress } from "@/components/results/live-progress";
 import { ScanSummary } from "@/components/results/scan-summary";
 import { Button } from "@/components/ui/button";
 import { rankFindings } from "@/lib/findings";
+import { rescanHref } from "@/lib/history";
 import {
   LIVE_SAFETY_POLL_MS,
   POLL_INTERVAL_MS,
@@ -91,7 +92,21 @@ export function ScanResultsView({ scanId }: { scanId: string }) {
     );
   }
 
-  const { scan, chains } = results.data;
+  const { chains } = results.data;
+  // While live, the socket is newer than the last poll (which may be up to
+  // 15 s old): show its status, progress and stage until the scan finishes.
+  const polled = results.data.scan;
+  const scan =
+    live.mode === "live" &&
+    live.progress.status === "RUNNING" &&
+    !isFinished(polled)
+      ? {
+          ...polled,
+          status: "RUNNING" as const,
+          progress: Math.max(polled.progress, live.progress.percent),
+          stage: live.progress.stage ?? polled.stage,
+        }
+      : polled;
 
   return (
     <div className="flex flex-col gap-6">
@@ -99,6 +114,18 @@ export function ScanResultsView({ scanId }: { scanId: string }) {
         scan={scan}
         ranked={scan.status === "DONE" ? ranked : undefined}
       />
+      {isFinished(scan) && (
+        <div>
+          <Button
+            variant="outline"
+            nativeButton={false}
+            render={<Link href={rescanHref(scan)} />}
+          >
+            <RotateCcw aria-hidden />
+            Re-scan this target
+          </Button>
+        </div>
+      )}
 
       {retryNote && <RetryNote text={retryNote} />}
       {results.isError && (
