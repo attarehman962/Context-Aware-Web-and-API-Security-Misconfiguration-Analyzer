@@ -105,3 +105,21 @@ def test_limitation_marked_on_blackbox_checks():
     ctx = _ctx(path="/api/users/123", ctype="application/json", body='{"id":123}')
     bola = [f for f in run_checks(ctx) if f.rule_id == "API-006"]
     assert bola and bola[0].limitation
+
+
+def test_catalog_and_checks_yaml_agree_on_every_shared_vector():
+    """One check id, one base vector: checks.yaml is the reviewed source."""
+    from app.core.checks.registry import load_specs
+
+    specs = load_specs()
+    differ = {cid: (CATALOG[cid].cvss_vector, specs[cid].base_cvss_vector)
+              for cid in set(CATALOG) & set(specs)
+              if CATALOG[cid].cvss_vector != specs[cid].base_cvss_vector}
+    assert not differ, differ
+
+
+def test_catalog_base_score_is_the_score_of_its_vector():
+    from app.core.cvss31 import base_score
+
+    for meta in CATALOG.values():
+        assert meta.base_score == base_score(meta.cvss_vector), meta.rule_id

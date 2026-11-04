@@ -2,7 +2,7 @@
 
     python scripts/validate_specs.py checks   # config/checks.yaml (make validate-checks)
     python scripts/validate_specs.py all      # + cvss_mapping.yaml, chains.yaml and a
-                                              #   catalog.py score report (make validate-config)
+                                              #   catalog.py vector check (make validate-config)
 
 Exit status 0 when every file is valid, 1 otherwise. Problems are printed one
 per line as ``path: location: message``. Paths default to ``settings.CONFIG_DIR``;
@@ -20,18 +20,18 @@ from app.core.cvss31 import CvssVectorError, base_score
 from app.core.specs import SpecError, load_chains, load_checks, load_cvss_mapping
 
 
-def catalog_score_mismatches() -> list[str]:
-    """Catalog rules whose recorded base score disagrees with their own vector."""
+def catalog_vector_problems(spec_vectors: dict[str, str]) -> list[str]:
+    """Catalog vectors that don't parse, or differ from the id's checks.yaml spec."""
     out = []
     for meta in CATALOG.values():
         try:
-            computed = base_score(meta.cvss_vector)
+            base_score(meta.cvss_vector)
         except CvssVectorError as exc:
             out.append(f"{meta.rule_id}: invalid vector {meta.cvss_vector!r}: {exc}")
             continue
-        if computed != meta.base_score:
-            out.append(f"{meta.rule_id}: base_score {meta.base_score} but "
-                       f"{meta.cvss_vector} scores {computed}")
+        spec = spec_vectors.get(meta.rule_id)
+        if spec is not None and spec != meta.cvss_vector:
+            out.append(f"{meta.rule_id}: {meta.cvss_vector} but checks.yaml has {spec}")
     return out
 
 
@@ -45,10 +45,12 @@ def main(argv: list[str] | None = None) -> int:
     ok = True
     known_ids = set(CATALOG)
     scores: dict[str, float] = {}
+    vectors: dict[str, str] = {}
     try:
         checks = load_checks(cfg / "checks.yaml")
         known_ids |= {c.check_id for c in checks.checks}
         scores = {c.check_id: c.base_score for c in checks.checks}
+        vectors = {c.check_id: c.base_cvss_vector for c in checks.checks}
         summary = ", ".join(f"{c.check_id} ({c.base_score})" for c in checks.checks)
         print(f"OK   {cfg / 'checks.yaml'}: {len(checks.checks)} checks: {summary}")
     except SpecError as exc:
@@ -68,12 +70,15 @@ def main(argv: list[str] | None = None) -> int:
         except SpecError as exc:
             ok = False
             _report(exc)
-        mismatches = catalog_score_mismatches()
-        if mismatches:
-            print(f"WARN backend/app/core/checks/catalog.py: {len(mismatches)} rules' "
-                  "base_score disagrees with their CVSS vector:")
-            for line in mismatches:
+        problems = catalog_vector_problems(vectors)
+        if problems:
+            ok = False
+            print(f"FAIL backend/app/core/checks/catalog.py: {len(problems)} vectors:")
+            for line in problems:
                 print(f"     {line}")
+        else:
+            print("OK   backend/app/core/checks/catalog.py: every vector parses and "
+                  "matches checks.yaml")
     return 0 if ok else 1
 
 

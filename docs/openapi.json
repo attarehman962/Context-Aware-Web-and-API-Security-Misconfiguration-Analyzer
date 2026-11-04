@@ -449,8 +449,8 @@
                       "cwe_map": [
                         "CWE-306"
                       ],
-                      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
-                      "base_score": 7.5,
+                      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N",
+                      "base_score": 9.1,
                       "final_score": 10.0,
                       "score_reasons": [],
                       "severity_bucket": "CRITICAL",
@@ -479,8 +479,8 @@
                       "cwe_map": [
                         "CWE-538"
                       ],
-                      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
-                      "base_score": 7.5,
+                      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N",
+                      "base_score": 9.1,
                       "final_score": 10.0,
                       "score_reasons": [],
                       "severity_bucket": "CRITICAL",
@@ -786,8 +786,8 @@
                   "cwe_map": [
                     "CWE-538"
                   ],
-                  "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
-                  "base_score": 7.5,
+                  "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N",
+                  "base_score": 9.1,
                   "final_score": 10.0,
                   "score_reasons": [],
                   "severity_bucket": "CRITICAL",
