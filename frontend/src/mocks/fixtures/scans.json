@@ -21,14 +21,15 @@
         "medium": 0,
         "low": 0,
         "info": 0
-      }
+      },
+      "progress_detail": null
     },
     {
       "scan_id": "22222222-2222-4222-8222-222222222222",
       "url": "https://api.example.org",
       "status": "RUNNING",
       "progress": 45,
-      "stage": "analyzing",
+      "stage": "checking",
       "options": {
         "crawl_depth": 1,
         "use_wordlist": true,
@@ -44,6 +45,12 @@
         "medium": 0,
         "low": 0,
         "info": 0
+      },
+      "progress_detail": {
+        "stage": "checking",
+        "endpoints_found": 38,
+        "endpoints_checked": 17,
+        "findings": 29
       }
     },
     {
@@ -67,6 +74,13 @@
         "medium": 3,
         "low": 0,
         "info": 0
+      },
+      "progress_detail": {
+        "stage": "completed",
+        "endpoints_found": 10,
+        "endpoints_checked": 10,
+        "findings": 7,
+        "chains": 1
       }
     },
     {
@@ -90,7 +104,8 @@
         "medium": 0,
         "low": 0,
         "info": 0
-      }
+      },
+      "progress_detail": null
     }
   ],
   "meta": {

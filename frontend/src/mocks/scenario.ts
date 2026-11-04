@@ -8,7 +8,12 @@
  * server. Only its URL and options live in memory (with defaults as fallback).
  */
 
-import type { ScanOptions, ScanResults, ScanStatus } from "@/lib/api-types";
+import type {
+  ProgressDetail,
+  ScanOptions,
+  ScanResults,
+  ScanStatus,
+} from "@/lib/api-types";
 
 import { resultsDone, scanQueued } from "./fixtures";
 
@@ -62,14 +67,16 @@ export function simulatedResults(id: string, now: number): ScanResults | null {
   if (elapsed < SCAN_DURATION_MS) {
     const fraction = (elapsed - QUEUED_MS) / (SCAN_DURATION_MS - QUEUED_MS);
     const progress = Math.min(99, Math.max(1, Math.round(fraction * 100)));
+    const stage = stageAt(progress);
     return {
       ...resultsDone,
       scan: {
         ...base,
         status: "RUNNING",
         progress,
-        stage: stageAt(progress),
+        stage,
         started_at: startedAt,
+        progress_detail: detailAt(stage, progress),
       },
       findings: [],
       chains: [],
@@ -98,15 +105,34 @@ export function simulatedResults(id: string, now: number): ScanResults | null {
 
 /**
  * The real pipeline's stages and the progress at which each starts
- * (backend/app/core/pipeline.py run_pipeline).
+ * (backend/app/core/pipeline.py run_pipeline, contract 1.3).
  */
 const STAGES: [number, string][] = [
-  [92, "correlating"],
-  [15, "analyzing"],
-  [12, "tls"],
+  [92, "scoring"],
+  [12, "checking"],
   [8, "crawling"],
   [0, "initializing"],
 ];
+
+const ENDPOINTS = new Set(
+  resultsDone.findings.map((f) => f.endpoint_url).filter(Boolean),
+).size;
+
+/** progress_detail as the pipeline reports it: counts grow with progress. */
+function detailAt(stage: string, progress: number): ProgressDetail {
+  if (stage === "initializing") return { stage };
+  if (stage === "crawling") return { stage, endpoints_found: 0 };
+  const share = Math.min(1, Math.max(0, (progress - 15) / 70));
+  return {
+    stage,
+    endpoints_found: ENDPOINTS,
+    endpoints_checked:
+      stage === "scoring" ? ENDPOINTS : Math.round(share * ENDPOINTS),
+    findings: Math.round(
+      (stage === "scoring" ? 1 : share) * resultsDone.findings.length,
+    ),
+  };
+}
 
 function stageAt(progress: number): string {
   return STAGES.find(([from]) => progress >= from)![1];
@@ -129,42 +155,4 @@ function originOf(url: string): string {
 /** Like the real API: microsecond precision, e.g. 2026-10-26T17:26:21.445000Z. */
 function iso(ms: number): string {
   return new Date(ms).toISOString().replace(/Z$/, "000Z");
-}
-
-export interface SimulatedEvent {
-  stage: string;
-  percent: number;
-  message: string;
-}
-
-/**
- * The live progress events a simulated scan has emitted by `now`, in the
- * order and wording of the real pipeline (backend core/pipeline.py): one
- * "Analyzing <path>" event per endpoint, then correlating and completed.
- */
-export function simulatedEvents(id: string, now: number): SimulatedEvent[] {
-  const results = simulatedResults(id, now);
-  if (!results || results.scan.status === "QUEUED") return [];
-
-  const paths = [
-    ...new Set(
-      resultsDone.findings
-        .map((f) => f.endpoint_url && new URL(f.endpoint_url).pathname)
-        .filter((p): p is string => Boolean(p)),
-    ),
-  ];
-  const all: SimulatedEvent[] = [
-    { stage: "initializing", percent: 2, message: "Preparing scan" },
-    { stage: "crawling", percent: 8, message: "Discovering endpoints" },
-    { stage: "tls", percent: 12, message: "Probing TLS configuration" },
-    ...paths.map((path, i) => ({
-      stage: "analyzing",
-      percent: 15 + Math.floor((i / paths.length) * 70),
-      message: `Analyzing ${path}`,
-    })),
-    { stage: "correlating", percent: 92, message: "Correlating attack chains" },
-    { stage: "completed", percent: 100, message: "Scan complete" },
-  ];
-  const progress = results.scan.status === "DONE" ? 100 : results.scan.progress;
-  return all.filter((event) => event.percent <= progress);
 }

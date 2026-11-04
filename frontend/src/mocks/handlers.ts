@@ -9,7 +9,7 @@
  * Paths match on any origin (`*`), so they work whatever the API base URL is.
  */
 
-import { http, HttpResponse, ws } from "msw";
+import { http, HttpResponse, sse } from "msw";
 
 import type {
   ApiErrorCode,
@@ -33,7 +33,6 @@ import {
 import { findingDetail } from "./finding-detail";
 import { LARGE_SCAN_ID, largeScanResults } from "./large-scan";
 import {
-  simulatedEvents,
   simulatedResults,
   simulatedScanIds,
   startSimulatedScan,
@@ -65,30 +64,37 @@ const CSV_COLUMNS = [
   "chain_ids",
 ] as const;
 
-/** Live progress socket, any origin (backend app/api/routes/ws.py). */
-const liveSocket = ws.link(/\/ws\/scans\/[^/?#]+$/);
-/** How often a simulated scan's socket sends the events due by then. */
+/** How often a simulated scan's event stream re-reads the scan. */
 export const LIVE_TICK_MS = 300;
 
 /**
- * How the mock live socket behaves: `normal` streams progress like the
- * backend; `drop` closes at once; `error` sends the backend's "poll status"
- * error. Tests use the last two to check the fallback to polling.
+ * How the mock event stream behaves: `normal` sends status events like the
+ * backend; `drop` ends each connection at once (EventSource keeps retrying); `refuse`
+ * answers 503 so EventSource gives up. Tests use the last two to check the
+ * fallback to polling.
  */
-export type LiveSocketBehaviour = "normal" | "drop" | "error";
+export type LiveStreamBehaviour = "normal" | "drop" | "refuse";
 
 export interface HandlerOptions {
   /** Clock for the simulated scans; tests pass a fake one. */
   now?: () => number;
   /** Read on every connection, so a test can change it between cases. */
-  liveSocket?: () => LiveSocketBehaviour;
+  liveStream?: () => LiveStreamBehaviour;
 }
+
+const CANCELLED = "Cancelled by the user.";
 
 export function createHandlers({
   now = Date.now,
-  liveSocket: liveBehaviour = () => "normal",
+  liveStream: liveBehaviour = () => "normal",
 }: HandlerOptions = {}) {
+  /** Scans cancelled through POST /api/scan/{id}/cancel, as they ended. */
+  const cancelled = new Map<string, ScanResults["scan"]>();
+
   function findResults(id: string): ScanResults | null {
+    const stopped = cancelled.get(id);
+    if (stopped)
+      return { ...resultsDone, scan: stopped, findings: [], chains: [] };
     switch (id) {
       case DONE_SCAN_ID:
         return resultsDone;
@@ -120,58 +126,77 @@ export function createHandlers({
   }
 
   return [
-    liveSocket.addEventListener("connection", ({ client }) => {
-      const id = decodeURIComponent(client.url.pathname.split("/").pop() ?? "");
-      const send = (message: object) => client.send(JSON.stringify(message));
-      const behaviour = liveBehaviour();
-      if (behaviour === "drop") {
-        client.close();
-        return;
+    // SSE live status (contract 1.3). A refused or unknown stream answers
+    // like the backend: the error envelope as JSON, not a stream.
+    http.get("*/api/scan/:scanId/events", ({ params }) => {
+      const found = lookup(String(params.scanId));
+      if (found instanceof Response) return found;
+      if (liveBehaviour() === "refuse") {
+        return apiError(503, "INTERNAL_ERROR", "Live status unavailable.");
       }
-      if (behaviour === "error") {
-        send({
-          type: "error",
-          message: "progress stream unavailable; poll status",
-        });
-        client.close();
-        return;
+      return undefined; // on to the stream below
+    }),
+    // Only where EventSource exists (browser, tests): MSW's sse() refuses to
+    // be created without it, and the Next.js server never opens the stream.
+    ...(typeof EventSource === "undefined"
+      ? []
+      : [
+          sse<{ status: string }>(
+            "*/api/scan/:scanId/events",
+            ({ client, params }) => {
+              const id = String(params.scanId);
+              if (liveBehaviour() === "drop") {
+                // The connection ends without an event; EventSource reports an
+                // error and reconnects, which drops again.
+                client.close();
+                return;
+              }
+              client.send({ retry: 3000 });
+              let last = "";
+              const tick = () => {
+                const results = findResults(id);
+                if (!results) return client.close();
+                // Like the backend: a new event only when something shown changed
+                // (severity counts are not part of the live view).
+                const key = JSON.stringify({
+                  ...results.scan,
+                  severity_counts: null,
+                });
+                if (key !== last) {
+                  last = key;
+                  client.send({
+                    event: "status",
+                    data: JSON.stringify(results.scan),
+                  });
+                }
+                const { status } = results.scan;
+                if (status === "DONE" || status === "FAILED") {
+                  clearInterval(timer);
+                  client.close();
+                }
+              };
+              const timer = setInterval(tick, LIVE_TICK_MS);
+              tick();
+            },
+          ),
+        ]),
+
+    http.post("*/api/scan/:scanId/cancel", ({ params }) => {
+      const id = String(params.scanId);
+      const found = lookup(id);
+      if (found instanceof Response) return found;
+      const { scan } = found;
+      if (scan.status === "DONE" || scan.status === "FAILED") {
+        return apiError(409, "SCAN_FINISHED", "The scan has already finished.");
       }
-      const results = UUID.test(id) ? findResults(id) : null;
-      if (!results) {
-        send({
-          type: "error",
-          message: UUID.test(id) ? "scan not found" : "invalid scan id",
-        });
-        client.close();
-        return;
-      }
-      const { scan } = results;
-      const terminal = scan.status === "DONE" || scan.status === "FAILED";
-      send({
-        type: "snapshot",
-        scan_id: id,
-        // The socket still uses the old public name for DONE.
-        status: scan.status === "DONE" ? "COMPLETED" : scan.status,
-        percent: scan.progress,
-        stage: scan.stage,
-        terminal,
+      // The backend stops a running scan at its next step; the mock at once.
+      cancelled.set(id, {
+        ...scan,
+        status: "FAILED",
+        error: CANCELLED,
+        completed_at: new Date(now()).toISOString(),
       });
-      if (terminal) {
-        client.close();
-        return;
-      }
-      // Fixed example scans never move; simulated ones replay the pipeline.
-      let sent = 0;
-      const timer = setInterval(() => {
-        const due = simulatedEvents(id, now());
-        for (const event of due.slice(sent)) send({ scan_id: id, ...event });
-        sent = due.length;
-        if (due.at(-1)?.stage === "completed") {
-          clearInterval(timer);
-          client.close();
-        }
-      }, LIVE_TICK_MS);
-      client.addEventListener("close", () => clearInterval(timer));
+      return HttpResponse.json(scan, { status: 202 });
     }),
 
     http.post("*/api/scan", async ({ request }) => {
