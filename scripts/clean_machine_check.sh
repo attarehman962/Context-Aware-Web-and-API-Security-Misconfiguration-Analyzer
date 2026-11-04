@@ -102,7 +102,9 @@ for _ in $(seq 1 150); do
 done
 echo "    status $status"
 [ "$status" = "DONE" ] || { compose logs --tail=80 worker; fail "demo scan ended $status"; }
-compose logs worker 2>&1 | grep -q "$scan_id" || fail "the worker did not run the scan"
+# grep reads all of it (no -q): an early exit would SIGPIPE `compose logs`, and
+# pipefail would report that as "not found".
+compose logs worker 2>&1 | grep "$scan_id" >/dev/null || fail "the worker did not run the scan"
 
 step "verify results"
 compose exec -T api python -m scripts.verify_scan --api http://localhost:8000 \
