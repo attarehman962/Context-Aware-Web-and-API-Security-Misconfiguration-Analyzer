@@ -130,3 +130,41 @@ function originOf(url: string): string {
 function iso(ms: number): string {
   return new Date(ms).toISOString().replace(/Z$/, "000Z");
 }
+
+export interface SimulatedEvent {
+  stage: string;
+  percent: number;
+  message: string;
+}
+
+/**
+ * The live progress events a simulated scan has emitted by `now`, in the
+ * order and wording of the real pipeline (backend core/pipeline.py): one
+ * "Analyzing <path>" event per endpoint, then correlating and completed.
+ */
+export function simulatedEvents(id: string, now: number): SimulatedEvent[] {
+  const results = simulatedResults(id, now);
+  if (!results || results.scan.status === "QUEUED") return [];
+
+  const paths = [
+    ...new Set(
+      resultsDone.findings
+        .map((f) => f.endpoint_url && new URL(f.endpoint_url).pathname)
+        .filter((p): p is string => Boolean(p)),
+    ),
+  ];
+  const all: SimulatedEvent[] = [
+    { stage: "initializing", percent: 2, message: "Preparing scan" },
+    { stage: "crawling", percent: 8, message: "Discovering endpoints" },
+    { stage: "tls", percent: 12, message: "Probing TLS configuration" },
+    ...paths.map((path, i) => ({
+      stage: "analyzing",
+      percent: 15 + Math.floor((i / paths.length) * 70),
+      message: `Analyzing ${path}`,
+    })),
+    { stage: "correlating", percent: 92, message: "Correlating attack chains" },
+    { stage: "completed", percent: 100, message: "Scan complete" },
+  ];
+  const progress = results.scan.status === "DONE" ? 100 : results.scan.progress;
+  return all.filter((event) => event.percent <= progress);
+}

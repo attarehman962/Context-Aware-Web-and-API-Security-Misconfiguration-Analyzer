@@ -2,18 +2,24 @@
 
 import { RotateCw, WifiOff } from "lucide-react";
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import { ErrorState } from "@/components/error-state";
 import { LoadingSkeleton } from "@/components/loading-skeleton";
 import { FindingsPanel } from "@/components/results/findings-panel";
+import { LiveScanProgress } from "@/components/results/live-progress";
 import { ScanSummary } from "@/components/results/scan-summary";
 import { Button } from "@/components/ui/button";
-import type { ScanStatus } from "@/lib/api-types";
 import { rankFindings } from "@/lib/findings";
-import { useScanResults } from "@/lib/queries";
+import {
+  LIVE_SAFETY_POLL_MS,
+  POLL_INTERVAL_MS,
+  isFinished,
+  useScanResults,
+} from "@/lib/queries";
 import { ApiRequestError, MAX_RETRIES } from "@/lib/query-client";
 import { useFindingsView } from "@/lib/use-findings-view";
+import { useLiveScan } from "@/lib/use-live-scan";
 
 /**
  * One scan: polls GET /api/results/{id} every 2 s while it is queued or
@@ -22,7 +28,23 @@ import { useFindingsView } from "@/lib/use-findings-view";
  * message; every part has a loading and an empty state.
  */
 export function ScanResultsView({ scanId }: { scanId: string }) {
-  const results = useScanResults(scanId);
+  // Poll every 2 s, or only as a safety net while live updates arrive.
+  const liveRef = useRef(false);
+  const results = useScanResults(scanId, {
+    pollIntervalMs: () =>
+      liveRef.current ? LIVE_SAFETY_POLL_MS : POLL_INTERVAL_MS,
+  });
+  const scanRunning = !!results.data && !isFinished(results.data.scan);
+  const live = useLiveScan(scanId, {
+    enabled: scanRunning,
+    onTerminal: () => void results.refetch(),
+  });
+  const { refetch } = results;
+  useEffect(() => {
+    liveRef.current = live.mode === "live";
+    // Dropped to polling: fetch now, which restarts the 2 s cadence.
+    if (live.mode === "polling") void refetch();
+  }, [live.mode, refetch]);
   const [view, setView] = useFindingsView();
   const findings = results.data?.findings;
   const ranked = useMemo(
@@ -98,7 +120,7 @@ export function ScanResultsView({ scanId }: { scanId: string }) {
 
       {(scan.status === "QUEUED" || scan.status === "RUNNING") && (
         <>
-          <Progress scan={scan} />
+          <LiveScanProgress scan={scan} live={live} />
           <section aria-label="Findings" className="flex flex-col gap-2">
             <p className="text-sm text-muted-foreground">
               Findings appear here when the scan is done.
@@ -153,32 +175,6 @@ function isNotFound(error: unknown): boolean {
     error.error.kind === "client" &&
     (error.error.code === "NOT_FOUND" ||
       error.error.code === "VALIDATION_ERROR")
-  );
-}
-
-function Progress({ scan }: { scan: ScanStatus }) {
-  return (
-    <div className="flex flex-col gap-2">
-      <div
-        role="progressbar"
-        aria-label="Scan progress"
-        aria-valuenow={scan.progress}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuetext={`${scan.progress}%${scan.stage ? `, ${scan.stage}` : ""}`}
-        className="h-2 w-full overflow-hidden rounded-full bg-muted"
-      >
-        <div
-          className="h-full rounded-full bg-sev-low-solid transition-[width] motion-reduce:transition-none"
-          style={{ width: `${scan.progress}%` }}
-        />
-      </div>
-      <p className="text-sm text-muted-foreground" aria-live="polite">
-        {scan.status === "QUEUED"
-          ? "Queued, waiting to start…"
-          : `${scan.progress}% done${scan.stage ? ` (${scan.stage})` : ""}. This page updates by itself.`}
-      </p>
-    </div>
   );
 }
 
