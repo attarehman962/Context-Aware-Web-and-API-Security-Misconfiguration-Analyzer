@@ -18,6 +18,11 @@ import { unwrap } from "./query-client";
 
 /** Poll interval while a scan is QUEUED or RUNNING (the contract says 2-3 s). */
 export const POLL_INTERVAL_MS = 2_000;
+/**
+ * While live updates arrive, results are still re-read this often, in case
+ * the socket misses the final event.
+ */
+export const LIVE_SAFETY_POLL_MS = 15_000;
 
 export const queryKeys = {
   results: (scanId: string) => ["results", scanId] as const,
@@ -38,10 +43,17 @@ export function sortByFinalScore(findings: Finding[]): Finding[] {
 }
 
 /**
- * Status and results of a scan; polls until it is DONE or FAILED. Polling
- * stops while the API is failing (after the retries); `refetch` resumes it.
+ * Status and results of a scan; polls every `pollIntervalMs` until it is
+ * DONE or FAILED. A function is read before every poll, so the rate can
+ * follow live updates. Polling stops while the API is failing (after the
+ * retries); `refetch` resumes it.
  */
-export function useScanResults(scanId: string) {
+export function useScanResults(
+  scanId: string,
+  {
+    pollIntervalMs = POLL_INTERVAL_MS,
+  }: { pollIntervalMs?: number | (() => number) } = {},
+) {
   return useQuery({
     queryKey: queryKeys.results(scanId),
     queryFn: async ({ signal }) => {
@@ -52,7 +64,10 @@ export function useScanResults(scanId: string) {
     refetchInterval: (query: Query<ScanResults>) => {
       const data = query.state.data;
       if (query.state.status === "error") return false;
-      return data && isFinished(data.scan) ? false : POLL_INTERVAL_MS;
+      if (data && isFinished(data.scan)) return false;
+      return typeof pollIntervalMs === "function"
+        ? pollIntervalMs()
+        : pollIntervalMs;
     },
     // A finished scan never changes.
     staleTime: (query: Query<ScanResults>) =>
