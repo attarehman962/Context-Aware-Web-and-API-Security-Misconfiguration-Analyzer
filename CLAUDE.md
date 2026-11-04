@@ -148,6 +148,9 @@ npm run test:e2e       # Playwright (e2e/): flows, axe a11y, 600-finding perf; m
 E2E_BASE_URL=http://localhost:3000 npm run test:e2e   # against a running app
 bash frontend/scripts/eval-stack.sh   # (repo root) VAmPI + TLS front + CAWASMA api/worker; `down` to stop
 E2E_TARGET_URL=https://vampi-tls/ npm run test:e2e:real -- eval-flow   # full flow, real stack (CI job frontend-e2e-eval)
+E2E_TARGET_URL=https://demo-target:8443/ npm run test:e2e:real -- definition-of-done   # the 7-item definition of done
+npm run demo:record    # demo video (demo-output/) + docs/screenshots/*.png; DEMO_REAL=1 for the real API
+npm run sync:eval      # copy eval/results/final/*.csv into src/data/evaluation.json (/evaluation page; runs before dev/build)
 npm run lint           # ESLint (next core-web-vitals + typescript, prettier-compatible)
 npm run format         # Prettier write (format:check in CI)
 npm run typecheck      # next typegen && tsc --noEmit

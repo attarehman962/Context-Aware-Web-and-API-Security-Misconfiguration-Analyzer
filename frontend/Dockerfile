@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1
 # CAWASMA frontend: production image for the Next.js app (standalone output).
 #
 #   docker build -t cawasma-frontend \

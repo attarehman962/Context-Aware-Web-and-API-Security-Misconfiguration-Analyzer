@@ -24,4 +24,8 @@ test("app shell has the nav and shows the API mode", async ({ page }) => {
     page.getByRole("heading", { level: 1, name: "Scan history" }),
   ).toBeVisible();
   await expect(page.getByRole("contentinfo")).toContainText(/API: (live|mock)/);
+  await nav.getByRole("link", { name: "Evaluation" }).click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Evaluation" }),
+  ).toBeVisible();
 });

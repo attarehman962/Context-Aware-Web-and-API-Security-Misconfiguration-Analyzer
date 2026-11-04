@@ -6,16 +6,20 @@
     "node": ">=22"
   },
   "scripts": {
+    "predev": "node scripts/sync-eval.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/sync-eval.mjs",
     "build": "next build",
     "start": "node scripts/start-standalone.mjs",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "gen:api": "openapi-typescript ../docs/openapi.json --empty-objects-unknown -o src/lib/api-schema.ts && prettier --write src/lib/api-schema.ts",
+    "sync:eval": "node scripts/sync-eval.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:real": "node scripts/e2e-real.mjs",
+    "demo:record": "playwright test --config playwright.demo.config.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
