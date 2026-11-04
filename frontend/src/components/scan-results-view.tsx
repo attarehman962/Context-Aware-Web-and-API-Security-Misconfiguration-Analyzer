@@ -139,6 +139,7 @@ export function ScanResultsView({ scanId }: { scanId: string }) {
             targetUrl={scan.url}
             view={view}
             onViewChange={setView}
+            scanId={scanId}
           />
         </section>
       )}
