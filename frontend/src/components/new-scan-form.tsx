@@ -1,15 +1,23 @@
 "use client";
 
-import { ChevronRight, CircleAlert, Play } from "lucide-react";
+import { ChevronRight, CircleAlert, Play, RotateCcw } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useId, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 
 import { StatusPill } from "@/components/status-pill";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ScanStatus } from "@/lib/api-types";
+import { isRescan, prefillFromParams } from "@/lib/history";
 import { useCreateScan } from "@/lib/queries";
 import { ApiRequestError } from "@/lib/query-client";
 import {
@@ -24,19 +32,38 @@ import {
 export const AUTHORISATION_LABEL =
   "I own this target or have written permission to test it.";
 
-/** Start a scan: target URL, authorisation, advanced options. */
+/**
+ * Start a scan: target URL, authorisation, advanced options. A re-scan link
+ * (/?url=...&crawl_depth=...) pre-fills the target and options;
+ * authorisation always starts unticked.
+ *
+ * Keyed by the query: Next keeps a visited page mounted, so without the key
+ * a second re-scan link would show the first one's values.
+ */
 export function NewScanForm() {
+  const query = useSearchParams().toString();
+  return <ScanForm key={query} query={query} />;
+}
+
+function ScanForm({ query }: { query: string }) {
   const router = useRouter();
   const createScan = useCreateScan();
   const ids = useIds();
   const urlInput = useRef<HTMLInputElement>(null);
 
-  const [values, setValues] = useState<ScanFormValues>(DEFAULT_SCAN_FORM);
+  const [rescan] = useState(() => isRescan(new URLSearchParams(query)));
+  const [values, setValues] = useState<ScanFormValues>(() =>
+    rescan ? prefillFromParams(new URLSearchParams(query)) : DEFAULT_SCAN_FORM,
+  );
   const [urlTouched, setUrlTouched] = useState(false);
   const [serverErrors, setServerErrors] = useState<SubmitErrors>({
     fields: {},
   });
   const [queued, setQueued] = useState<ScanStatus | null>(null);
+
+  // Leaving the page (Next hides it rather than unmounting) clears the
+  // "queued" panel, so New scan shows the form again, not the last scan.
+  useEffect(() => () => setQueued(null), []);
 
   const urlError =
     serverErrors.fields.url ??
@@ -111,6 +138,16 @@ export function NewScanForm() {
 
   return (
     <form noValidate onSubmit={onSubmit} className="flex flex-col gap-6">
+      {rescan && (
+        <p
+          role="note"
+          className="flex items-start gap-2 rounded-xl border border-sev-low-solid bg-sev-low-bg px-3 py-2 text-sm text-sev-low"
+        >
+          <RotateCcw aria-hidden className="mt-0.5 size-4 shrink-0" />
+          Re-scan: target and options are copied from the earlier scan. Confirm
+          authorisation again before starting.
+        </p>
+      )}
       <div className="flex flex-col gap-2">
         <Label htmlFor={ids.url}>Target URL</Label>
         <Input

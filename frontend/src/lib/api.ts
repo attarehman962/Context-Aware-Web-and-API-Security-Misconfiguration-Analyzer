@@ -14,6 +14,7 @@ import type {
   ExportFormat,
   FindingDetail,
   ResultsQuery,
+  ScanList,
   ScanRequest,
   ScanResults,
   ScanStatus,
@@ -68,6 +69,17 @@ export function getResults(
     `/api/results/${encodeURIComponent(scanId)}${search}`,
     { signal: options.signal },
   );
+}
+
+/** `GET /api/scans`: one page of past scans, newest first (limit 1-100). */
+export function listScans(
+  page: number,
+  limit: number,
+  options: RequestOptions = {},
+): Promise<ApiResult<ScanList>> {
+  return request<ScanList>(`/api/scans?page=${page}&limit=${limit}`, {
+    signal: options.signal,
+  });
 }
 
 /**

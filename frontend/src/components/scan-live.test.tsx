@@ -89,6 +89,12 @@ describe("scan page: live updates", () => {
         Number(screen.getByTestId("endpoints-checked").textContent),
       ).toBeGreaterThan(0),
     );
+    // The summary follows the socket, not the (less frequent) poll.
+    expect(
+      screen
+        .getByRole("region", { name: "Scan summary" })
+        .querySelector("[data-status]"),
+    ).toHaveAttribute("data-status", "RUNNING");
     const steps = screen.getByRole("list", { name: "Steps" });
     expect(within(steps).getAllByRole("listitem")).toHaveLength(3);
     expect(steps.querySelector('[data-step="crawling"]')).toHaveAttribute(

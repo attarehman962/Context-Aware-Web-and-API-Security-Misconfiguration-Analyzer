@@ -1,3 +1,6 @@
+import { Suspense } from "react";
+
+import { LoadingSkeleton } from "@/components/loading-skeleton";
 import { NewScanForm } from "@/components/new-scan-form";
 
 export default function NewScanPage() {
@@ -13,7 +16,10 @@ export default function NewScanPage() {
           only safe, read-only requests.
         </p>
       </div>
-      <NewScanForm />
+      {/* A re-scan link pre-fills the form from the URL query. */}
+      <Suspense fallback={<LoadingSkeleton variant="card" />}>
+        <NewScanForm />
+      </Suspense>
     </div>
   );
 }
