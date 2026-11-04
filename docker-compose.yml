@@ -16,7 +16,7 @@ x-backend: &backend
     context: ./backend
     args:
       INSTALL_ML: ${INSTALL_ML:-true}
-  image: cawasma-backend:dev
+  image: cawasma-backend:${CAWASMA_IMAGE_TAG:-dev}
   env_file:
     - path: .env
       required: false
@@ -25,6 +25,7 @@ x-backend: &backend
     REDIS_URL: redis://redis:6379/0
     CELERY_BROKER_URL: redis://redis:6379/1
     CELERY_RESULT_BACKEND: redis://redis:6379/2
+    LOG_FORMAT: ${LOG_FORMAT:-json}
   volumes:
     # Spec files (checks, CVSS mapping, chains); settings.CONFIG_DIR = /config.
     - ./config:/config:ro
@@ -33,7 +34,7 @@ x-backend: &backend
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16.15-alpine@sha256:0cefaabd882e42bcb2a2f3dc56d3ce4770560ba62fd7f197f1a2e008fd5731ab
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-cawasma}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cawasma}
@@ -52,7 +53,7 @@ services:
     restart: unless-stopped
 
   redis:
-    image: redis:7-alpine
+    image: redis:7.4.11-alpine@sha256:d9436322172a5b482c187bf1f363d3c4fea086fcca6b9c8a94de8f0f39ed3193
     ports:
       - "${REDIS_HOST_PORT:-6379}:6379"
     healthcheck:

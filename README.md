@@ -433,7 +433,7 @@ Add links to the actual diagram files when their repository paths are confirmed.
 
 ## ▶️ Demo the vertical slice
 
-One scan end to end: `POST /api/scan` → background scan → `GET /api/results/{id}`.
+One scan end to end: `POST /api/scan` → Celery worker → `GET /api/results/{id}`.
 The demo target (`backend/scripts/demo_target.py`) is a local HTTPS server
 with every security header **except HSTS**, so the scan reports exactly one
 finding: `HDR-001` *Missing HSTS*, MEDIUM, `final_score` 5.3, with a
@@ -452,10 +452,11 @@ curl -s -i -X POST http://localhost:8000/api/scan \
   -d '{"url": "https://demo-target:8443/", "authorisation_confirmed": true}'
 # -> 202, Location: /api/results/<scan_id>, body {"scan_id": "...", "status": "QUEUED", ...}
 
-# 3. Poll until DONE or FAILED (a few seconds; the first scan after a start
-#    takes ~10-20 s while the NLP model loads)
+# 3. Follow it live (Server-Sent Events; ends after DONE or FAILED), or poll
+#    GET /api/results. The first scan after a start waits a few seconds for the
+#    NLP model to load.
 SCAN_ID=<scan_id from step 2>
-curl -s http://localhost:8000/api/results/$SCAN_ID | jq '.scan.status, .scan.progress'
+curl -sN http://localhost:8000/api/scan/$SCAN_ID/events
 
 # 4. Results, ranked by final_score
 curl -s http://localhost:8000/api/results/$SCAN_ID \
@@ -463,6 +464,12 @@ curl -s http://localhost:8000/api/results/$SCAN_ID \
 
 # 5. History, newest first
 curl -s 'http://localhost:8000/api/scans?limit=5' | jq '.items[] | {scan_id, url, status}'
+
+# 6. Report: json | csv | html | pdf (vectors, why each score differs, chains)
+curl -s -o report.pdf "http://localhost:8000/api/results/$SCAN_ID/export?format=pdf"
+
+# 7. Check everything at once: ranking, recomputable CVSS vectors, every export, SSE
+docker compose exec api python -m scripts.verify_scan --expect HDR-001 -- $SCAN_ID
 
 # Stop (keeps the database volume)
 docker compose -f docker-compose.yml -f docker-compose.demo.yml down
@@ -480,6 +487,13 @@ examples in the same shape (see [`docs/api-contract.md`](docs/api-contract.md)).
 **As a test:** `cd backend && ../.venv/bin/python -m pytest tests/integration/test_vertical_slice.py -q`
 runs the same flow in-process against the demo target bound to this machine's
 private address.
+
+**On a clean machine:** `scripts/clean_machine_check.sh` clones the repo fresh
+and runs all of this (build, migrate, seed, demo scan on the worker, verify) as a
+separate compose project on ports 18000/15446/16379, then tears it down. It needs
+only git, Docker and curl. Every Python dependency is pinned in
+`backend/constraints.txt` and the images are pinned by digest. Scan speed per
+stage: [`docs/performance.md`](docs/performance.md).
 
 The demo override sets `ALLOWED_INTERNAL_HOSTS=demo-target` (lets that one name
 resolve to its private Docker address) and `SCAN_CA_BUNDLE` (trusts the

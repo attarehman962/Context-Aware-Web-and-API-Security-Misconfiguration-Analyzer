@@ -13,6 +13,10 @@ services:
   api:
     environment:
       ALLOWED_INTERNAL_HOSTS: juice-shop,dvwa,vampi,crapi-web,juice-shop-tls,dvwa-tls,vampi-tls,crapi-tls
+      # The harness starts only the api (eval/harness/run_all.py), so its scans
+      # run in the api process rather than waiting for a worker.
+      RUN_SCANS_INLINE: "true"
+      SCAN_RATE_LIMIT: ""
       SCAN_CA_BUNDLE: /eval-tls/ca.pem
     volumes:
       - ./eval/.run/tls:/eval-tls:ro

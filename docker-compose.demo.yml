@@ -13,7 +13,7 @@
 
 services:
   demo-target:
-    image: cawasma-backend:dev
+    image: cawasma-backend:${CAWASMA_IMAGE_TAG:-dev}
     build:
       context: ./backend
       args:

@@ -29,6 +29,8 @@ celery_app.conf.update(
     task_soft_time_limit=1500,
     worker_max_tasks_per_child=50,
     result_expires=86_400,
+    # Keep app.utils.logging's handler (JSON lines with the scan id) in the worker.
+    worker_hijack_root_logger=False,
 )
 
 
