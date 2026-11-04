@@ -125,9 +125,10 @@ services:
     networks: [backend]
     restart: unless-stopped
 
+# No fixed network name: each compose project (e.g. the clean-machine check's
+# cawasma-clean) gets its own, so "postgres" never resolves into another stack.
 networks:
-  backend:
-    name: cawasma-backend
+  backend: {}
 
 volumes:
   pgdata:
