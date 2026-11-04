@@ -1,0 +1,134 @@
+{
+  "split": "test",
+  "embeddings": true,
+  "anchors": "shipped",
+  "n": 113,
+  "accuracy": 0.425,
+  "macro_f1": 0.362,
+  "off_by_two_or_more": 34,
+  "per_class": {
+    "LOW": {
+      "precision": 0.69,
+      "recall": 0.744,
+      "f1": 0.716,
+      "support": 39
+    },
+    "MEDIUM": {
+      "precision": 0.522,
+      "recall": 0.3,
+      "f1": 0.381,
+      "support": 40
+    },
+    "HIGH": {
+      "precision": 0.429,
+      "recall": 0.125,
+      "f1": 0.194,
+      "support": 24
+    },
+    "CRITICAL": {
+      "precision": 0.098,
+      "recall": 0.4,
+      "f1": 0.157,
+      "support": 10
+    }
+  },
+  "confusion": {
+    "LOW": {
+      "LOW": 29,
+      "MEDIUM": 8,
+      "HIGH": 0,
+      "CRITICAL": 2
+    },
+    "MEDIUM": {
+      "LOW": 5,
+      "MEDIUM": 12,
+      "HIGH": 1,
+      "CRITICAL": 22
+    },
+    "HIGH": {
+      "LOW": 7,
+      "MEDIUM": 1,
+      "HIGH": 3,
+      "CRITICAL": 13
+    },
+    "CRITICAL": {
+      "LOW": 1,
+      "MEDIUM": 2,
+      "HIGH": 3,
+      "CRITICAL": 4
+    }
+  },
+  "predicted": {
+    "LOW": 42,
+    "MEDIUM": 23,
+    "CRITICAL": 41,
+    "HIGH": 7
+  },
+  "errors": [
+    "crapi GET /identity/api/auth/forget-password: HIGH -> CRITICAL",
+    "crapi GET /identity/api/auth/login: HIGH -> CRITICAL",
+    "crapi GET /identity/api/auth/signup: HIGH -> CRITICAL",
+    "crapi GET /identity/api/auth/unlock: HIGH -> CRITICAL",
+    "crapi GET /identity/api/auth/v3/check-otp: HIGH -> CRITICAL",
+    "crapi GET /identity/api/auth/v4.0/user/login-with-token: HIGH -> CRITICAL",
+    "crapi GET /identity/api/auth/verify: HIGH -> CRITICAL",
+    "crapi GET /identity/api/mechanic: MEDIUM -> CRITICAL",
+    "crapi GET /identity/api/mechanic/download_report: MEDIUM -> CRITICAL",
+    "crapi GET /identity/api/mechanic/mechanic_report: MEDIUM -> CRITICAL",
+    "crapi GET /identity/api/mechanic/receive_report: MEDIUM -> CRITICAL",
+    "crapi GET /identity/api/mechanic/service_request/:id: MEDIUM -> CRITICAL",
+    "crapi GET /identity/api/mechanic/service_request/:id/comment: MEDIUM -> CRITICAL",
+    "crapi GET /identity/api/mechanic/service_requests: MEDIUM -> CRITICAL",
+    "crapi GET /identity/api/merchant/contact_mechanic: MEDIUM -> CRITICAL",
+    "crapi GET /identity/api/merchant/service_requests/:id: MEDIUM -> CRITICAL",
+    "crapi GET /identity/api/shop/apply_coupon: MEDIUM -> CRITICAL",
+    "crapi GET /identity/api/shop/orders: MEDIUM -> CRITICAL",
+    "crapi GET /identity/api/shop/orders/:id: MEDIUM -> CRITICAL",
+    "crapi GET /identity/api/shop/products: LOW -> CRITICAL",
+    "crapi GET /identity/api/v2/user/change-email: HIGH -> CRITICAL",
+    "crapi GET /identity/api/v2/user/change-phone-number: HIGH -> CRITICAL",
+    "crapi GET /identity/api/v2/user/pictures: MEDIUM -> CRITICAL",
+    "crapi GET /identity/api/v2/user/reset-password: HIGH -> CRITICAL",
+    "crapi GET /identity/api/v2/user/verify-email-token: HIGH -> CRITICAL",
+    "crapi GET /identity/api/v2/user/verify-phone-otp: HIGH -> CRITICAL",
+    "crapi GET /identity/api/v2/user/videos: MEDIUM -> CRITICAL",
+    "crapi GET /identity/api/v2/user/videos/:id: MEDIUM -> CRITICAL",
+    "crapi GET /identity/api/v2/user/videos/convert_video: MEDIUM -> CRITICAL",
+    "crapi GET /identity/api/v2/vehicle/:id/location: MEDIUM -> CRITICAL",
+    "crapi GET /identity/api/v2/vehicle/add_vehicle: MEDIUM -> CRITICAL",
+    "crapi GET /identity/api/v2/vehicle/resend_email: MEDIUM -> CRITICAL",
+    "crapi GET /identity/api/v2/vehicle/vehicles: MEDIUM -> CRITICAL",
+    "juice-shop GET /api-docs: LOW -> MEDIUM",
+    "juice-shop GET /api/Cards: MEDIUM -> CRITICAL",
+    "juice-shop GET /api/Challenges: LOW -> MEDIUM",
+    "juice-shop GET /api/Deliverys: LOW -> MEDIUM",
+    "juice-shop GET /api/Hints: LOW -> MEDIUM",
+    "juice-shop GET /api/Products: LOW -> MEDIUM",
+    "juice-shop GET /api/Quantitys: LOW -> MEDIUM",
+    "juice-shop GET /api/SecurityAnswers: HIGH -> MEDIUM",
+    "juice-shop GET /api/SecurityQuestions: LOW -> MEDIUM",
+    "juice-shop GET /api/Users: CRITICAL -> HIGH",
+    "juice-shop GET /b2b/v2: MEDIUM -> LOW",
+    "juice-shop GET /b2b/v2/orders: CRITICAL -> MEDIUM",
+    "juice-shop GET /encryptionkeys: CRITICAL -> LOW",
+    "juice-shop GET /encryptionkeys/jwt.pub: HIGH -> LOW",
+    "juice-shop GET /encryptionkeys/premium.key: HIGH -> LOW",
+    "juice-shop GET /ftp: MEDIUM -> LOW",
+    "juice-shop GET /ftp/acquisitions.md: MEDIUM -> LOW",
+    "juice-shop GET /ftp/announcement_encrypted.md: MEDIUM -> LOW",
+    "juice-shop GET /ftp/incident-support.kdbx: HIGH -> LOW",
+    "juice-shop GET /metrics: HIGH -> LOW",
+    "juice-shop GET /rest/admin/application-version: LOW -> CRITICAL",
+    "juice-shop GET /rest/deluxe-membership: CRITICAL -> HIGH",
+    "juice-shop GET /rest/memories: MEDIUM -> LOW",
+    "juice-shop GET /rest/order-history/orders: CRITICAL -> MEDIUM",
+    "juice-shop GET /rest/products: LOW -> MEDIUM",
+    "juice-shop GET /rest/user: MEDIUM -> HIGH",
+    "juice-shop GET /rest/user/authentication-details: CRITICAL -> HIGH",
+    "juice-shop GET /rest/user/reset-password: HIGH -> CRITICAL",
+    "juice-shop GET /rest/wallet/balance: MEDIUM -> CRITICAL",
+    "juice-shop GET /support/logs: HIGH -> LOW",
+    "juice-shop GET /support/logs/access.log.2026-10-27: HIGH -> LOW",
+    "juice-shop GET /support/logs/audit.json: HIGH -> LOW"
+  ]
+}

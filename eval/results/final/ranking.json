@@ -1,0 +1,58 @@
+{
+  "k": 10,
+  "tie_samples": 1000,
+  "seed": 13,
+  "targets": [
+    {
+      "target": "juice-shop",
+      "run": "20261104T152231Z",
+      "findings": 623,
+      "priority_items": 9,
+      "critical_items": 6,
+      "ndcg10_before": 0.0,
+      "first_critical_before": null,
+      "ndcg10_after": 0.0,
+      "first_critical_after": null
+    },
+    {
+      "target": "dvwa",
+      "run": "20261104T152231Z",
+      "findings": 113,
+      "priority_items": 10,
+      "critical_items": 6,
+      "ndcg10_before": 0.149,
+      "first_critical_before": 3.6,
+      "ndcg10_after": 0.261,
+      "first_critical_after": 1.0
+    },
+    {
+      "target": "vampi",
+      "run": "20261104T152231Z",
+      "findings": 75,
+      "priority_items": 8,
+      "critical_items": 4,
+      "ndcg10_before": 0.51,
+      "first_critical_before": 2.5,
+      "ndcg10_after": 0.519,
+      "first_critical_after": 1.3
+    },
+    {
+      "target": "crapi",
+      "run": "20261104T152231Z",
+      "findings": 437,
+      "priority_items": 6,
+      "critical_items": 2,
+      "ndcg10_before": 0.382,
+      "first_critical_before": 2.0,
+      "ndcg10_after": 0.436,
+      "first_critical_after": 1.5
+    }
+  ],
+  "mean": {
+    "target": "mean",
+    "ndcg10_before": 0.26,
+    "ndcg10_after": 0.304,
+    "first_critical_before": 2.7,
+    "first_critical_after": 1.267
+  }
+}

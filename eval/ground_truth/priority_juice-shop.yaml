@@ -1,0 +1,35 @@
+# Ground-truth priority order for juice-shop: what a defender should fix first.
+# grade 3 = critical (fix first), 2 = high, 1 = medium, 0 = not a priority.
+# Drafted by eval/harness/ranking.py --init from the issue type's impact tier
+# and the endpoint's hand-labelled sensitivity; never from CAWASMA's scores.
+# Review the grades by hand, then set status: reviewed.
+target: juice-shop
+status: draft
+items:
+- check_id: API-001
+  endpoint: /rest/user/login
+  grade: 3
+- check_id: API-003
+  endpoint: /ftp/acquisitions.md
+  grade: 3
+- check_id: API-003
+  endpoint: /metrics
+  grade: 3
+- check_id: API-003
+  endpoint: /rest/admin/application-configuration
+  grade: 3
+- check_id: INF-002
+  endpoint: /encryptionkeys
+  grade: 3
+- check_id: INF-002
+  endpoint: /ftp
+  grade: 3
+- check_id: HDR-002
+  endpoint: /
+  grade: 1
+- check_id: HDR-005
+  endpoint: /
+  grade: 1
+- check_id: HDR-006
+  endpoint: /
+  grade: 1

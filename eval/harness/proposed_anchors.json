@@ -1,0 +1,6 @@
+{
+  "CRITICAL": "administration admin privileged management configuration settings setup install system secret encryption keys payment transfer refund all users database",
+  "HIGH": "authentication login logout session token password reset recovery verification otp account security diagnostics logs metrics",
+  "MEDIUM": "user profile order history basket address comment post upload report message vehicle",
+  "LOW": "public home about static help documentation product catalogue search faq"
+}

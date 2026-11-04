@@ -1,0 +1,100 @@
+{
+  "split": "dev",
+  "embeddings": true,
+  "anchors": "shipped",
+  "n": 51,
+  "accuracy": 0.392,
+  "macro_f1": 0.297,
+  "off_by_two_or_more": 13,
+  "per_class": {
+    "LOW": {
+      "precision": 0.371,
+      "recall": 1.0,
+      "f1": 0.542,
+      "support": 13
+    },
+    "MEDIUM": {
+      "precision": 0.4,
+      "recall": 0.125,
+      "f1": 0.19,
+      "support": 16
+    },
+    "HIGH": {
+      "precision": 0.5,
+      "recall": 0.417,
+      "f1": 0.455,
+      "support": 12
+    },
+    "CRITICAL": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 10
+    }
+  },
+  "confusion": {
+    "LOW": {
+      "LOW": 13,
+      "MEDIUM": 0,
+      "HIGH": 0,
+      "CRITICAL": 0
+    },
+    "MEDIUM": {
+      "LOW": 12,
+      "MEDIUM": 2,
+      "HIGH": 2,
+      "CRITICAL": 0
+    },
+    "HIGH": {
+      "LOW": 6,
+      "MEDIUM": 0,
+      "HIGH": 5,
+      "CRITICAL": 1
+    },
+    "CRITICAL": {
+      "LOW": 4,
+      "MEDIUM": 3,
+      "HIGH": 3,
+      "CRITICAL": 0
+    }
+  },
+  "predicted": {
+    "LOW": 35,
+    "MEDIUM": 5,
+    "HIGH": 10,
+    "CRITICAL": 1
+  },
+  "errors": [
+    "dvwa GET /config: CRITICAL -> MEDIUM",
+    "dvwa GET /config/config.inc.php: CRITICAL -> MEDIUM",
+    "dvwa GET /config/config.inc.php.dist: CRITICAL -> MEDIUM",
+    "dvwa GET /hackable: MEDIUM -> LOW",
+    "dvwa GET /hackable/flags: MEDIUM -> LOW",
+    "dvwa GET /hackable/users: MEDIUM -> HIGH",
+    "dvwa GET /phpinfo.php: HIGH -> LOW",
+    "dvwa GET /security.php: CRITICAL -> LOW",
+    "dvwa GET /setup.php: CRITICAL -> LOW",
+    "dvwa GET /vulnerabilities/brute: HIGH -> LOW",
+    "dvwa GET /vulnerabilities/captcha: HIGH -> LOW",
+    "dvwa GET /vulnerabilities/csp: MEDIUM -> LOW",
+    "dvwa GET /vulnerabilities/csrf: HIGH -> LOW",
+    "dvwa GET /vulnerabilities/exec: CRITICAL -> LOW",
+    "dvwa GET /vulnerabilities/fi: MEDIUM -> LOW",
+    "dvwa GET /vulnerabilities/javascript: MEDIUM -> LOW",
+    "dvwa GET /vulnerabilities/sqli: MEDIUM -> LOW",
+    "dvwa GET /vulnerabilities/sqli_blind: MEDIUM -> LOW",
+    "dvwa GET /vulnerabilities/weak_id: HIGH -> LOW",
+    "dvwa GET /vulnerabilities/xss_d: MEDIUM -> LOW",
+    "dvwa GET /vulnerabilities/xss_r: MEDIUM -> LOW",
+    "dvwa GET /vulnerabilities/xss_s: MEDIUM -> LOW",
+    "vampi DELETE /users/v1/:id: CRITICAL -> HIGH",
+    "vampi GET /books/v1/:id: MEDIUM -> LOW",
+    "vampi GET /createdb: CRITICAL -> LOW",
+    "vampi GET /me: HIGH -> LOW",
+    "vampi GET /users/v1: CRITICAL -> HIGH",
+    "vampi GET /users/v1/:id: MEDIUM -> HIGH",
+    "vampi GET /users/v1/_debug: CRITICAL -> HIGH",
+    "vampi POST /books/v1: MEDIUM -> LOW",
+    "vampi PUT /users/v1/:id/password: HIGH -> CRITICAL"
+  ]
+}

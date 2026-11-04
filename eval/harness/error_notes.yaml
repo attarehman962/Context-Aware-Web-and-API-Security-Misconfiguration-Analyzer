@@ -2,7 +2,19 @@
 # targets on 2026-10-27). Shown under each check id in eval/results/errors.md.
 # Owner in brackets: who can fix it.
 
-false_positives: {}
+false_positives:
+  API-001: >-
+    [Atta + Asim] The legacy rule fires on any API-looking endpoint without
+    rate-limit headers (VAmPI /, /books/v1, /openapi.json); the checks.yaml spec
+    applies to authentication endpoints only, which the spec format can't yet
+    express (docs/check-coverage.md: needs a path or sensitivity scope in
+    core/specs.py). Proposed answer: endpoints classed HIGH whose path has an
+    auth token (login, signin, token, otp, password, reset).
+  API-003: >-
+    [Atta + Asim] The legacy rule treats VAmPI's /openapi.json, published API
+    documentation, as an unauthenticated data collection. Proposed answer to the
+    spec question: sensitive = HIGH or CRITICAL, and never an API description
+    document (INF-006 already reports those).
 
 false_negatives:
   API-001: >-

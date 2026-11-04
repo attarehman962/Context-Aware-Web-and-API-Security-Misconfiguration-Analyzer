@@ -143,7 +143,39 @@ def scannable_text(response: ResponseInfo) -> str:
             return ""
     elif _looks_binary(body):
         return ""
-    return body[:MAX_SCAN_CHARS]
+    return _without_api_doc_examples(body)[:MAX_SCAN_CHARS]
+
+
+_EXAMPLE_KEYS = frozenset({"example", "examples", "x-example", "default"})
+
+
+def _without_api_doc_examples(body: str) -> str:
+    """An OpenAPI/Swagger document's ``example``/``examples``/``default`` values
+    are sample data written by the API's authors (VAmPI's spec carries a sample
+    JWT and sample emails), not data the endpoint leaks: drop them before
+    scanning. Everything else in the document is still scanned, so a real
+    secret pasted into a description is still found. Any other body is
+    returned unchanged. (Eval tuning on the dev split, docs/evaluation-method.md.)
+    """
+    head = body.lstrip()[:2000]
+    if not head.startswith("{") or not ('"openapi"' in head or '"swagger"' in head):
+        return body
+    try:
+        doc = json.loads(body)
+    except ValueError:
+        return body
+    if not (isinstance(doc, dict) and ("openapi" in doc or "swagger" in doc)
+            and isinstance(doc.get("paths"), dict)):
+        return body
+
+    def strip(node: object) -> object:
+        if isinstance(node, dict):
+            return {k: strip(v) for k, v in node.items() if k not in _EXAMPLE_KEYS}
+        if isinstance(node, list):
+            return [strip(v) for v in node]
+        return node
+
+    return json.dumps(strip(doc))
 
 
 def _looks_binary(body: str) -> bool:

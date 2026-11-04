@@ -1,0 +1,92 @@
+{
+  "split": "dev",
+  "embeddings": true,
+  "anchors": "shipped",
+  "families": "proposed",
+  "n": 51,
+  "accuracy": 0.569,
+  "macro_f1": 0.577,
+  "off_by_two_or_more": 8,
+  "per_class": {
+    "LOW": {
+      "precision": 0.419,
+      "recall": 1.0,
+      "f1": 0.591,
+      "support": 13
+    },
+    "MEDIUM": {
+      "precision": 0.571,
+      "recall": 0.25,
+      "f1": 0.348,
+      "support": 16
+    },
+    "HIGH": {
+      "precision": 0.875,
+      "recall": 0.583,
+      "f1": 0.7,
+      "support": 12
+    },
+    "CRITICAL": {
+      "precision": 1.0,
+      "recall": 0.5,
+      "f1": 0.667,
+      "support": 10
+    }
+  },
+  "confusion": {
+    "LOW": {
+      "LOW": 13,
+      "MEDIUM": 0,
+      "HIGH": 0,
+      "CRITICAL": 0
+    },
+    "MEDIUM": {
+      "LOW": 12,
+      "MEDIUM": 4,
+      "HIGH": 0,
+      "CRITICAL": 0
+    },
+    "HIGH": {
+      "LOW": 4,
+      "MEDIUM": 1,
+      "HIGH": 7,
+      "CRITICAL": 0
+    },
+    "CRITICAL": {
+      "LOW": 2,
+      "MEDIUM": 2,
+      "HIGH": 1,
+      "CRITICAL": 5
+    }
+  },
+  "predicted": {
+    "LOW": 31,
+    "CRITICAL": 5,
+    "MEDIUM": 7,
+    "HIGH": 8
+  },
+  "errors": [
+    "dvwa GET /hackable: MEDIUM -> LOW",
+    "dvwa GET /hackable/flags: MEDIUM -> LOW",
+    "dvwa GET /security.php: CRITICAL -> LOW",
+    "dvwa GET /vulnerabilities/brute: HIGH -> LOW",
+    "dvwa GET /vulnerabilities/captcha: HIGH -> LOW",
+    "dvwa GET /vulnerabilities/csp: MEDIUM -> LOW",
+    "dvwa GET /vulnerabilities/csrf: HIGH -> LOW",
+    "dvwa GET /vulnerabilities/exec: CRITICAL -> LOW",
+    "dvwa GET /vulnerabilities/fi: MEDIUM -> LOW",
+    "dvwa GET /vulnerabilities/javascript: MEDIUM -> LOW",
+    "dvwa GET /vulnerabilities/sqli: MEDIUM -> LOW",
+    "dvwa GET /vulnerabilities/sqli_blind: MEDIUM -> LOW",
+    "dvwa GET /vulnerabilities/weak_id: HIGH -> LOW",
+    "dvwa GET /vulnerabilities/xss_d: MEDIUM -> LOW",
+    "dvwa GET /vulnerabilities/xss_r: MEDIUM -> LOW",
+    "dvwa GET /vulnerabilities/xss_s: MEDIUM -> LOW",
+    "vampi DELETE /users/v1/:id: CRITICAL -> MEDIUM",
+    "vampi GET /books/v1/:id: MEDIUM -> LOW",
+    "vampi GET /users/v1: CRITICAL -> MEDIUM",
+    "vampi GET /users/v1/_debug: CRITICAL -> HIGH",
+    "vampi POST /books/v1: MEDIUM -> LOW",
+    "vampi POST /users/v1/register: HIGH -> MEDIUM"
+  ]
+}

@@ -1,0 +1,5 @@
+run,split,tp,fp,fn,tn,precision,recall,fpr,unlabelled_findings
+before tuning,dev,16,4,2,17,0.8,0.889,0.19,149
+before tuning,test,8,0,7,26,1.0,0.533,0.0,1052
+after tuning,dev,16,4,2,17,0.8,0.889,0.19,147
+after tuning,test,8,0,7,26,1.0,0.533,0.0,1052
