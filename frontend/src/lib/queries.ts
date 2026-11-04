@@ -7,7 +7,7 @@
 
 import { useMutation, useQuery, type Query } from "@tanstack/react-query";
 
-import { createScan, getFindingDetail, getResults } from "./api";
+import { createScan, getFindingDetail, getResults, listScans } from "./api";
 import type {
   Finding,
   ScanRequest,
@@ -25,6 +25,7 @@ export const POLL_INTERVAL_MS = 2_000;
 export const LIVE_SAFETY_POLL_MS = 15_000;
 
 export const queryKeys = {
+  history: ["history"] as const,
   results: (scanId: string) => ["results", scanId] as const,
   finding: (scanId: string, findingId: string) =>
     ["results", scanId, "finding", findingId] as const,
@@ -90,6 +91,35 @@ export function useFindingDetail(
       unwrap(await getFindingDetail(scanId, findingId, { signal })),
     enabled,
     staleTime: Infinity,
+  });
+}
+
+/** GET /api/scans allows at most 100 per page. */
+const HISTORY_FETCH_LIMIT = 100;
+/** Stop after this many pages (10,000 scans) rather than loop forever. */
+const HISTORY_MAX_PAGES = 100;
+
+/**
+ * Every past scan, newest first. The API has no search parameter, so the
+ * history page loads all pages once and searches/pages on the client.
+ */
+export function useScanHistory() {
+  return useQuery({
+    queryKey: queryKeys.history,
+    queryFn: async ({ signal }) => {
+      const scans: ScanStatus[] = [];
+      for (let page = 1; page <= HISTORY_MAX_PAGES; page += 1) {
+        const data = unwrap(
+          await listScans(page, HISTORY_FETCH_LIMIT, { signal }),
+        );
+        scans.push(...data.items);
+        if (page >= data.meta.pages || data.items.length === 0) break;
+      }
+      return scans;
+    },
+    // Running scans change; refresh the list now and then while it is open.
+    refetchInterval: (query: Query<ScanStatus[]>) =>
+      query.state.data?.some((s) => !isFinished(s)) ? 10_000 : false,
   });
 }
 
