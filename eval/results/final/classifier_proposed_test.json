@@ -1,0 +1,68 @@
+{
+  "split": "test",
+  "embeddings": true,
+  "anchors": "shipped",
+  "families": "proposed",
+  "n": 113,
+  "accuracy": 0.487,
+  "macro_f1": 0.454,
+  "off_by_two_or_more": 32,
+  "per_class": {
+    "LOW": {
+      "precision": 0.769,
+      "recall": 0.769,
+      "f1": 0.769,
+      "support": 39
+    },
+    "MEDIUM": {
+      "precision": 0.52,
+      "recall": 0.325,
+      "f1": 0.4,
+      "support": 40
+    },
+    "HIGH": {
+      "precision": 0.889,
+      "recall": 0.333,
+      "f1": 0.485,
+      "support": 24
+    },
+    "CRITICAL": {
+      "precision": 0.1,
+      "recall": 0.4,
+      "f1": 0.16,
+      "support": 10
+    }
+  },
+  "confusion": {
+    "LOW": {
+      "LOW": 30,
+      "MEDIUM": 7,
+      "HIGH": 0,
+      "CRITICAL": 2
+    },
+    "MEDIUM": {
+      "LOW": 5,
+      "MEDIUM": 13,
+      "HIGH": 0,
+      "CRITICAL": 22
+    },
+    "HIGH": {
+      "LOW": 3,
+      "MEDIUM": 1,
+      "HIGH": 8,
+      "CRITICAL": 12
+    },
+    "CRITICAL": {
+      "LOW": 1,
+      "MEDIUM": 4,
+      "HIGH": 1,
+      "CRITICAL": 4
+    }
+  },
+  "predicted": {
+    "LOW": 39,
+    "MEDIUM": 25,
+    "CRITICAL": 40,
+    "HIGH": 9
+  }
+}

@@ -62,6 +62,30 @@ known_issues:
   source: 'official docs: https://github.com/erev0s/VAmPI; observed passive GET/OPTIONS, 2026-10-27 (observed/vampi.json)'
   notes: 404 problem+json.
   verification: unverified
+- endpoint: /openapi.json
+  check_id: API-003
+  expected: absent
+  source: 'official docs: https://github.com/erev0s/VAmPI; hand-checked against the 2026-11-04 scan (dev split, eval tuning)'
+  notes: 'API documentation, published on purpose; not a data collection.'
+  verification: verified
+- endpoint: /
+  check_id: API-001
+  expected: absent
+  source: 'official docs: https://github.com/erev0s/VAmPI; hand-checked against the 2026-11-04 scan (dev split, eval tuning)'
+  notes: 'Not an authentication endpoint (API-001 applies to authentication endpoints only).'
+  verification: verified
+- endpoint: /books/v1
+  check_id: API-001
+  expected: absent
+  source: 'official docs: https://github.com/erev0s/VAmPI; hand-checked against the 2026-11-04 scan (dev split, eval tuning)'
+  notes: 'Public book list, not an authentication endpoint.'
+  verification: verified
+- endpoint: /openapi.json
+  check_id: API-001
+  expected: absent
+  source: 'official docs: https://github.com/erev0s/VAmPI; hand-checked against the 2026-11-04 scan (dev split, eval tuning)'
+  notes: 'API documentation, not an authentication endpoint.'
+  verification: verified
 must_not_fire:
 - check_id: HDR-008
   reason: No X-Powered-By.
