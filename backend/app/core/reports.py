@@ -1,8 +1,10 @@
 """Report rendering (spec sections 25-27): JSON, CSV, HTML, PDF.
 
 Pure, DB-free renderers over the report dict built by
-:func:`app.services.report_service.build_report_data`. All evidence persisted by
-the scanner is already redacted, so reports are safe to share. PDF rendering
+:func:`app.services.report_service.build_report_data` (legacy route) or
+:func:`app.services.contract_service.report_data` (contract export). The HTML
+comes from the Jinja2 template ``app/templates/report.html.j2``; the PDF is that
+same HTML through WeasyPrint. Evidence is redacted when stored and again here. PDF rendering
 uses WeasyPrint, whose native libraries are installed in the Docker image; if
 they are unavailable the API returns a clear 501 rather than crashing.
 """
@@ -11,6 +13,11 @@ from __future__ import annotations
 import csv
 import io
 import json
+from functools import lru_cache
+from pathlib import Path
+from typing import Any
+
+from app.utils.redaction import redact_text
 
 
 class ReportFormatUnavailable(RuntimeError):
@@ -18,7 +25,9 @@ class ReportFormatUnavailable(RuntimeError):
 
 
 def render_json(data: dict) -> str:
-    return json.dumps(data, indent=2, default=str)
+    findings = [{**f, "evidence": redact_evidence(f.get("evidence"))}
+                for f in data.get("findings", [])]
+    return json.dumps({**data, "findings": findings}, indent=2, default=str)
 
 
 _FORMULA_START = ("=", "+", "-", "@", "\t", "\r")
@@ -52,89 +61,110 @@ def render_csv(data: dict) -> str:
     return buf.getvalue()
 
 
-_HTML_TEMPLATE = """<!doctype html>
-<html lang="en"><head><meta charset="utf-8">
-<title>CAWASMA Report — {{ scan.target_url }}</title>
-<style>
- body{font-family:Arial,Helvetica,sans-serif;margin:2rem;color:#1a1a1a}
- h1{font-size:1.5rem} h2{margin-top:1.6rem;border-bottom:2px solid #eee;padding-bottom:.3rem}
- table{border-collapse:collapse;width:100%;margin:.6rem 0;font-size:.85rem}
- th,td{border:1px solid #ddd;padding:.4rem .5rem;text-align:left;vertical-align:top}
- th{background:#f4f4f4}
- .CRITICAL{color:#fff;background:#9b1c1c;padding:1px 6px;border-radius:3px}
- .HIGH{color:#fff;background:#b45309;padding:1px 6px;border-radius:3px}
- .MEDIUM{color:#1a1a1a;background:#fde68a;padding:1px 6px;border-radius:3px}
- .LOW{color:#1a1a1a;background:#d1fae5;padding:1px 6px;border-radius:3px}
- .INFO{color:#1a1a1a;background:#e5e7eb;padding:1px 6px;border-radius:3px}
- .muted{color:#666;font-size:.8rem} .limit{color:#92400e;font-style:italic}
- pre{white-space:pre-wrap;background:#fafafa;padding:.6rem;border:1px solid #eee}
-</style></head><body>
-<h1>CAWASMA Security Report</h1>
-<p class="muted">Target: <strong>{{ scan.target_url }}</strong> &middot;
- Status: {{ scan.status }} &middot; Completed: {{ scan.completed_at or "—" }}</p>
+SEVERITIES = ("CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO")
+TEMPLATE = "report.html.j2"
+_TEMPLATES = Path(__file__).resolve().parents[1] / "templates"
 
-<h2>Executive summary</h2>
-<pre>{{ insight or "No summary available." }}</pre>
-<p>
-{% for s,n in summary.by_severity.items() %}<span class="{{ s }}">{{ s }}: {{ n }}</span>&nbsp;{% endfor %}
-</p>
-<p class="muted">{{ summary.total_findings }} findings &middot;
- {{ summary.total_endpoints }} endpoints &middot;
- {{ summary.total_chains }} attack chains &middot; highest score {{ summary.max_score }}</p>
-
-{% if chains %}
-<h2>Attack chains (context-aware correlation)</h2>
-<table><tr><th>Code</th><th>Chain</th><th>Composite</th><th>Severity</th><th>Members</th></tr>
-{% for c in chains %}<tr><td>{{ c.code }}</td><td>{{ c.name }}<br><span class="muted">{{ c.description }}</span></td>
-<td>{{ c.composite_score }}</td><td><span class="{{ c.severity }}">{{ c.severity }}</span></td>
-<td>{{ c.member_findings|join(", ") }}</td></tr>{% endfor %}
-</table>
-{% endif %}
-
-<h2>Findings (ranked by context-aware score)</h2>
-<table><tr><th>Severity</th><th>Score</th><th>Rule</th><th>Endpoint</th>
-<th>CVSS base</th><th>Context</th></tr>
-{% for f in findings %}<tr>
-<td><span class="{{ f.severity }}">{{ f.severity }}</span></td>
-<td><strong>{{ f.cawasma_final_score }}</strong></td>
-<td>{{ f.rule_id }} — {{ f.title }}
- {% if f.limitation %}<br><span class="limit">Limitation: {{ f.limitation }}</span>{% endif %}</td>
-<td class="muted">{{ f.endpoint_url or "—" }}</td>
-<td>{{ f.cvss_base_score }}</td>
-<td>{{ f.context_class or "—" }} ×{{ f.cawasma_context_multiplier }}
- {% if f.response_bonus %}+{{ f.response_bonus }}{% endif %}</td>
-</tr>{% endfor %}
-</table>
-
-<h2>Endpoints</h2>
-<table><tr><th>Path</th><th>Status</th><th>Context</th><th>Confidence</th><th>Discovered</th></tr>
-{% for e in endpoints %}<tr><td>{{ e.path }}</td><td>{{ e.status_code or "—" }}</td>
-<td>{{ e.context_class or "—" }}</td><td>{{ "%.2f"|format(e.context_confidence or 0) }}</td>
-<td>{{ e.discovered_by }}</td></tr>{% endfor %}
-</table>
-
-{% if tls %}
-<h2>TLS</h2>
-<table><tr><th>Host</th><th>Protocol</th><th>Cipher</th><th>Issuer</th><th>Expires</th><th>Self-signed</th></tr>
-{% for t in tls %}<tr><td>{{ t.host }}</td><td>{{ t.negotiated_protocol }}</td>
-<td>{{ t.negotiated_cipher }}</td><td>{{ t.cert_issuer }}</td>
-<td>{{ t.cert_not_after }}</td><td>{{ t.is_self_signed }}</td></tr>{% endfor %}
-</table>
-{% endif %}
-
-<hr><p class="muted">CAWASMA — Context-Aware Web &amp; API Security Misconfiguration
-Analyzer. The context-aware final score is a custom prioritization metric and is
-not an official CVSS value. Findings marked with a limitation require manual
-verification.</p>
-</body></html>"""
+_METRIC_NAMES = {"CR": "Confidentiality requirement", "IR": "Integrity requirement",
+                 "AR": "Availability requirement"}
+_LEVELS = {"H": "High", "M": "Medium", "L": "Low", "X": "Not defined"}
 
 
-def render_html(data: dict) -> str:
+def _reason_source(source: str) -> str:
+    kind, _, value = source.partition(":")
+    if kind == "sensitivity":
+        return f"endpoint sensitivity is {value}"
+    if kind == "signal":
+        return f"the response contains {value}"
+    return source
+
+
+def score_story(f: dict[str, Any]) -> list[str]:
+    """Plain-language reasons the final score differs from (or equals) the base.
+
+    Spec-registry findings carry ``score_reasons`` from the CVSS environmental
+    scoring (core/cvss.py), e.g. ``CR:H<-sensitivity:CRITICAL+signal:PII``.
+    Legacy findings were scored by the interim formula (docs/06), so their
+    multiplier and response bonus explain the difference.
+    """
+    base, final = f.get("cvss_base_score"), f.get("cawasma_final_score")
+    reasons = list(f.get("score_reasons") or [])
+    lines: list[str] = []
+    if f.get("final_vector") or reasons:
+        lines.append("Scored with CVSS v3.1 environmental metrics: the base vector plus the "
+                     "security requirements this endpoint's context sets.")
+        for r in reasons:
+            if "<-" in r:
+                metric, sources = r.split("<-", 1)
+                name, _, level = metric.partition(":")
+                why = ", ".join(_reason_source(x) for x in sources.split("+"))
+                lines.append(f"{_METRIC_NAMES.get(name, name)} {_LEVELS.get(level, level)}"
+                             f" because {why}.")
+            elif r == "no-context-change":
+                lines.append("Nothing in the context raises a requirement, so the final "
+                             "score equals the base score.")
+            elif r.startswith(("base:", "environmental:", "sensitivity:", "signal:")):
+                continue                     # shown elsewhere (scores, context line)
+            else:
+                lines.append(r)
+    else:
+        mult, bonus = f.get("cawasma_context_multiplier"), f.get("response_bonus")
+        ctx = f.get("context_class")
+        parts = ["Scored with the interim formula: min(10, base × context multiplier "
+                 "+ response bonus)."]
+        if mult not in (None, ""):
+            parts.append(f"Context multiplier ×{mult}"
+                         + (f" for a {ctx} endpoint." if ctx else "."))
+        elif ctx:
+            parts.append(f"Endpoint sensitivity is {ctx}.")
+        signals = ", ".join(f.get("body_signals") or [])
+        if bonus:
+            parts.append(f"Response bonus +{bonus} for sensitive data in the response"
+                         + (f" ({signals})." if signals else "."))
+        elif signals:
+            parts.append(f"The response contains {signals}, which adds a response bonus.")
+        lines.extend(parts)
+    if isinstance(base, int | float) and isinstance(final, int | float):
+        delta = round(final - base, 1)
+        change = "unchanged" if delta == 0 else f"{delta:+.1f}"
+        lines.append(f"Base {base} → final {final} ({change}).")
+    return lines
+
+
+def redact_evidence(value: Any) -> Any:
+    """Defence in depth: evidence is redacted when stored; redact again on the way
+    out so no report format can carry a secret even from an older row."""
+    if isinstance(value, str):
+        return redact_text(value)
+    if isinstance(value, dict):
+        return {k: redact_evidence(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [redact_evidence(v) for v in value]
+    return value
+
+
+def _view(data: dict[str, Any]) -> dict[str, Any]:
+    findings = []
+    for f in data.get("findings", []):
+        f = dict(f)
+        f["evidence"] = redact_evidence(f.get("evidence"))
+        f["score_story"] = score_story(f)
+        findings.append(f)
+    return {**data, "findings": findings, "severities": SEVERITIES}
+
+
+@lru_cache(maxsize=1)
+def _environment() -> Any:
     # Autoescape: titles, URLs and evidence come from the scanned target, so an
     # unescaped Server header or path would be live HTML/JS in the report.
-    from jinja2 import Environment
+    from jinja2 import Environment, FileSystemLoader
 
-    return Environment(autoescape=True).from_string(_HTML_TEMPLATE).render(**data)
+    return Environment(loader=FileSystemLoader(_TEMPLATES), autoescape=True,
+                       trim_blocks=True, lstrip_blocks=True)
+
+
+def render_html(data: dict[str, Any]) -> str:
+    return str(_environment().get_template(TEMPLATE).render(**_view(data)))
 
 
 def render_pdf(data: dict) -> bytes:

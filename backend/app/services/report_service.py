@@ -104,6 +104,7 @@ async def build_report_data(session, scan_id: uuid.UUID) -> dict | None:
             "category": f.category.value, "severity": f.severity_bucket.value,
             "owasp_map": f.owasp_map, "cwe_map": f.cwe_map,
             "cvss_vector": f.cvss_vector, "cvss_base_score": f.base_score,
+            "final_vector": f.final_vector, "score_reasons": f.score_reasons or [],
             "context_class": f.context_class.value if f.context_class else None,
             "cawasma_context_multiplier": f.cawasma_context_multiplier,
             "response_bonus": f.response_bonus,
@@ -116,6 +117,7 @@ async def build_report_data(session, scan_id: uuid.UUID) -> dict | None:
         "chains": [{
             "code": c.chain_code, "name": c.name, "description": c.description,
             "composite_score": c.template_composite_score,
+            "composite_vector": c.composite_vector,
             "severity": c.severity.value,
             "member_findings": sorted({m.check_id for m in c.findings}),
         } for c in chains],

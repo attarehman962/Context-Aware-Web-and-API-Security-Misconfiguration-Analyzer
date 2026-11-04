@@ -51,7 +51,9 @@ from app.utils.redaction import redact_headers
 
 logger = get_logger(__name__)
 
-ProgressFn = Callable[[str, int, str], Awaitable[None]]
+# on_progress(stage, percent, message, detail): detail holds the counts so far,
+# e.g. {"endpoints_found": 42, "endpoints_checked": 17, "findings": 31}.
+ProgressFn = Callable[[str, int, str, dict[str, int]], Awaitable[None]]
 
 # Rules whose score should receive the endpoint's response-body bonus.
 _BONUS_RULES = {"API-013", "API-003", "INF-001", "INF-003", "INF-005"}
@@ -126,7 +128,8 @@ class ScanResult:
     stats: dict
 
 
-async def _noop(stage: str, percent: int, message: str) -> None:  # default progress
+async def _noop(stage: str, percent: int, message: str,
+                detail: dict[str, int]) -> None:  # default progress
     return None
 
 
@@ -319,11 +322,13 @@ async def run_pipeline(target: str, on_progress: ProgressFn | None = None,
     classifier = get_classifier()
     llm = get_llm_client()  # None unless LLM_ENABLED + API key configured
 
-    await report("initializing", 2, "Preparing scan")
+    await report("initializing", 2, "Preparing scan", {})
     spec_registry.load_implementations()
 
-    # Passive scans get an engine that can only send GET/HEAD.
-    async with HttpEngine(allow_private=allow_private, passive_only=passive_only) as engine:
+    # Passive scans get an engine that can only send GET/HEAD; every engine is
+    # scoped to the target's host, so nothing can request another host.
+    async with HttpEngine(allow_private=allow_private, passive_only=passive_only,
+                          scope_host=host) as engine:
         # A target that doesn't answer fails the scan instead of "completing"
         # with findings computed from an empty response.
         seed = await engine.fetch(target, method="GET")
@@ -331,7 +336,7 @@ async def run_pipeline(target: str, on_progress: ProgressFn | None = None,
             raise ScanError(f"Target unreachable: {seed.error or 'no response'}")
 
         # --- Discovery ---------------------------------------------------
-        await report("crawling", 8, "Discovering endpoints")
+        await report("crawling", 8, "Discovering endpoints", {"endpoints_found": 0})
         crawler = Crawler(engine, max_depth=crawl_depth, use_wordlist=use_wordlist)
         discovered = await crawler.crawl(target)
         if not discovered:
@@ -339,7 +344,8 @@ async def run_pipeline(target: str, on_progress: ProgressFn | None = None,
         total = max(len(discovered), 1)
 
         # --- Host-level checks ------------------------------------------
-        await report("tls", 12, "Probing TLS configuration")
+        await report("checking", 12, "Probing TLS configuration",
+                     {"endpoints_found": len(discovered), "endpoints_checked": 0, "findings": 0})
         port = urlparse(target).port or 443
         tls = (await asyncio.to_thread(probe_tls, host, port, allow_private=allow_private)
                if probe else None)
@@ -361,7 +367,9 @@ async def run_pipeline(target: str, on_progress: ProgressFn | None = None,
                 continue
             analyzed.add(de.url)
             pct = 15 + int((i / total) * 70)
-            await report("analyzing", pct, f"Analyzing {de.path}")
+            await report("checking", pct, f"Checking {de.path}",
+                         {"endpoints_found": len(discovered), "endpoints_checked": len(endpoints),
+                          "findings": len(findings)})
 
             result = await engine.fetch(de.url, method="GET")
             expansions = None
@@ -438,7 +446,9 @@ async def run_pipeline(target: str, on_progress: ProgressFn | None = None,
         findings.extend(_host_findings(target, seed, tls, http_probe))
 
         # --- Attack-chain correlation -----------------------------------
-        await report("correlating", 92, "Correlating attack chains")
+        await report("scoring", 92, "Correlating attack chains",
+                     {"endpoints_found": len(discovered), "endpoints_checked": len(endpoints),
+                      "findings": len(findings)})
         chains = correlate(
             [ChainMember(f.raw.rule_id, f.endpoint_index, urlparse(target).netloc.lower())
              for f in findings],
@@ -447,7 +457,9 @@ async def run_pipeline(target: str, on_progress: ProgressFn | None = None,
         _mark_chain_members(findings, chains)
 
         stats = _build_stats(endpoints, findings, chains)
-        await report("completed", 100, "Scan complete")
+        await report("completed", 100, "Scan complete",
+                     {"endpoints_found": len(discovered), "endpoints_checked": len(endpoints),
+                      "findings": len(findings), "chains": len(chains)})
 
     return ScanResult(
         target=target, host=host, endpoints=endpoints,

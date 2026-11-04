@@ -1,4 +1,4 @@
-# CAWASMA API contract v1.2.0
+# CAWASMA API contract v1.3.0
 
 The API the frontend builds against. **Frozen at the end of Sprint 1.**
 Machine-readable version: [`openapi.json`](openapi.json) (generate a typed
@@ -10,7 +10,7 @@ checked against it in CI.
 |---|---|
 | Base URL (dev) | `http://localhost:8000` |
 | Format | JSON, UTF-8. Timestamps are ISO 8601 in UTC (`2026-10-20T09:00:02Z`). Ids are UUIDs. |
-| Version header | every response carries `X-Contract-Version: 1.2.0` |
+| Version header | every response carries `X-Contract-Version: 1.3.0` |
 | Interactive docs | `http://localhost:8000/docs` (routes tagged **contract v1**) |
 | Example responses | [`examples/`](examples/): one JSON file per shape (`results-done.json`, `results-running.json`, `results-failed.json`, `scan-status-queued.json`, `scans.json`, `scan-request.json`, `error.json`), identical to what mock mode returns |
 
@@ -24,7 +24,7 @@ built:
 | `scan_id` | status | use it for |
 |-----------|--------|------------|
 | `11111111-1111-4111-8111-111111111111` | `DONE` | results page: 7 findings, 1 chain, every drill-down field |
-| `22222222-2222-4222-8222-222222222222` | `RUNNING` | progress view (45 %, stage `analyzing`) |
+| `22222222-2222-4222-8222-222222222222` | `RUNNING` | progress view (45 %, stage `checking`, with `progress_detail` counts); its `events` stream sends one event |
 | `33333333-3333-4333-8333-333333333333` | `QUEUED` | what `POST /api/scan` returns (any `https://` URL) |
 | `44444444-4444-4444-8444-444444444444` | `FAILED` | error state (`error` message set) |
 
@@ -83,6 +83,64 @@ Response **`202 Accepted`**: a `ScanStatus` with status `QUEUED`, plus
 | 202 | scan queued | |
 | 400 | URL not https, malformed, private/loopback IP, or does not resolve | `INVALID_TARGET` |
 | 422 | body invalid: `authorisation_confirmed` missing or `false`, `crawl_depth` out of range, unknown field | `VALIDATION_ERROR` |
+| 429 | *since 1.3.* too many scans from this client (default 5 per minute); `Retry-After` gives the seconds to wait | `RATE_LIMITED` |
+| 503 | *since 1.3.* the scan queue (Redis/Celery) is down; the scan is recorded as `FAILED` | `QUEUE_UNAVAILABLE` |
+
+Scans run on the Celery worker. `scan_id` is also the Celery task id.
+
+### `GET /api/scan/{scan_id}/events`: live status (since 1.3)
+
+A [Server-Sent Events](https://html.spec.whatwg.org/multipage/server-sent-events.html)
+stream (`text/event-stream`). Every time the scan's status, progress, stage or
+counts change, it sends one `status` event whose `data` is the `ScanStatus`
+JSON shown above. The first event is sent at once, so the page needs no
+separate first fetch. The stream ends after the event for `DONE` or `FAILED`.
+Then fetch `GET /api/results/{scan_id}` once for the findings.
+
+```
+retry: 3000
+
+event: status
+data: {"scan_id": "...", "status": "RUNNING", "progress": 40, "stage": "checking", "progress_detail": {"stage": "checking", "endpoints_found": 12, "endpoints_checked": 5, "findings": 9}, ...}
+
+: keep-alive
+```
+
+```ts
+const es = new EventSource(`${API}/api/scan/${id}/events`);
+es.addEventListener("status", (e) => {
+  const s = JSON.parse(e.data);           // ScanStatus
+  render(s);
+  if (s.status === "DONE" || s.status === "FAILED") es.close();
+});
+```
+
+Lines starting with `:` are keep-alive comments (every 15 s); `EventSource`
+ignores them. If the connection drops, `EventSource` reconnects by itself after
+`retry` ms, and the first event brings the page up to date. Unknown id: `404`
+with the error envelope (as JSON, not a stream).
+
+**Why SSE and not WebSocket or polling only:** status flows one way (server to
+browser), so a WebSocket's two-way channel adds nothing. SSE is plain HTTP, so
+it works through the same CORS rules and proxies as the other routes, and
+`EventSource` reconnects automatically. The stream reads the scan row from the
+database, so it works whichever Celery worker runs the scan, and the api needs
+no Redis pub/sub for it. Polling `GET /api/results/{scan_id}` every 2–3 s still
+works as a fallback (e.g. in tests).
+
+### `POST /api/scan/{scan_id}/cancel`: stop a scan (since 1.3)
+
+No body. Response **`202 Accepted`**: the scan's `ScanStatus`. A `QUEUED` scan
+becomes `FAILED` at once with `error` `"Cancelled by the user."`. A `RUNNING`
+scan stops at its next progress step (normally within a few seconds) and then
+ends the same way. Partial results are not kept.
+
+| Status | When | `error.code` |
+|--------|------|--------------|
+| 202 | cancel accepted (body is the current `ScanStatus`) | |
+| 404 | no scan with this id | `NOT_FOUND` |
+| 409 | scan already `DONE` or `FAILED` | `SCAN_FINISHED` |
+| 422 | id is not a UUID | `VALIDATION_ERROR` |
 
 ### `GET /api/results/{scan_id}`: status and results
 
@@ -94,7 +152,7 @@ broken by `check_id`), so render them in the order received.
 <!-- example: ScanResults -->
 ```json
 {
-  "contract_version": "1.2.0",
+  "contract_version": "1.3.0",
   "scan": {
     "scan_id": "11111111-1111-4111-8111-111111111111",
     "url": "https://shop.example.com",
@@ -339,7 +397,22 @@ QUEUED ──▶ RUNNING ──▶ DONE
 | `DONE` | finished | 100 | complete |
 | `FAILED` | stopped; `error` says why | where it stopped | empty |
 
-`DONE` and `FAILED` are final. There is no cancel state.
+`DONE` and `FAILED` are final. A cancelled scan ends `FAILED` with `error`
+`"Cancelled by the user."` (there is no separate status value, so the enum is
+unchanged); a scan that runs longer than the server's limit (20 min by default)
+ends `FAILED` with a "timed out" error.
+
+`stage` values today: `initializing`, `crawling`, `checking`, `scoring`,
+`completed`. *Since 1.3* `progress_detail` gives the counts so far (all keys
+optional, `null` before the scan starts):
+
+| key | meaning |
+|-----|---------|
+| `stage` | same as `stage` |
+| `endpoints_found` | endpoints discovered by the crawler |
+| `endpoints_checked` | endpoints the checks have run on |
+| `findings` | findings so far |
+| `chains` | attack chains (set at the end) |
 
 ## Errors
 
@@ -360,6 +433,9 @@ per invalid field, e.g. `{"loc": ["body", "authorisation_confirmed"], "msg":
 | `INVALID_TARGET` | 400 | URL not allowed or not reachable as a public HTTPS target |
 | `NOT_FOUND` | 404 | unknown scan id |
 | `SCAN_NOT_FINISHED` | 409 | export requested before the scan is `DONE` |
+| `SCAN_FINISHED` | 409 | *since 1.3.* cancel requested for a scan that is already `DONE` or `FAILED` |
+| `RATE_LIMITED` | 429 | *since 1.3.* too many `POST /api/scan` calls; wait `Retry-After` seconds |
+| `QUEUE_UNAVAILABLE` | 503 | *since 1.3.* the scan queue is down; try again later |
 | `FORMAT_UNAVAILABLE` | 501 | PDF export not available on this server |
 | `INTERNAL_ERROR` | 500 | bug; the message never contains internals |
 
@@ -389,6 +465,13 @@ be removed once the Next.js app uses the contract routes.
 for history. The old dashboard list must switch to the new fields.
 
 ## Changelog
+
+- **1.3.0** (Sprint 4): additive. Scans run on the Celery worker. `ScanStatus`
+  gains `progress_detail` (counts per stage). New `GET /api/scan/{id}/events`
+  (SSE live status) and `POST /api/scan/{id}/cancel`. `POST /api/scan` can return
+  `429 RATE_LIMITED` (with `Retry-After`) and `503 QUEUE_UNAVAILABLE`. Stage
+  `analyzing` is now `checking`. The HTML/PDF report shows the CVSS vectors, why
+  each final score differs from its base score, and the chains.
 
 - **1.2.0** (Sprint 3): additive. `GET /api/results/{id}` takes `severity`,
   `category`, `owasp`, `in_chain`, `page`, `limit` and then returns

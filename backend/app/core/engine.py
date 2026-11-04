@@ -145,10 +145,13 @@ class HttpEngine:
     def __init__(self, *, allow_private: bool = False, passive_only: bool = False,
                  max_concurrency: int | None = None, timeout: float | None = None,
                  retries: int | None = None, user_agent: str | None = None,
-                 max_response_size: int | None = None) -> None:
+                 max_response_size: int | None = None, scope_host: str | None = None) -> None:
         # allow_private is for the test-suite only (reach a local mock server).
         self._allow_private = allow_private
         self.passive_only = passive_only
+        # The scan's scope: when set, every request -- first URL and each redirect
+        # hop -- must be http(s) to exactly this host, or it is not sent.
+        self.scope_host = scope_host.strip().rstrip(".").lower() if scope_host else None
         self._retries = settings.REQUEST_RETRIES if retries is None else retries
         self._retry_backoff = 0.2
         self._max_response_size = max_response_size or settings.MAX_RESPONSE_SIZE
@@ -173,6 +176,18 @@ class HttpEngine:
             headers={"User-Agent": user_agent or settings.USER_AGENT},
             trust_env=False,                  # env proxies would bypass the pinning
         )
+
+    def in_scope(self, url: str) -> bool:
+        """Whether ``url`` may be requested: http(s) to the scope host (any URL
+        when the engine has no scope)."""
+        if self.scope_host is None:
+            return True
+        try:
+            parsed = httpx.URL(url)
+        except httpx.InvalidURL:
+            return False
+        return (parsed.scheme in ("http", "https")
+                and (parsed.host or "").rstrip(".").lower() == self.scope_host)
 
     async def __aenter__(self) -> HttpEngine:
         return self
@@ -202,6 +217,10 @@ class HttpEngine:
         if self.passive_only and method not in PASSIVE_METHODS:
             result.error = f"Blocked by passive mode: {method} not allowed (GET/HEAD only)."
             return result
+        if not self.in_scope(url):
+            result.error = f"Blocked: {url} is outside the scan's scope ({self.scope_host})."
+            logger.warning("out-of-scope request refused: %s", url)
+            return result
 
         current = url
         chain: list[str] = []
@@ -217,7 +236,7 @@ class HttpEngine:
                 if resp.status_code in _REDIRECTS:
                     location = resp.headers.get("location")
                     nxt = str(httpx.URL(current).join(location)) if location else None
-                    if (nxt is None or not follow_redirects
+                    if (nxt is None or not follow_redirects or not self.in_scope(nxt)
                             or (same_origin_only and not same_origin(url, nxt))):
                         self._capture(result, resp)     # report the redirect itself
                         break

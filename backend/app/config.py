@@ -71,11 +71,19 @@ class Settings(BaseSettings):
     # self-signed certificates (docker-compose.demo.yml). Verification stays on.
     SCAN_CA_BUNDLE: str = ""
 
-    # Start scans on creation: POST /api/scan runs them as a background task,
-    # the deprecated POST /api/scans enqueues them on Celery. Off in tests.
+    # Start scans on creation by queueing them on Celery (cawasma.run_scan).
+    # Off in tests (no broker).
     AUTO_DISPATCH_SCANS: bool = True
-    # Run scans in-process (no Celery/Redis needed). For simple deploys / demos.
+    # Run scans in the api process instead (FastAPI background task; no Celery or
+    # Redis needed). For simple deploys and the in-process end-to-end test.
     RUN_SCANS_INLINE: bool = False
+    # A scan's own time budget (seconds); below the Celery soft limit (1500 s) so
+    # an over-long scan ends FAILED with a message instead of being killed.
+    SCAN_TIMEOUT: float = 1200.0
+    # POST /api/scan per client IP: "<n>/<second|minute|hour>"; empty disables.
+    SCAN_RATE_LIMIT: str = "5/minute"
+    # How often GET /api/scan/{id}/events re-reads the scan (seconds).
+    SSE_POLL_SECONDS: float = 1.0
     # Contract v1 routes answer with example data (app/api/mock.py): no DB or
     # scanner needed. For frontend development only.
     MOCK_API: bool = False
