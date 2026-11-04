@@ -72,7 +72,7 @@ async def test_seed_matches_the_documented_sample(seeded_scope):
 
         env = (await s.execute(select(Finding).where(Finding.check_id == "INF-003"))).scalar_one()
         assert env.severity_bucket is Severity.CRITICAL
-        assert "Sup3rS3cret" not in str(env.evidence)  # body evidence is redacted
+        assert "cawasma-fake-db-password" not in str(env.evidence)  # body evidence is redacted
 
 
 def test_reset_refuses_without_confirmation_or_in_production(monkeypatch):

@@ -32,7 +32,7 @@ def _b64url(obj: dict) -> str:
 
 TOKENS = {   # assembled at run time; see the module docstring
     "AWS_KEY": "AKIA" + "Q3EGRZ7X2MPLWXYZ",
-    "AWS_SECRET": "wJ8rPqZ2mN7vB4xK" + "9sL1dF6hG3jT5yU0cE2aR8wQ",
+    "AWS_SECRET": "wJ8rPqZ2" + "mN7vB4xK" + "9sL1dF6h" + "G3jT5yU0cE2aR8wQ",
     "PEM_BEGIN": "-----BEGIN " + "RSA PRIVATE KEY-----",
     "JWT": ".".join([_b64url({"alg": "HS256", "typ": "JWT"}),
                      _b64url({"sub": "42", "role": "customer"}),

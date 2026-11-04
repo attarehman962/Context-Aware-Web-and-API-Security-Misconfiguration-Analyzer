@@ -133,7 +133,7 @@ RESCAN: list[EndpointSpec] = [
     EndpointSpec(
         "/.env", DiscoveryMethod.WORDLIST, "text/plain",
         body="APP_ENV=production\nDB_HOST=10.0.3.17\n"
-             "DB_PASSWORD=Sup3rS3cret!2024\nSTRIPE_SECRET_KEY=sk_live_51Hx9aQ2eZvKYlo2C\n",
+             "DB_PASSWORD=cawasma-fake-db-password\nSTRIPE_SECRET_KEY=cawasma-fake-stripe-key\n",
         findings=[("INF-003", {"path": "/.env", "status": 200})],
     ),
     EndpointSpec(

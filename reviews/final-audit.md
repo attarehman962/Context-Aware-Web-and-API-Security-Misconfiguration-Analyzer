@@ -169,7 +169,7 @@ Marks: **done**, **partly** (what is missing is said), **missing**, **differentl
 
 | Check | Result | Detail |
 |---|---|---|
-| gitleaks over all history (v8.21.2) | 13 hits, **all fake test values** | 5 Stripe-shaped `sk_live_…` (Atta's tests: test_structured_logging, test_export_reports; old test_redaction/test_body_classifier), 3 JWTs, 3 generic api keys, 1 PEM header, 1 AWS-shaped key in a body_classifier docstring (`AKIAQ3EGRZ7X2MPLWXYZ`, made up). No real credential. The provider-shaped ones should be replaced (push protection blocked one before) and the rest allow-listed in `.gitleaks.toml` |
+| gitleaks over all history (v8.21.2) | 13 hits, **all fake test values** | 5 Stripe-shaped `sk_live_…` (Atta's tests: test_structured_logging, test_export_reports; old test_redaction/test_body_classifier), 3 JWTs, 3 generic api keys, 1 PEM header, 1 AWS-shaped key in a body_classifier docstring (`AKIA…`, made up). No real credential. The provider-shaped ones should be replaced (push protection blocked one before) and the rest allow-listed in `.gitleaks.toml` |
 | .env / key files ever committed | none | only `.env.example` and `frontend/.env.example`; no `.pem`/`.key`/`.kdbx` |
 | real credentials in fixtures | none | fixtures use AWS's documented example key and made-up values |
 | unredacted evidence: live dev DB | none | `pg_dump` of the dev database (14 scans, 3,756 findings) searched for JWTs, AWS keys, PEM blocks, `secret=value` pairs, URL userinfo: 0 hits (the only 16-digit "card" matches are float digits) |

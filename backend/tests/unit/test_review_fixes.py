@@ -55,7 +55,7 @@ def _ids(ctx: CheckContext) -> set[str]:
     ("DB_PASSWORD=pw", "pw"),                       # short values
     ("password=P@ssw0rd!", "P@ssw0rd!"),            # symbols
     ('{"password": "hunter2 secret"}', "hunter2"),  # JSON, quote before the colon
-    ('{"api_key":"sk_live_abcdef123"}', "sk_live"),
+    ('{"api_key":"cawasma-fake-abc123"}', "cawasma-fake"),
     ("AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG", "wJalr"),
 ])
 def test_redaction_masks_common_secret_forms(text, secret):

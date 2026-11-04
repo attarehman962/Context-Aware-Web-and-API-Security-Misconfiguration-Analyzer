@@ -23,7 +23,7 @@ from app.db.models import Finding
 
 pytestmark = pytest.mark.asyncio
 
-SECRET = "sk_live_9f8e7d6c5b4a3210"
+SECRET = "cawasma-fake-9f8e7d6c5b4a3210"
 RAW_EVIDENCE = f"config leak: api_key={SECRET} and Authorization: Bearer abcdefghijklmnop"
 XSS = "<img src=x onerror=alert(1)>"
 

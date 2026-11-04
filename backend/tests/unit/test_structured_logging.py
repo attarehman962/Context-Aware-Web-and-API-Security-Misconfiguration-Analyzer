@@ -47,5 +47,5 @@ def test_tracebacks_are_one_json_field():
 
 def test_secrets_are_redacted_in_both_formats():
     for fmt in (app_logging.JsonFormatter(), app_logging.TextFormatter()):
-        line = fmt.format(_record("got api_key=sk_live_abcdef123456 from %s", "x"))
-        assert "sk_live_abcdef123456" not in line and "REDACTED" in line
+        line = fmt.format(_record("got api_key=cawasma-fake-abcdef123456 from %s", "x"))
+        assert "cawasma-fake-abcdef123456" not in line and "REDACTED" in line

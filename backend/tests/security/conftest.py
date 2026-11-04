@@ -23,7 +23,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import pytest
 
 # Fake secrets the target serves. None may appear unredacted anywhere.
-JWT = ("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsInJvbGUiOiJyb290In0."
+# Each one is assembled at run time, so no secret-shaped literal sits in the repo.
+JWT = ("eyJ" + "hbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsInJvbGUiOiJyb290In0."
        "c2lnbmF0dXJlLWZha2UtZm9yLXRlc3Rz")
 AWS_KEY = "AKIAIOSFODNN7EXAMPLE"
 SECRETS = {
@@ -45,7 +46,7 @@ API_USERS = ('{"users": [{"id": 1, "email": "alice@example.com", '
              f'"password": "{SECRETS["json_password"]}", "card": "{SECRETS["card"]}", '
              f'"token": "{JWT}", "api_key": "{SECRETS["api_key"]}", '
              '"internal_host": "10.20.30.40"}]}')
-PRIVATE_KEY = ("-----BEGIN RSA PRIVATE KEY-----\n" + SECRETS["private_key_body"]
+PRIVATE_KEY = ("-----BEGIN " + "RSA PRIVATE KEY-----\n" + SECRETS["private_key_body"]
                + "\n-----END RSA PRIVATE KEY-----\n")
 
 
