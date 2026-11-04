@@ -8,11 +8,16 @@
         assert_no_fire("HDR-001", response(headers=hsts))
 
 ``tests/checks/test_check_tests.py`` fails if a registered check has no
-``assert_fires`` or no ``assert_no_fire`` call.
+``assert_fires`` or no ``assert_no_fire`` call, or a legacy ``@rule`` no
+``assert_rule_fires`` or ``assert_rule_no_fire`` call.
 """
 from __future__ import annotations
 
-from app.core.checks import registry
+from typing import Any
+
+from app.core.checks import REGISTRY, CheckContext, registry
+from app.core.checks import RawFinding as LegacyFinding
+from app.core.checks.base import DetectFn
 from app.core.checks.registry import RawFinding
 from app.core.contracts import EndpointInfo
 from app.core.engine import ScanResponse
@@ -66,3 +71,43 @@ def assert_no_fire(check_id: str, resp: ScanResponse, ep: EndpointInfo | None = 
     """The check stays silent on this (secure) response."""
     found = _run(check_id, resp, ep)
     assert not found, f"{check_id} fired unexpectedly: {found}"
+
+
+# ---------------------------------------------------------------- legacy rules
+# Legacy ``@rule`` checks read a CheckContext instead; same pattern:
+#     assert_rule_fires("HDR-009", context(headers={}))
+
+def context(url: str = URL, *, status: int = 200, headers: dict[str, str] | None = None,
+            body: str = "", content_type: str = "text/html",
+            cookies: list[str] | None = None, **signals: Any) -> CheckContext:
+    """What the pipeline hands a legacy rule; ``signals`` are the probe fields
+    (``allowed_methods``, ``cors_acao``, ``tls``, ``context_class``, ...)."""
+    from urllib.parse import urlparse
+
+    resp = response(url, status=status, headers=headers, body=body,
+                    content_type=content_type, cookies=cookies)
+    return CheckContext(url=url, path=urlparse(url).path or "/", result=resp, **signals)
+
+
+def legacy_rule_id(fn: DetectFn) -> str:
+    """``api_001_rate_limit`` -> ``API-001``."""
+    prefix, number = fn.__name__.split("_")[:2]
+    return f"{prefix.upper()}-{number}"
+
+
+def _legacy(rule_id: str) -> DetectFn:
+    rules = [fn for fn in REGISTRY if legacy_rule_id(fn) == rule_id]
+    assert len(rules) == 1, f"{rule_id} is not a legacy rule"
+    return rules[0]
+
+
+def assert_rule_fires(rule_id: str, ctx: CheckContext) -> LegacyFinding:
+    found = _legacy(rule_id)(ctx)
+    assert found is not None, f"{rule_id} did not fire"
+    assert found.rule_id == rule_id and found.evidence, "rule id and evidence"
+    return found
+
+
+def assert_rule_no_fire(rule_id: str, ctx: CheckContext) -> None:
+    found = _legacy(rule_id)(ctx)
+    assert found is None, f"{rule_id} fired unexpectedly: {found.evidence}"

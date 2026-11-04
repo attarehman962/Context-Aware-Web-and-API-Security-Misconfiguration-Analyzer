@@ -5,7 +5,8 @@
 For each check in config/checks.yaml and the legacy catalog: whether it is a
 spec-registry check (and which module), a legacy ``@rule``, or not
 implemented; whether it has fire and no-fire tests (``assert_fires`` /
-``assert_no_fire`` with its id); and whether every test that names the id
+``assert_no_fire``, or ``assert_rule_fires`` / ``assert_rule_no_fire`` for a
+legacy rule, with its id); and whether every test that names the id
 passed in a fresh pytest run.
 """
 from __future__ import annotations
@@ -47,8 +48,12 @@ def _ids(node: ast.AST) -> set[str]:
             and n.value[:3].isalpha() and n.value[4:].isdigit()}
 
 
+_KIND = {"assert_fires": "fires", "assert_rule_fires": "fires",
+         "assert_no_fire": "no_fire", "assert_rule_no_fire": "no_fire"}
+
+
 def test_index() -> tuple[dict[str, set[str]], dict[str, set[str]]]:
-    """check id -> test node ids naming it; check id -> {"assert_fires", "assert_no_fire"}."""
+    """check id -> test node ids naming it; check id -> {"fires", "no_fire"}."""
     tests: dict[str, set[str]] = defaultdict(set)
     kinds: dict[str, set[str]] = defaultdict(set)
     for path in TEST_FILES:
@@ -60,9 +65,9 @@ def test_index() -> tuple[dict[str, set[str]], dict[str, set[str]]]:
                     tests[cid].add(f"{rel}::{node.name}")
                 for call in ast.walk(node):
                     if (isinstance(call, ast.Call) and isinstance(call.func, ast.Name)
-                            and call.func.id in {"assert_fires", "assert_no_fire"}
+                            and call.func.id in _KIND
                             and call.args and isinstance(call.args[0], ast.Constant)):
-                        kinds[call.args[0].value].add(call.func.id)
+                        kinds[call.args[0].value].add(_KIND[call.func.id])
     return tests, kinds
 
 
@@ -106,8 +111,7 @@ def main() -> int:
             totals["missing"] += 1
         if cid in BLOCKED:
             impl += " - blocked, question for Asim"
-        fire = "yes" if {"assert_fires", "assert_no_fire"} <= kinds[cid] else (
-            "n/a (legacy)" if cid in legacy and cid not in spec_registry.CHECKS else "no")
+        fire = "yes" if {"fires", "no_fire"} <= kinds[cid] else "no"
         nodes = sorted(tests[cid])
         results = [passed.get(n) for n in nodes]
         status = ("no tests" if not nodes else
