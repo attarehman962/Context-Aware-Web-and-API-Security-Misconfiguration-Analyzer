@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef } from "react";
 
 import { ErrorState } from "@/components/error-state";
 import { LoadingSkeleton } from "@/components/loading-skeleton";
+import { ExportMenu } from "@/components/results/export-menu";
 import { FindingsPanel } from "@/components/results/findings-panel";
 import { LiveScanProgress } from "@/components/results/live-progress";
 import { ScanSummary } from "@/components/results/scan-summary";
@@ -109,8 +110,9 @@ export function ScanResultsView({ scanId }: { scanId: string }) {
         scan={scan}
         ranked={scan.status === "DONE" ? ranked : undefined}
       />
-      {isFinished(scan) && (
-        <div>
+      <div className="flex flex-wrap items-start gap-3">
+        <ExportMenu scan={scan} />
+        {isFinished(scan) && (
           <Button
             variant="outline"
             nativeButton={false}
@@ -119,8 +121,8 @@ export function ScanResultsView({ scanId }: { scanId: string }) {
             <RotateCcw aria-hidden />
             Re-scan this target
           </Button>
-        </div>
-      )}
+        )}
+      </div>
 
       {retryNote && <RetryNote text={retryNote} />}
       {results.isError && (

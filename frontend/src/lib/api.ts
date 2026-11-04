@@ -135,6 +135,38 @@ export function getExportUrl(
   return `${apiBaseUrl()}/api/results/${encodeURIComponent(scanId)}/export?format=${format}`;
 }
 
+/**
+ * Downloads a finished scan's report (`GET .../export?format=`) as a Blob,
+ * so the page can show progress, name the file and explain errors (409 not
+ * finished, 501 PDF unavailable) instead of a broken download link.
+ */
+export async function fetchExport(
+  scanId: string,
+  format: ExportFormat,
+  options: RequestOptions = {},
+): Promise<ApiResult<Blob>> {
+  let response: Response;
+  try {
+    response = await fetch(getExportUrl(scanId, format), {
+      signal: options.signal,
+    });
+  } catch (err) {
+    if (options.signal?.aborted) throw err;
+    return {
+      ok: false,
+      error: {
+        kind: "network",
+        message: "Could not reach the CAWASMA API. Check that it is running.",
+      },
+    };
+  }
+  if (!response.ok) {
+    const body: unknown = await response.json().catch(() => undefined);
+    return { ok: false, error: toHttpError(response.status, body) };
+  }
+  return { ok: true, data: await response.blob() };
+}
+
 async function request<T>(
   path: string,
   init: RequestInit,
