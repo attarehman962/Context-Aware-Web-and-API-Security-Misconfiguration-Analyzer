@@ -20,11 +20,13 @@ import {
 } from "@/lib/queries";
 import { ApiRequestError, MAX_RETRIES } from "@/lib/query-client";
 import { useFindingsView } from "@/lib/use-findings-view";
+import { wasCancelled } from "@/lib/live-status";
 import { useLiveScan } from "@/lib/use-live-scan";
 
 /**
- * One scan: polls GET /api/results/{id} every 2 s while it is queued or
- * running, then shows the summary and the ranked, filterable findings.
+ * One scan: follows it live over the SSE stream while it is queued or
+ * running (polling every 2 s whenever the stream is down), then shows the
+ * summary and the ranked, filterable findings.
  * Unknown ids, failed scans and an unreachable API each get their own
  * message; every part has a loading and an empty state.
  */
@@ -93,19 +95,12 @@ export function ScanResultsView({ scanId }: { scanId: string }) {
   }
 
   const { chains } = results.data;
-  // While live, the socket is newer than the last poll (which may be up to
-  // 15 s old): show its status, progress and stage until the scan finishes.
+  // A live event is newer than the last poll (up to 15 s old while live),
+  // until the final results arrive.
   const polled = results.data.scan;
   const scan =
-    live.mode === "live" &&
-    live.progress.status === "RUNNING" &&
-    !isFinished(polled)
-      ? {
-          ...polled,
-          status: "RUNNING" as const,
-          progress: Math.max(polled.progress, live.progress.percent),
-          stage: live.progress.stage ?? polled.stage,
-        }
+    live.latest && !isFinished(polled) && live.mode !== "off"
+      ? { ...polled, ...live.latest }
       : polled;
 
   return (
@@ -147,7 +142,7 @@ export function ScanResultsView({ scanId }: { scanId: string }) {
 
       {(scan.status === "QUEUED" || scan.status === "RUNNING") && (
         <>
-          <LiveScanProgress scan={scan} live={live} />
+          <LiveScanProgress scan={scan} mode={live.mode} />
           <section aria-label="Findings" className="flex flex-col gap-2">
             <p className="text-sm text-muted-foreground">
               Findings appear here when the scan is done.
@@ -161,14 +156,27 @@ export function ScanResultsView({ scanId }: { scanId: string }) {
         </>
       )}
 
-      {scan.status === "FAILED" && (
+      {wasCancelled(scan) ? (
         <div
-          role="alert"
-          className="rounded-xl border border-sev-critical-solid bg-sev-critical-bg p-4 text-sev-critical"
+          role="status"
+          className="rounded-xl border bg-muted/50 p-4 text-sm"
         >
-          <p className="font-medium">The scan failed</p>
-          <p className="text-sm">{scan.error ?? "No reason was given."}</p>
+          <p className="font-medium">Scan cancelled</p>
+          <p className="text-muted-foreground">
+            It was stopped before it finished, so there are no results. Re-scan
+            to run it again.
+          </p>
         </div>
+      ) : (
+        scan.status === "FAILED" && (
+          <div
+            role="alert"
+            className="rounded-xl border border-sev-critical-solid bg-sev-critical-bg p-4 text-sev-critical"
+          >
+            <p className="font-medium">The scan failed</p>
+            <p className="text-sm">{scan.error ?? "No reason was given."}</p>
+          </div>
+        )
       )}
 
       {scan.status === "DONE" && findings && (

@@ -1,10 +1,13 @@
 "use client";
 
-import { Check, Radio, RefreshCw } from "lucide-react";
+import { Check, CircleStop, Radio, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import type { ScanStatus } from "@/lib/api-types";
-import { STEPS, stepIndex, type LiveProgress } from "@/lib/live-status";
+import { STEPS, stepIndex } from "@/lib/live-status";
+import { useCancelScan } from "@/lib/queries";
+import { ApiRequestError } from "@/lib/query-client";
 import type { LiveMode } from "@/lib/use-live-scan";
 import { cn } from "@/lib/utils";
 
@@ -12,26 +15,22 @@ import { formatDuration } from "./scan-summary";
 
 /**
  * Progress of a queued or running scan: the three steps, a progress bar,
- * elapsed time, endpoints checked so far and the current activity. Live
- * events win over the polled status when they are newer.
+ * elapsed time, the counts so far (`progress_detail`, contract 1.3), how the
+ * page is being updated, and a Cancel button.
  */
 export function LiveScanProgress({
   scan,
-  live,
+  mode,
 }: {
+  /** The newest status: from the live stream when it is up, else polled. */
   scan: ScanStatus;
-  live: { mode: LiveMode; progress: LiveProgress };
+  mode: LiveMode;
 }) {
-  const { progress, mode } = live;
-  const useLive = mode === "live" && progress.status !== null;
-  const percent = useLive
-    ? Math.max(progress.percent, scan.progress)
-    : scan.progress;
-  const stage = (useLive ? progress.stage : null) ?? scan.stage;
-  const queued =
-    scan.status === "QUEUED" && !(useLive && progress.status === "RUNNING");
-  const current = queued ? -1 : stepIndex(stage);
+  const queued = scan.status === "QUEUED";
+  const current = queued ? -1 : stepIndex(scan.stage);
+  const detail = scan.progress_detail ?? {};
   const elapsed = useElapsed(scan.started_at ?? scan.created_at);
+  const count = (n: number | undefined) => (n === undefined ? "—" : String(n));
 
   return (
     <section
@@ -82,40 +81,102 @@ export function LiveScanProgress({
       <div
         role="progressbar"
         aria-label="Scan progress"
-        aria-valuenow={percent}
+        aria-valuenow={scan.progress}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-valuetext={`${percent}%${stage ? `, ${stage}` : ""}`}
+        aria-valuetext={`${scan.progress}%${scan.stage ? `, ${scan.stage}` : ""}`}
         className="h-2 w-full overflow-hidden rounded-full bg-muted"
       >
         <div
           className="h-full rounded-full bg-sev-low-solid transition-[width] motion-reduce:transition-none"
-          style={{ width: `${percent}%` }}
+          style={{ width: `${scan.progress}%` }}
         />
       </div>
 
-      <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-        <Stat label="Progress" value={`${percent}%`} />
+      <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-5">
+        <Stat label="Progress" value={`${scan.progress}%`} />
         <Stat label="Elapsed" value={elapsed} testId="elapsed" />
         <Stat
+          label="Endpoints found"
+          value={count(detail.endpoints_found)}
+          testId="endpoints-found"
+        />
+        <Stat
           label="Endpoints checked"
-          value={
-            useLive && progress.endpointsChecked > 0
-              ? `${progress.endpointsChecked}${progress.joinedLate ? "+" : ""}`
-              : "—"
-          }
+          value={count(detail.endpoints_checked)}
           testId="endpoints-checked"
         />
-        <Stat label="Findings" value="when done" />
+        <Stat
+          label="Findings so far"
+          value={count(detail.findings)}
+          testId="findings-so-far"
+        />
       </dl>
 
-      <p className="text-sm text-muted-foreground" aria-live="polite">
-        {queued
-          ? "Queued, waiting to start…"
-          : (useLive && progress.activity) ||
-            `${percent}% done${stage ? ` (${stage})` : ""}.`}
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground" aria-live="polite">
+          {queued
+            ? "Queued, waiting for a worker…"
+            : `${scan.progress}% done${scan.stage ? ` (${scan.stage})` : ""}.`}
+        </p>
+        <CancelScan scanId={scan.scan_id} />
+      </div>
     </section>
+  );
+}
+
+/** Two-step cancel, so one stray click does not throw away a scan. */
+function CancelScan({ scanId }: { scanId: string }) {
+  const cancel = useCancelScan(scanId);
+  const [confirming, setConfirming] = useState(false);
+
+  if (cancel.isSuccess) {
+    return (
+      <p role="status" className="text-sm text-muted-foreground">
+        Cancelling: the scan stops at its next step.
+      </p>
+    );
+  }
+  const finished =
+    cancel.error instanceof ApiRequestError &&
+    cancel.error.error.kind !== "network" &&
+    cancel.error.error.code === "SCAN_FINISHED";
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {cancel.isError && !finished && (
+        <p role="alert" className="text-sm text-sev-critical">
+          Could not cancel: {cancel.error.message}
+        </p>
+      )}
+      {confirming ? (
+        <>
+          <span className="text-sm">
+            Stop this scan? Partial results are not kept.
+          </span>
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={cancel.isPending}
+            onClick={() => cancel.mutate()}
+          >
+            {cancel.isPending ? "Cancelling…" : "Yes, cancel scan"}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setConfirming(false)}
+          >
+            Keep scanning
+          </Button>
+        </>
+      ) : (
+        <Button variant="outline" size="sm" onClick={() => setConfirming(true)}>
+          <CircleStop aria-hidden />
+          Cancel scan
+        </Button>
+      )}
+    </div>
   );
 }
 
@@ -160,7 +221,7 @@ function ConnectionBadge({ mode }: { mode: LiveMode }) {
         ? "Live"
         : mode === "connecting"
           ? "Connecting…"
-          : "Live updates unavailable: checking every 2 s"}
+          : "Live updates interrupted: checking every 2 s"}
     </span>
   );
 }
