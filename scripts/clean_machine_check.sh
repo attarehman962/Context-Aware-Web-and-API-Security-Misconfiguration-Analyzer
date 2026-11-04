@@ -29,7 +29,8 @@ export REDIS_HOST_PORT="${REDIS_HOST_PORT:-16379}"
 API="http://localhost:${API_HOST_PORT}"
 TARGET="https://demo-target:8443/"
 
-step() { printf '\n==> %s\n' "$*"; }
+current_step="setup"
+step() { current_step="$*"; printf '\n==> %s\n' "$*"; }
 fail() { printf '\nFAIL: %s\n' "$*" >&2; exit 1; }
 
 for tool in git docker curl; do
@@ -51,7 +52,8 @@ cleanup() {
         rm -rf "$work"
     fi
     if [ "$status" -ne 0 ]; then
-        printf '\nclean-machine check FAILED (exit %s)\n' "$status" >&2
+        printf '\nclean-machine check FAILED at step "%s" (exit %s)\n' \
+            "$current_step" "$status" >&2
     fi
 }
 trap cleanup EXIT
@@ -62,6 +64,13 @@ git -C "$work/repo" log -1 --format='    %h %s'
 [ -e "$work/repo/.env" ] && fail "the clone has a .env: it must not be committed"
 
 step "build images (no .env, defaults only)"
+# The image is about 4 GB; a full disk shows up only as "failed to extract layer".
+# With the containerd image store, layers are unpacked under /var/lib/containerd.
+for dir in "$(docker info -f '{{.DockerRootDir}}')" /var/lib/containerd; do
+    [ -d "$dir" ] || continue
+    free_gb="$(df -Pk "$dir" | awk 'NR==2 {print int($4/1048576)}')"
+    [ "$free_gb" -ge 8 ] || echo "    warning: $free_gb GB free under $dir; the build needs about 8"
+done
 if [ "${FAST:-0}" = "1" ]; then compose build; else compose build --pull --no-cache; fi
 
 step "start the stack and wait for every healthcheck"
