@@ -7,7 +7,7 @@ PYTHON ?= $(if $(wildcard .venv/bin/python),$(CURDIR)/.venv/bin/python,python3)
 BACKEND := backend
 
 .DEFAULT_GOAL := help
-.PHONY: help up down test lint typecheck migrate seed reset logs install env \
+.PHONY: help up down lock test lint typecheck migrate seed reset logs install env \
 	validate-checks validate-config openapi ml-smoke eval-up eval-down eval-reset eval-collect
 
 help: ## List targets
@@ -27,7 +27,15 @@ logs: ## Follow logs of all services
 	$(COMPOSE) logs -f
 
 install: ## Install backend + dev tools into $(PYTHON)'s environment
-	"$(PYTHON)" -m pip install -e "$(BACKEND)[dev]"
+	"$(PYTHON)" -m pip install -c "$(BACKEND)/constraints.txt" -e "$(BACKEND)[dev]"
+
+lock: ## Regenerate backend/constraints.txt (every package, exact versions) from a dev+ML image
+	docker build -q --build-arg INSTALL_DEV=true --build-arg INSTALL_ML=true \
+		-t cawasma-backend:lock "$(BACKEND)" >/dev/null
+	{ sed -n '/^#/p' "$(BACKEND)/constraints.txt"; \
+	  docker run --rm --entrypoint pip cawasma-backend:lock freeze --all \
+		--exclude cawasma-backend --exclude pip --exclude en-core-web-sm; } \
+		> "$(BACKEND)/constraints.txt.new" && mv "$(BACKEND)/constraints.txt.new" "$(BACKEND)/constraints.txt"
 
 test: ## Run the test suite on the host (SQLite; set TEST_DATABASE_URL for Postgres)
 	cd $(BACKEND) && "$(PYTHON)" -m pytest -q

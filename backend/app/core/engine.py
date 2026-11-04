@@ -19,10 +19,12 @@ A bad target never raises: every outcome is a :class:`ScanResponse`.
 from __future__ import annotations
 
 import asyncio
+import copy
 import ssl
 import time
 from collections.abc import Iterable
 from dataclasses import dataclass, field
+from http.cookiejar import CookieJar, DefaultCookiePolicy
 from typing import Any
 
 import httpcore
@@ -81,10 +83,6 @@ class ScanResponse:
     @property
     def status(self) -> int | None:
         return self.status_code
-
-    @property
-    def timing(self) -> float | None:
-        return self.response_time
 
 
 HttpResult = ScanResponse   # original name, still used across the checks
@@ -145,7 +143,8 @@ class HttpEngine:
     def __init__(self, *, allow_private: bool = False, passive_only: bool = False,
                  max_concurrency: int | None = None, timeout: float | None = None,
                  retries: int | None = None, user_agent: str | None = None,
-                 max_response_size: int | None = None, scope_host: str | None = None) -> None:
+                 max_response_size: int | None = None, scope_host: str | None = None,
+                 cache: bool = True) -> None:
         # allow_private is for the test-suite only (reach a local mock server).
         self._allow_private = allow_private
         self.passive_only = passive_only
@@ -157,6 +156,13 @@ class HttpEngine:
         self._max_response_size = max_response_size or settings.MAX_RESPONSE_SIZE
         concurrency = max_concurrency or settings.MAX_CONCURRENT_REQUESTS
         self._semaphore = asyncio.Semaphore(concurrency)
+        self.requests_sent = 0                # requests put on the wire (profiling)
+        # Per-scan response cache for plain GET/HEAD: the seed, every crawled page
+        # and the endpoint analysis ask for the same URLs. Concurrent callers share
+        # the one in-flight request.
+        self._cache: dict[tuple[str, str, bool, bool], asyncio.Future[ScanResponse]] | None = (
+            {} if cache else None)
+        self.cache_hits = 0
 
         self._transport = httpx.AsyncHTTPTransport(
             http2=True,
@@ -175,6 +181,11 @@ class HttpEngine:
             timeout=timeout or settings.REQUEST_TIMEOUT,
             headers={"User-Agent": user_agent or settings.USER_AGENT},
             trust_env=False,                  # env proxies would bypass the pinning
+            # Every request is a first visit: a shared jar would send a session
+            # cookie back, so the target never sets it again and the cookie checks
+            # miss it (eval CKI-001..003 on DVWA).
+            # (Passed as a CookieJar: httpx copies an httpx.Cookies into a default jar.)
+            cookies=CookieJar(policy=DefaultCookiePolicy(allowed_domains=[])),
         )
 
     def in_scope(self, url: str) -> bool:
@@ -202,6 +213,27 @@ class HttpEngine:
                     extra_headers: dict[str, str] | None = None, *,
                     same_origin_only: bool = False,
                     follow_redirects: bool = True) -> ScanResponse:
+        """Fetch ``url`` (see :meth:`_fetch`). A plain GET/HEAD (no extra headers)
+        is sent once per scan; later calls get a copy of that response."""
+        method = method.upper()
+        if self._cache is None or extra_headers or method not in PASSIVE_METHODS:
+            return await self._fetch(url, method, extra_headers,
+                                     same_origin_only=same_origin_only,
+                                     follow_redirects=follow_redirects)
+        key = (method, url, same_origin_only, follow_redirects)
+        pending = self._cache.get(key)
+        if pending is None:
+            pending = self._cache[key] = asyncio.ensure_future(self._fetch(
+                url, method, None, same_origin_only=same_origin_only,
+                follow_redirects=follow_redirects))
+        else:
+            self.cache_hits += 1
+        # shield: a caller being cancelled must not cancel the shared request.
+        return copy.deepcopy(await asyncio.shield(pending))
+
+    async def _fetch(self, url: str, method: str,
+                     extra_headers: dict[str, str] | None, *,
+                     same_origin_only: bool, follow_redirects: bool) -> ScanResponse:
         """Fetch ``url`` safely, following redirects with SSRF re-checks.
 
         ``same_origin_only`` stops at a redirect that leaves the URL's origin and
@@ -210,7 +242,6 @@ class HttpEngine:
         ``follow_redirects=False`` returns the first response as is (TLS-005
         judges the HTTP probe itself, not where it leads).
         """
-        method = method.upper()
         result = ScanResponse(requested_url=url, final_url=url, method=method,
                               request_headers=dict(extra_headers or {}))
         start = time.perf_counter()
@@ -240,6 +271,7 @@ class HttpEngine:
                             or (same_origin_only and not same_origin(url, nxt))):
                         self._capture(result, resp)     # report the redirect itself
                         break
+                    self._keep_cookies(result, resp)   # Set-Cookie on a redirect hop
                     current = nxt
                     chain.append(current)
                     if resp.status_code == 303:   # 303 -> next request is a GET
@@ -273,6 +305,7 @@ class HttpEngine:
         for attempt in range(attempts):
             try:
                 async with self._semaphore:
+                    self.requests_sent += 1
                     return await self._request_capped(url, method, extra_headers)
             except (httpx.TransportError, httpx.TimeoutException):
                 if attempt == attempts - 1:
@@ -311,7 +344,12 @@ class HttpEngine:
         result.content_type = resp.headers.get("content-type")
         result.content_length = len(body_bytes)
         result.body = body_bytes.decode("utf-8", errors="replace")
-        result.set_cookie_headers = resp.headers.get_list("set-cookie")
-        # Cookies (metadata only; value length captured, not the value).
+        HttpEngine._keep_cookies(result, resp)
+
+    @staticmethod
+    def _keep_cookies(result: ScanResponse, resp: httpx.Response) -> None:
+        """Add this hop's Set-Cookie headers (cookie metadata only: name and value
+        length, never the value)."""
+        result.set_cookie_headers += resp.headers.get_list("set-cookie")
         for name, value in resp.cookies.items():
             result.cookies.append({"name": name, "value_length": len(value or "")})

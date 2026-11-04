@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     # --- Environment -------------------------------------------------------
     ENVIRONMENT: Literal["development", "staging", "production", "test"] = "development"
     DEBUG: bool = True
+    # "json": one JSON object per line (Docker default, for log shippers);
+    # "text": human-readable, for local runs.
+    LOG_FORMAT: Literal["text", "json"] = "text"
 
     # --- Datastores --------------------------------------------------------
     # Async driver (asyncpg) everywhere: FastAPI, the scanner pipeline, Celery
@@ -56,6 +59,7 @@ class Settings(BaseSettings):
     MAX_CRAWL_DEPTH: int = 2                 # recursive crawl depth
     MAX_REDIRECTS: int = 5
     MAX_CONCURRENT_REQUESTS: int = 10        # httpx connection concurrency
+    MAX_CONCURRENT_ENDPOINTS: int = 8        # endpoints analysed at once (each sends ~4 probes)
     RATE_LIMIT_PROBE_COUNT: int = 15         # burst size for rate-limit check
     USER_AGENT: str = "CAWASMA-Scanner/1.0 (+defensive-security-research)"
     REQUEST_RETRIES: int = 1                 # retries for transient network errors (GET/HEAD)

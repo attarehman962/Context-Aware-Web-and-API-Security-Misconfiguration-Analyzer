@@ -37,7 +37,6 @@ class CheckContext:
     cors_max_age: str | None = None         # Access-Control-Max-Age on that preflight
     probe_origin: str = "https://cawasma-probe.example"
     tls: TlsProbe | None = None
-    http_scheme_redirects_https: bool | None = None
     graphql_introspection: bool = False
     injection_error_reflected: bool = False
 

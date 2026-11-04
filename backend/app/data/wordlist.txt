@@ -17,3 +17,18 @@
 /backup.zip
 /config.json
 /actuator/health
+# API descriptions (their concrete GET paths are added too) and common
+# exposures. General well-known paths only: nothing specific to the eval
+# targets (e.g. Juice Shop's /encryptionkeys stays out), so the evaluation
+# isn't tuned on its own test set.
+/swagger.json
+/api-docs
+/v3/api-docs
+/metrics
+/server-status
+/ftp
+/backup/
+/config/
+/docs/
+/debug
+/phpinfo.php

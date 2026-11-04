@@ -29,7 +29,7 @@ from app.db.models.enums import ScanStatus
 from app.db.session import session_scope
 from app.services.progress import RedisProgressPublisher
 from app.services.result_service import persist_result
-from app.utils.logging import get_logger
+from app.utils.logging import get_logger, scan_id_var
 
 logger = get_logger(__name__)
 
@@ -46,6 +46,7 @@ class ScanCancelled(ScanError):
 async def run_scan_async(scan_id: str | uuid.UUID, *, probe: bool = True) -> None:
     """Run the scan identified by ``scan_id``; never raises."""
     sid = uuid.UUID(str(scan_id))
+    scan_id_var.set(str(sid))           # tags every log line of this scan
     publisher = RedisProgressPublisher(sid)
     started = datetime.now(UTC)
 
@@ -103,7 +104,9 @@ async def run_scan_async(scan_id: str | uuid.UUID, *, probe: bool = True) -> Non
             scan.completed_at = datetime.now(UTC)
             scan.duration_seconds = (scan.completed_at - started).total_seconds()
             await session.commit()
-            logger.info("scan %s completed: %s", sid, result.stats)
+            logger.info("scan completed", extra={
+                k: result.stats.get(k)
+                for k in ("endpoints", "findings", "chains", "requests", "stage_seconds")})
         except Exception as exc:  # noqa: BLE001 - record failure, never propagate
             logger.exception("scan %s failed", sid)
             # Shown to the user: only ScanError messages are written for them.

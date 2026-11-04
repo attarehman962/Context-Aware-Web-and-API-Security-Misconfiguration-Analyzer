@@ -93,6 +93,16 @@ Notes:
   `Scan.cancel_requested`, checked at every progress step. `SCAN_TIMEOUT` bounds a scan.
 - The engine enforces the scan's scope (`HttpEngine(scope_host=...)`): no request to
   another host, and no redirect followed off it; passive mode sends only GET/HEAD.
+  It keeps no cookies between requests and records Set-Cookie on every redirect hop.
+  Plain GET/HEAD are cached per scan (`fetch`); endpoints are analysed concurrently
+  (`MAX_CONCURRENT_ENDPOINTS`) in deterministic order. Stage timings:
+  `stats["stage_seconds"]`, docs/performance.md.
+- Discovery also reads OpenAPI/Swagger GET paths and /rest/, /vN/ and relative JS
+  routes; routes named like state changes (`/createdb`, `/logout`) are never requested.
+- Dependencies: every Python package is pinned in `backend/constraints.txt` (`make
+  lock` regenerates it); base and service images are pinned by digest.
+  `scripts/clean_machine_check.sh` checks a fresh clone end to end.
+- Logs: `LOG_FORMAT=json` (Docker default), one object per line with `scan_id`.
 - HTML/PDF reports come from `app/templates/report.html.j2` (PDF = same HTML through
   WeasyPrint); every export redacts evidence again (`reports.redact_evidence`).
 - An unreachable target raises `pipeline.ScanError` and the scan is FAILED; only

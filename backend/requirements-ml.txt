@@ -5,11 +5,10 @@
 # fraction of the size and this scanner does not need a GPU.
 #
 # The two index lines below make pip fetch torch from PyTorch's CPU repo and
-# everything else from PyPI. Install AFTER the core requirements:
+# everything else from PyPI. Install AFTER the backend itself, with the lock:
 #
-#     pip install -r requirements.txt
-#     pip install -r requirements-ml.txt
-#     python -m spacy download en_core_web_sm
+#     pip install -c constraints.txt -e ".[dev]"
+#     pip install -c constraints.txt -r requirements-ml.txt
 #
 --index-url https://download.pytorch.org/whl/cpu
 --extra-index-url https://pypi.org/simple
@@ -24,3 +23,6 @@ preshed==3.0.9
 # eval scripts) live in the "ml" extra of pyproject.toml, not here: this file is
 # what the api/worker image installs. scikit-learn still ends up in the image
 # as a dependency of sentence-transformers.
+# spaCy's English model, pinned by URL and hash (not `spacy download`, which
+# picks whatever version is current).
+en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl#sha256=1932429db727d4bff3deed6b34cfc05df17794f4a52eeb26cf8928f7c1a0fb85

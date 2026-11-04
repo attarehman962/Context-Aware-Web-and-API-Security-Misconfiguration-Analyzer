@@ -25,16 +25,20 @@ from __future__ import annotations
 
 import asyncio
 import secrets
-from collections.abc import Awaitable, Callable
+import time
+from collections.abc import Awaitable, Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
+from typing import Any
 from urllib.parse import urlparse
 
+from app.config import settings
 from app.core.body_classifier import BodyClassification, classify_response
 from app.core.chains import ChainEndpoint, ChainMember, DetectedChain, correlate
 from app.core.checks import CheckContext, RawFinding, run_checks, run_spec_checks
 from app.core.checks import registry as spec_registry
 from app.core.contracts import BodySignal, EndpointInfo, SensitivityClass
-from app.core.crawler import Crawler
+from app.core.crawler import Crawler, DiscoveredEndpoint
 from app.core.cvss import compute_score, score_finding
 from app.core.engine import HttpEngine, HttpResult
 from app.core.sensitivity import get_classifier, raw_tokens
@@ -211,6 +215,10 @@ def _spec_findings(result: HttpResult, endpoint: EndpointInfo, *,
     return out
 
 
+async def _no_response() -> None:
+    return None
+
+
 async def _probe_endpoint(engine: HttpEngine, ep_url: str, result: HttpResult,
                           is_api: bool, probe_origin: str) -> dict:
     """Run bounded auxiliary probes; return signals for the check context."""
@@ -221,57 +229,49 @@ async def _probe_endpoint(engine: HttpEngine, ep_url: str, result: HttpResult,
         "graphql_introspection": "__schema" in (result.body or ""),
     }
     # Every probe stays on the endpoint's origin (same_origin_only): a redirect
-    # elsewhere must not carry our probes to a host nobody authorised.
-    # OPTIONS -> Allow header.
-    try:
-        opt = await engine.fetch(ep_url, method="OPTIONS", same_origin_only=True)
-        allow = opt.headers.get("allow")
-        if allow:
-            signals["allowed_methods"] = {m.strip().upper() for m in allow.split(",")}
-        signals["cors_methods"] = opt.headers.get("access-control-allow-methods")
-    except Exception as exc:  # noqa: BLE001
-        logger.debug("OPTIONS probe failed: %s", exc)
+    # elsewhere must not carry our probes to a host nobody authorised. The probes
+    # are independent, so they are sent together (the engine bounds concurrency).
+    # engine.fetch never raises: a failed probe is a response with ``error`` set.
+    sep = "&" if urlparse(ep_url).query else "?"
+    opt, pre, cors, inj = await asyncio.gather(
+        # OPTIONS -> Allow header.
+        engine.fetch(ep_url, method="OPTIONS", same_origin_only=True),
+        # A real CORS preflight: the only response that carries
+        # Access-Control-Max-Age, and the one COR-002/COR-003 judge
+        # (``probe_origin`` is unique per scan).
+        engine.fetch(ep_url, method="OPTIONS", same_origin_only=True,
+                     extra_headers={"Origin": probe_origin,
+                                    "Access-Control-Request-Method": "GET"}),
+        # CORS probe with a test Origin header.
+        engine.fetch(ep_url, extra_headers={"Origin": probe_origin}, same_origin_only=True),
+        # Benign injection probe (detection-only) for API-ish endpoints.
+        engine.fetch(f"{ep_url}{sep}cawasma_probe=%27%22%3C", same_origin_only=True)
+        if is_api else _no_response(),
+    )
+    allow = opt.headers.get("allow")
+    if allow:
+        signals["allowed_methods"] = {m.strip().upper() for m in allow.split(",")}
+    signals["cors_methods"] = opt.headers.get("access-control-allow-methods")
 
-    # A real CORS preflight: the only response that carries Access-Control-Max-Age,
-    # and the one COR-002/COR-003 judge (``probe_origin`` is unique per scan).
-    try:
-        pre = await engine.fetch(ep_url, method="OPTIONS", same_origin_only=True,
-                                 extra_headers={"Origin": probe_origin,
-                                                "Access-Control-Request-Method": "GET"})
-        signals["preflight"] = pre
-        signals["cors_preflight_acao"] = pre.headers.get("access-control-allow-origin")
-        signals["cors_max_age"] = pre.headers.get("access-control-max-age")
-        if not signals["cors_methods"]:
-            signals["cors_methods"] = pre.headers.get("access-control-allow-methods")
-    except Exception as exc:  # noqa: BLE001
-        logger.debug("CORS preflight probe failed: %s", exc)
+    signals["preflight"] = pre
+    signals["cors_preflight_acao"] = pre.headers.get("access-control-allow-origin")
+    signals["cors_max_age"] = pre.headers.get("access-control-max-age")
+    if not signals["cors_methods"]:
+        signals["cors_methods"] = pre.headers.get("access-control-allow-methods")
 
-    # CORS probe with a test Origin header.
-    try:
-        cors = await engine.fetch(ep_url, extra_headers={"Origin": probe_origin},
-                                  same_origin_only=True)
-        signals["cors_acao"] = cors.headers.get("access-control-allow-origin")
-        signals["cors_acac"] = cors.headers.get("access-control-allow-credentials")
-        if not signals["cors_methods"]:
-            signals["cors_methods"] = cors.headers.get("access-control-allow-methods")
-    except Exception as exc:  # noqa: BLE001
-        logger.debug("CORS probe failed: %s", exc)
+    signals["cors_acao"] = cors.headers.get("access-control-allow-origin")
+    signals["cors_acac"] = cors.headers.get("access-control-allow-credentials")
+    if not signals["cors_methods"]:
+        signals["cors_methods"] = cors.headers.get("access-control-allow-methods")
 
-    # Benign injection probe (detection-only) for API-ish endpoints.
-    if is_api:
-        sep = "&" if urlparse(ep_url).query else "?"
-        probe_url = f"{ep_url}{sep}cawasma_probe=%27%22%3C"
-        try:
-            inj = await engine.fetch(probe_url, same_origin_only=True)
-            # Only a 5xx the probe caused: not when the endpoint fails anyway.
-            if inj.status_code and inj.status_code >= 500 and (result.status_code or 0) < 500:
-                signals["injection_error_reflected"] = True
-            elif "cawasma_probe" in (inj.body or "") and any(
-                tok in (inj.body or "") for tok in ("SQL", "syntax", "Exception", "Traceback")
-            ):
-                signals["injection_error_reflected"] = True
-        except Exception as exc:  # noqa: BLE001
-            logger.debug("injection probe failed: %s", exc)
+    if inj is not None:
+        # Only a 5xx the probe caused: not when the endpoint fails anyway.
+        if inj.status_code and inj.status_code >= 500 and (result.status_code or 0) < 500:
+            signals["injection_error_reflected"] = True
+        elif "cawasma_probe" in (inj.body or "") and any(
+            tok in (inj.body or "") for tok in ("SQL", "syntax", "Exception", "Traceback")
+        ):
+            signals["injection_error_reflected"] = True
     return signals
 
 
@@ -302,6 +302,112 @@ def _host_findings(target: str, seed: HttpResult, tls: TlsProbe | None,
     return out
 
 
+async def _analyse_endpoint(engine: HttpEngine, de: DiscoveredEndpoint, ep_index: int, *,
+                            classifier: Any, llm: Any, ml_classify: Any,
+                            tls: TlsProbe | None, probe: bool, probe_origin: str,
+                            ) -> tuple[EndpointAnalysis, list[ScoredFinding]]:
+    """GET one endpoint (usually a cache hit: the crawler fetched it), classify it,
+    run its probes and every check; return its analysis and findings."""
+    result = await engine.fetch(de.url, method="GET")
+    expansions = None
+    if llm is not None:
+        expansions = await llm.expand_abbreviations(raw_tokens(de.path))
+    cls = classifier.classify(de.path, extra_expansions=expansions)
+    info = EndpointInfo(url=de.url, path=de.path, method=de.method,
+                        status_code=result.status_code,
+                        content_type=result.content_type)
+    # The class comes from the ML contract module (Asim) when it loads;
+    # confidence and reason stay the built-in classifier's explanation.
+    context_class = ml_classify(info) if ml_classify else cls.context_class
+    body_class = classify_response(result.final_url, result.status_code,
+                                   result.content_type, result.headers, result.body)
+    is_api = "/api" in de.path or "json" in (result.content_type or "").lower()
+
+    signals = (await _probe_endpoint(engine, de.url, result, is_api, probe_origin)
+               if probe else {})
+
+    ctx = CheckContext(
+        url=de.url, path=de.path, result=result,
+        context_class=context_class, body_class=body_class,
+        allowed_methods=signals.get("allowed_methods", set()),
+        cors_acao=signals.get("cors_acao"),
+        cors_acac=signals.get("cors_acac"),
+        cors_methods=signals.get("cors_methods"),
+        cors_preflight_acao=signals.get("cors_preflight_acao"),
+        cors_max_age=signals.get("cors_max_age"),
+        tls=tls,
+        graphql_introspection=signals.get("graphql_introspection", False),
+        injection_error_reflected=signals.get("injection_error_reflected", False),
+    )
+
+    ep = EndpointAnalysis(
+        url=de.url, path=de.path, method=de.method,
+        status_code=result.status_code, content_type=result.content_type,
+        response_time=result.response_time, discovered_by=de.discovered_by,
+        context_class=context_class, context_confidence=cls.confidence,
+        context_reason=cls.reason,
+        headers=redact_headers(result.headers),
+        cookies=_parse_cookies(result.set_cookie_headers),
+        body_class=body_class,
+    )
+    findings: list[ScoredFinding] = []
+    # Spec checks on the GET, and on the CORS preflight (OPTIONS checks).
+    for resp in (result, signals.get("preflight")):
+        if resp is not None:
+            findings.extend(_spec_findings(
+                resp, info, context_class=context_class, confidence=cls.confidence,
+                signals=body_signals(body_class), ep_index=ep_index,
+            ))
+    for raw in run_checks(ctx):
+        if raw.rule_id in _HOST_RULES:
+            continue                      # reported once, by _host_findings
+        bonus = body_class.bonus if raw.rule_id in _BONUS_RULES else 0.0
+        force = (raw.rule_id in _FORCE_CRIT_RULES) and body_class.credentials
+        score = compute_score(raw.base_score, context_class, bonus, force_critical=force)
+        findings.append(ScoredFinding(
+            raw=raw,
+            cvss_base_score=score.cvss_base_score,
+            context_multiplier=score.context_multiplier,
+            response_bonus=score.response_bonus,
+            cawasma_final_score=score.cawasma_final_score,
+            severity=score.severity,
+            context_class=context_class,
+            context_confidence=cls.confidence,
+            endpoint_index=ep_index,
+        ))
+    return ep, findings
+
+
+class StageClock:
+    """Wall-clock seconds per scan stage (``ScanResult.stats["stage_seconds"]``),
+    for the performance budget: a full scan under 10 minutes."""
+
+    def __init__(self) -> None:
+        self._start = time.perf_counter()
+        self._open: dict[str, float] = {}
+        self._done: dict[str, float] = {}
+
+    def start(self, stage: str) -> None:
+        self._open[stage] = time.perf_counter()
+
+    def stop(self, stage: str) -> None:
+        self._done[stage] = self._done.get(stage, 0.0) + (
+            time.perf_counter() - self._open.pop(stage))
+
+    @contextmanager
+    def __call__(self, stage: str) -> Iterator[None]:
+        self.start(stage)
+        try:
+            yield
+        finally:
+            self.stop(stage)
+
+    def seconds(self) -> dict[str, float]:
+        out = {k: round(v, 3) for k, v in self._done.items()}
+        out["total"] = round(time.perf_counter() - self._start, 3)
+        return out
+
+
 async def run_pipeline(target: str, on_progress: ProgressFn | None = None,
                        *, probe: bool = True, allow_private: bool = False,
                        crawl_depth: int | None = None,
@@ -319,7 +425,10 @@ async def run_pipeline(target: str, on_progress: ProgressFn | None = None,
     """
     report = on_progress or _noop
     host = urlparse(target).hostname or ""
-    classifier = get_classifier()
+    clock = StageClock()
+    with clock("setup"):          # classifiers (ML models load once per process)
+        classifier = get_classifier()
+        ml_classify = _ml_classifier()
     llm = get_llm_client()  # None unless LLM_ENABLED + API key configured
 
     await report("initializing", 2, "Preparing scan", {})
@@ -331,119 +440,89 @@ async def run_pipeline(target: str, on_progress: ProgressFn | None = None,
                           scope_host=host) as engine:
         # A target that doesn't answer fails the scan instead of "completing"
         # with findings computed from an empty response.
-        seed = await engine.fetch(target, method="GET")
+        with clock("seed"):
+            seed = await engine.fetch(target, method="GET")
         if seed.status_code is None:
             raise ScanError(f"Target unreachable: {seed.error or 'no response'}")
 
-        # --- Discovery ---------------------------------------------------
+        # --- Discovery + host-level probes (concurrently) -----------------
+        # The TLS handshake analysis (a thread) and the plain-HTTP probe don't
+        # depend on the crawl, so they run while it does.
+        port = urlparse(target).port or 443
+
+        async def tls_probe() -> TlsProbe | None:
+            with clock("tls"):
+                return (await asyncio.to_thread(probe_tls, host, port,
+                                                allow_private=allow_private)
+                        if probe else None)
+
+        async def plain_http_probe() -> HttpResult | None:
+            # TLS-005 judges the plain-HTTP probe itself, before any redirect.
+            with clock("http_probe"):
+                return (await engine.fetch(f"http://{host}/", follow_redirects=False)
+                        if probe else None)
+
+        tls_task = asyncio.create_task(tls_probe())
+        http_task = asyncio.create_task(plain_http_probe())
         await report("crawling", 8, "Discovering endpoints", {"endpoints_found": 0})
         crawler = Crawler(engine, max_depth=crawl_depth, use_wordlist=use_wordlist)
-        discovered = await crawler.crawl(target)
-        if not discovered:
-            discovered = []
-        total = max(len(discovered), 1)
-
-        # --- Host-level checks ------------------------------------------
+        try:
+            with clock("crawl"):
+                discovered = await crawler.crawl(target)
+        except BaseException:
+            tls_task.cancel()
+            http_task.cancel()
+            raise
+        # The scanner only ever GETs: a URL found as both a link and a POST form
+        # is the same response, so analyse it once.
+        unique: list[DiscoveredEndpoint] = []
+        seen_urls: set[str] = set()
+        for de in discovered:
+            if de.url not in seen_urls:
+                seen_urls.add(de.url)
+                unique.append(de)
         await report("checking", 12, "Probing TLS configuration",
                      {"endpoints_found": len(discovered), "endpoints_checked": 0, "findings": 0})
-        port = urlparse(target).port or 443
-        tls = (await asyncio.to_thread(probe_tls, host, port, allow_private=allow_private)
-               if probe else None)
-        # TLS-005 judges the plain-HTTP probe itself, before any redirect.
-        http_probe = (await engine.fetch(f"http://{host}/", follow_redirects=False)
-                      if probe else None)
+        tls, http_probe = await tls_task, await http_task
         probe_origin = f"https://cawasma-{secrets.token_hex(6)}.example"   # COR-002
-        ml_classify = _ml_classifier()
 
-        # --- Per-endpoint analysis --------------------------------------
+        # --- Per-endpoint analysis (bounded concurrency, ordered output) ----
+        done = 0
+        found = 0
+        report_lock = asyncio.Lock()
+        slots = asyncio.Semaphore(settings.MAX_CONCURRENT_ENDPOINTS)
+
+        async def analyse(ep_index: int, de: DiscoveredEndpoint
+                          ) -> tuple[EndpointAnalysis, list[ScoredFinding]]:
+            nonlocal done, found
+            async with slots:
+                ep, ep_findings = await _analyse_endpoint(
+                    engine, de, ep_index, classifier=classifier, llm=llm,
+                    ml_classify=ml_classify, tls=tls, probe=probe,
+                    probe_origin=probe_origin)
+            # One progress write at a time (the runner commits on one session).
+            async with report_lock:
+                done += 1
+                found += len(ep_findings)
+                await report("checking", 15 + int(done / max(len(unique), 1) * 70),
+                             f"Checked {de.path}",
+                             {"endpoints_found": len(discovered), "endpoints_checked": done,
+                              "findings": found})
+            return ep, ep_findings
+
+        clock.start("endpoints")
+        # TaskGroup: a cancel (ScanCancelled from report) stops the other tasks.
+        async with asyncio.TaskGroup() as group:
+            tasks = [group.create_task(analyse(i, de)) for i, de in enumerate(unique)]
         endpoints: list[EndpointAnalysis] = []
         findings: list[ScoredFinding] = []
-
-        analyzed: set[str] = set()
-        for i, de in enumerate(discovered):
-            # The scanner only ever GETs: a URL found as both a link and a POST
-            # form is the same response, so analyse it once.
-            if de.url in analyzed:
-                continue
-            analyzed.add(de.url)
-            pct = 15 + int((i / total) * 70)
-            await report("checking", pct, f"Checking {de.path}",
-                         {"endpoints_found": len(discovered), "endpoints_checked": len(endpoints),
-                          "findings": len(findings)})
-
-            result = await engine.fetch(de.url, method="GET")
-            expansions = None
-            if llm is not None:
-                expansions = await llm.expand_abbreviations(raw_tokens(de.path))
-            cls = classifier.classify(de.path, extra_expansions=expansions)
-            info = EndpointInfo(url=de.url, path=de.path, method=de.method,
-                                status_code=result.status_code,
-                                content_type=result.content_type)
-            # The class comes from the ML contract module (Asim) when it loads;
-            # confidence and reason stay the built-in classifier's explanation.
-            context_class = ml_classify(info) if ml_classify else cls.context_class
-            body_class = classify_response(result.final_url, result.status_code,
-                                           result.content_type, result.headers, result.body)
-            is_api = "/api" in de.path or "json" in (result.content_type or "").lower()
-
-            signals = (await _probe_endpoint(engine, de.url, result, is_api, probe_origin)
-                       if probe else {})
-
-            ctx = CheckContext(
-                url=de.url, path=de.path, result=result,
-                context_class=context_class, body_class=body_class,
-                allowed_methods=signals.get("allowed_methods", set()),
-                cors_acao=signals.get("cors_acao"),
-                cors_acac=signals.get("cors_acac"),
-                cors_methods=signals.get("cors_methods"),
-                cors_preflight_acao=signals.get("cors_preflight_acao"),
-                cors_max_age=signals.get("cors_max_age"),
-                tls=tls,
-                graphql_introspection=signals.get("graphql_introspection", False),
-                injection_error_reflected=signals.get("injection_error_reflected", False),
-            )
-
-            ep = EndpointAnalysis(
-                url=de.url, path=de.path, method=de.method,
-                status_code=result.status_code, content_type=result.content_type,
-                response_time=result.response_time, discovered_by=de.discovered_by,
-                context_class=context_class, context_confidence=cls.confidence,
-                context_reason=cls.reason,
-                headers=redact_headers(result.headers),
-                cookies=_parse_cookies(result.set_cookie_headers),
-                body_class=body_class,
-            )
-            ep_index = len(endpoints)
+        for task in tasks:
+            ep, ep_findings = task.result()
             endpoints.append(ep)
-
-            # Spec checks on the GET, and on the CORS preflight (OPTIONS checks).
-            for resp in (result, signals.get("preflight")):
-                if resp is not None:
-                    findings.extend(_spec_findings(
-                        resp, info, context_class=context_class, confidence=cls.confidence,
-                        signals=body_signals(body_class), ep_index=ep_index,
-                    ))
-            for raw in run_checks(ctx):
-                if raw.rule_id in _HOST_RULES:
-                    continue                      # reported once, below
-                bonus = body_class.bonus if raw.rule_id in _BONUS_RULES else 0.0
-                force = (raw.rule_id in _FORCE_CRIT_RULES) and body_class.credentials
-                score = compute_score(
-                    raw.base_score, context_class, bonus, force_critical=force,
-                )
-                findings.append(ScoredFinding(
-                    raw=raw,
-                    cvss_base_score=score.cvss_base_score,
-                    context_multiplier=score.context_multiplier,
-                    response_bonus=score.response_bonus,
-                    cawasma_final_score=score.cawasma_final_score,
-                    severity=score.severity,
-                    context_class=context_class,
-                    context_confidence=cls.confidence,
-                    endpoint_index=ep_index,
-                ))
-
+            findings.extend(ep_findings)
+        clock.stop("endpoints")
         findings.extend(_host_findings(target, seed, tls, http_probe))
+        clock.start("scoring")
 
         # --- Attack-chain correlation -----------------------------------
         await report("scoring", 92, "Correlating attack chains",
@@ -456,7 +535,10 @@ async def run_pipeline(target: str, on_progress: ProgressFn | None = None,
              for e in endpoints])
         _mark_chain_members(findings, chains)
 
+        clock.stop("scoring")
         stats = _build_stats(endpoints, findings, chains)
+        stats["stage_seconds"] = clock.seconds()
+        stats["requests"] = engine.requests_sent
         await report("completed", 100, "Scan complete",
                      {"endpoints_found": len(discovered), "endpoints_checked": len(endpoints),
                       "findings": len(findings), "chains": len(chains)})

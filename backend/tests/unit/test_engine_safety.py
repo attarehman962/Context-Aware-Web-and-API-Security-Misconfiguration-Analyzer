@@ -113,7 +113,7 @@ async def test_scan_response_is_normalised(engine, monkeypatch):
     assert all(k == k.lower() for k in result.headers)
     assert result.content_type.startswith("text/html")
     assert result.body == "0123456789" and result.truncated      # size cap
-    assert result.timing is not None and result.timing >= 0
+    assert result.response_time is not None and result.response_time >= 0
     assert result.redirect_chain == [] and result.tls is None     # TLS placeholder
 
 
