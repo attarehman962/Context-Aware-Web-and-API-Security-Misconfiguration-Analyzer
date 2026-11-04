@@ -21,6 +21,7 @@ import { NewScanForm } from "./new-scan-form";
 const push = vi.fn();
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push }),
+  useSearchParams: () => new URLSearchParams(window.location.search),
 }));
 
 const server = createMockServer();
@@ -246,5 +247,46 @@ describe("NewScanForm: submit", () => {
     await waitFor(() =>
       expect(screen.queryByRole("alert")).not.toBeInTheDocument(),
     );
+  });
+});
+
+describe("NewScanForm: re-scan", () => {
+  afterEach(() => window.history.replaceState(null, "", "/"));
+
+  it("pre-fills target and options but not the authorisation", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/?url=https%3A%2F%2Flegacy.example.net&crawl_depth=1&use_wordlist=0&passive_only=1",
+    );
+    const { user, url, authorise, start } = setup();
+    expect(screen.getByRole("note")).toHaveTextContent(
+      "Confirm authorisation again before starting.",
+    );
+    expect(url).toHaveValue("https://legacy.example.net");
+    expect(authorise).not.toBeChecked();
+    expect(start).toBeDisabled();
+
+    await user.click(screen.getByText("Advanced options"));
+    expect(screen.getByRole("radio", { name: /^1:/ })).toBeChecked();
+    expect(
+      screen.getByRole("switch", { name: /Use wordlist/ }),
+    ).not.toBeChecked();
+    expect(
+      screen.getByRole("switch", { name: /Passive-only mode/ }),
+    ).toBeChecked();
+
+    await user.click(authorise);
+    await user.click(start);
+    await waitFor(() => expect(push).toHaveBeenCalled());
+    expect(requests).toEqual([
+      {
+        url: "https://legacy.example.net",
+        authorisation_confirmed: true,
+        crawl_depth: 1,
+        use_wordlist: false,
+        passive_only: true,
+      },
+    ]);
   });
 });
