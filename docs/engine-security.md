@@ -99,13 +99,26 @@ system store, so a self-signed demo or eval target can be scanned over HTTPS
 without turning verification off. `docker-compose.demo.yml` sets it to the
 demo target's certificate; never point it at a bundle you don't control.
 
+## Scope: only the target's host
+
+`HttpEngine(scope_host=...)` (the pipeline passes the target URL's host) refuses
+any URL whose host is not exactly that host, before anything is sent ("Blocked:
+... is outside the scan's scope"), and does not follow a redirect that leaves it:
+the redirect response itself is captured and reported instead. Subdomains and
+other hosts are out of scope; another port or `http://` on the same host is in
+scope (TLS-005 probes port 80). The crawler already drops off-site links; this is
+the guarantee underneath, for every check and probe. Tested in
+`tests/unit/test_passive_and_scope.py` at the engine level and over a whole scan.
+
 ## Passive mode
 
 `HttpEngine(passive_only=True)` refuses every method except GET and HEAD
 before anything is sent; the result carries the error "Blocked by passive
 mode". A scan with `passive_only` (ScanRequest) runs with such an engine,
 skips the wordlist probe, and skips the active probes (TLS probe, rate-limit
-burst, HTTP-redirect check, OPTIONS/CORS preflights).
+burst, HTTP-redirect check, OPTIONS/CORS preflights). The pipeline test in
+`tests/unit/test_passive_and_scope.py` records every request a passive scan
+puts on the wire and checks that only GET and HEAD appear.
 
 ## Other limits
 

@@ -7,7 +7,7 @@ running pipeline:
 id                                       status    what it shows
 =======================================  ========  =====================================
 ``11111111-1111-4111-8111-111111111111``  DONE      7 findings, 1 chain (full results)
-``22222222-2222-4222-8222-222222222222``  RUNNING   progress 45, stage "analyzing"
+``22222222-2222-4222-8222-222222222222``  RUNNING   progress 45, stage "checking"
 ``33333333-3333-4333-8333-333333333333``  QUEUED    what ``POST /api/scan`` returns
 ``44444444-4444-4444-8444-444444444444``  FAILED    error message set
 =======================================  ========  =====================================
@@ -136,11 +136,15 @@ DONE_STATUS = ScanStatus(
     scan_id=DONE_ID, url=TARGET, status=ScanState.DONE, progress=100, stage="completed",
     options=ScanOptions(), created_at=_T0, started_at=_T0 + timedelta(seconds=2),
     completed_at=_T0 + timedelta(seconds=74), severity_counts=_counts(_DONE_FINDINGS),
+    progress_detail={"stage": "completed", "endpoints_found": 10, "endpoints_checked": 10,
+                     "findings": len(_DONE_FINDINGS), "chains": 1},
 )
 RUNNING_STATUS = ScanStatus(
     scan_id=RUNNING_ID, url="https://api.example.org", status=ScanState.RUNNING, progress=45,
-    stage="analyzing", options=ScanOptions(crawl_depth=1),
+    stage="checking", options=ScanOptions(crawl_depth=1),
     created_at=_T0 + timedelta(days=1), started_at=_T0 + timedelta(days=1, seconds=3),
+    progress_detail={"stage": "checking", "endpoints_found": 38, "endpoints_checked": 17,
+                     "findings": 29},
 )
 QUEUED_STATUS = ScanStatus(
     scan_id=QUEUED_ID, url=TARGET, status=ScanState.QUEUED, progress=0, stage=None,

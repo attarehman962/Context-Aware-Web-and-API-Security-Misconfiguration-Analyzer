@@ -85,12 +85,21 @@ Notes:
 - The sensitivity class comes from `app.ml.sensitivity.classify` and the body
   signals from `app.ml.body_classifier` (Asim) through the contract, with the
   built-in classifiers as fallback.
-- `POST /api/scan` runs scans as a FastAPI background task in the api process;
-  the Celery worker only serves the deprecated `POST /api/scans` for now.
+- `POST /api/scan` queues the scan on Celery (`services/scan_dispatch.py`, task id =
+  scan id; 503 `QUEUE_UNAVAILABLE` if the broker is down) and is rate-limited
+  (`SCAN_RATE_LIMIT`, Redis fixed window, 429). `RUN_SCANS_INLINE=true` runs it as a
+  FastAPI background task instead. Progress per stage goes to `Scan.progress_detail`;
+  live status is SSE (`GET /api/scan/{id}/events`, reads the DB); cancel sets
+  `Scan.cancel_requested`, checked at every progress step. `SCAN_TIMEOUT` bounds a scan.
+- The engine enforces the scan's scope (`HttpEngine(scope_host=...)`): no request to
+  another host, and no redirect followed off it; passive mode sends only GET/HEAD.
+- HTML/PDF reports come from `app/templates/report.html.j2` (PDF = same HTML through
+  WeasyPrint); every export redacts evidence again (`reports.redact_evidence`).
 - An unreachable target raises `pipeline.ScanError` and the scan is FAILED; only
   `ScanError` messages are shown to users.
-- Scans started by `POST /api/scan` carry `options.runner = "api"`; at start-up the
-  api marks those still QUEUED/RUNNING as FAILED (they died with the old process).
+- Scans run in the api process (`RUN_SCANS_INLINE`) carry `options.runner = "api"`
+  (Celery ones `"celery"`); at start-up the api marks "api" scans still QUEUED/RUNNING
+  as FAILED (they died with the old process).
 - Legacy `@rule` findings take their base score from the catalog vector, not the
   catalog's `base_score` (31 entries disagree; `make validate-config` lists them).
 

@@ -31,7 +31,7 @@ from app.api.schemas.contract import (
     SeverityCounts,
 )
 from app.core.contracts import BodySignal
-from app.core.reports import csv_safe, render_html, render_pdf
+from app.core.reports import csv_safe, redact_evidence, render_html, render_pdf
 from app.db.models import AttackChain, Endpoint, Scan
 from app.db.models import Finding as FindingRow
 from app.db.models.enums import FindingCategory, Severity
@@ -75,6 +75,7 @@ def scan_status(scan: Scan, counts: SeverityCounts | None = None) -> ScanStatus:
         completed_at=_utc(scan.completed_at),
         error=scan.error_message,
         severity_counts=counts or SeverityCounts(),
+        progress_detail=scan.progress_detail,
     )
 
 
@@ -248,6 +249,7 @@ MEDIA_TYPES: dict[str, str] = {
 def export(results: ScanResults, fmt: ExportFormat) -> bytes:
     """Render results. ``json``/``csv`` are part of the frozen contract; ``html``/
     ``pdf`` are human-readable reports whose layout may change."""
+    results = redacted(results)
     if fmt == "json":
         return results.model_dump_json(indent=2).encode()
     if fmt == "csv":
@@ -256,6 +258,14 @@ def export(results: ScanResults, fmt: ExportFormat) -> bytes:
     if fmt == "html":
         return render_html(html_data).encode()
     return render_pdf(html_data)  # raises ReportFormatUnavailable without WeasyPrint libs
+
+
+def redacted(results: ScanResults) -> ScanResults:
+    """A copy whose evidence is redacted again (defence in depth: it was redacted
+    when stored, but no export may carry a secret even from an older row)."""
+    return results.model_copy(update={"findings": [
+        f.model_copy(update={"evidence": redact_evidence(f.evidence)})
+        for f in results.findings]})
 
 
 def _csv(results: ScanResults) -> str:
@@ -303,8 +313,11 @@ def report_data(results: ScanResults) -> dict[str, Any]:
         "findings": [{
             "rule_id": f.check_id, "title": f.title, "category": f.category.value,
             "severity": f.severity_bucket.value, "cvss_vector": f.cvss_vector,
-            "cvss_base_score": f.base_score,
+            "cvss_base_score": f.base_score, "final_vector": f.final_vector,
+            "score_reasons": f.score_reasons,
             "context_class": f.sensitivity_class.value if f.sensitivity_class else None,
+            "body_signals": [b.value for b in f.body_signals],
+            "owasp_map": f.owasp_map, "cwe_map": f.cwe_map,
             "cawasma_context_multiplier": "", "response_bonus": None,
             "cawasma_final_score": f.final_score, "endpoint_url": f.endpoint_url,
             "evidence": f.evidence.get("text"), "impact": None,
@@ -314,6 +327,7 @@ def report_data(results: ScanResults) -> dict[str, Any]:
         "chains": [{
             "code": c.chain_code, "name": c.name, "description": c.description,
             "composite_score": c.composite_score, "severity": c.severity.value,
+            "composite_vector": c.composite_vector,
             "member_findings": sorted({code_of[i] for i in c.finding_ids if i in code_of}),
         } for c in results.chains],
     }

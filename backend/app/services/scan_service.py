@@ -122,6 +122,29 @@ async def fail_interrupted_scans(session: AsyncSession) -> int:
     return len(stale)
 
 
+async def mark_failed(session: AsyncSession, scan: Scan, message: str) -> None:
+    """End a scan as FAILED with a user-facing message (e.g. it could not be queued)."""
+    scan.status = ScanStatus.FAILED
+    scan.error_message = message
+    scan.completed_at = datetime.now(UTC)
+    await session.commit()
+    await session.refresh(scan)
+
+
+async def request_cancel(session: AsyncSession, scan: Scan) -> None:
+    """Cancel a scan. QUEUED: FAILED now. RUNNING: raise the flag the worker
+    checks at its next progress step (scan_runner.ScanCancelled)."""
+    from app.services.scan_runner import CANCELLED
+
+    scan.cancel_requested = True
+    if scan.status == ScanStatus.QUEUED:
+        scan.status = ScanStatus.FAILED
+        scan.error_message = CANCELLED
+        scan.completed_at = datetime.now(UTC)
+    await session.commit()
+    await session.refresh(scan)
+
+
 async def get_scan(session: AsyncSession, scan_id: uuid.UUID) -> Scan | None:
     return await session.get(Scan, scan_id)
 

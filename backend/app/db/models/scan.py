@@ -53,6 +53,11 @@ class Scan(Base, TimestampMixin):
     # Progress 0-100 and a human-readable current stage (spec section 24).
     progress: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     current_stage: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # Per-stage counts the worker updates as it goes, e.g. {"stage": "checking",
+    # "endpoints_found": 42, "endpoints_checked": 17, "findings": 31}.
+    progress_detail: Mapped[dict[str, Any] | None] = mapped_column(JSONType, nullable=True)
+    # Set by POST /api/scan/{id}/cancel; the worker stops at its next progress step.
+    cancel_requested: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Effective scan settings (limits, probes) so a result can be reproduced.
     options: Mapped[dict[str, Any]] = mapped_column(JSONType, default=dict, nullable=False)

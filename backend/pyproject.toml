@@ -65,7 +65,7 @@ build-backend = "setuptools.build_meta"
 include = ["app*", "scripts*"]
 
 [tool.setuptools.package-data]
-app = ["data/*.txt"]
+app = ["data/*.txt", "templates/*.j2"]
 
 # ---------------------------------------------------------------- pytest
 [tool.pytest.ini_options]

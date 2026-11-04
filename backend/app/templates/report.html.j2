@@ -1,0 +1,112 @@
+<!doctype html>
+{#- CAWASMA scan report (HTML, and the source of the PDF via WeasyPrint).
+    Rendered by app.core.reports.render_html with autoescape on: every string
+    from the scanned target is escaped. Evidence is redacted before it gets here. -#}
+<html lang="en"><head><meta charset="utf-8">
+<title>CAWASMA Report — {{ scan.target_url }}</title>
+<style>
+ @page{size:A4;margin:16mm 14mm}
+ body{font-family:"DejaVu Sans",Arial,Helvetica,sans-serif;margin:2rem;color:#1a1a1a;font-size:13px}
+ h1{font-size:1.5rem;margin-bottom:.2rem} h2{margin-top:1.6rem;border-bottom:2px solid #eee;padding-bottom:.3rem}
+ h3{font-size:1rem;margin:0 0 .3rem}
+ table{border-collapse:collapse;width:100%;margin:.6rem 0;font-size:.85rem}
+ th,td{border:1px solid #ddd;padding:.4rem .5rem;text-align:left;vertical-align:top}
+ th{background:#f4f4f4} tr{page-break-inside:avoid}
+ .story{margin:0;padding-left:1.1rem}
+ .sev{padding:1px 6px;border-radius:3px;white-space:nowrap}
+ .CRITICAL{color:#fff;background:#9b1c1c} .HIGH{color:#fff;background:#b45309}
+ .MEDIUM{color:#1a1a1a;background:#fde68a} .LOW{color:#1a1a1a;background:#d1fae5}
+ .INFO{color:#1a1a1a;background:#e5e7eb}
+ .muted{color:#666;font-size:.8rem} .limit{color:#92400e;font-style:italic}
+ code,.vec{font-family:"DejaVu Sans Mono",monospace;font-size:.75rem;word-break:break-all}
+ pre{white-space:pre-wrap;word-break:break-all;background:#fafafa;padding:.5rem;border:1px solid #eee;margin:.3rem 0}
+ .finding{border:1px solid #ddd;border-radius:4px;padding:.6rem .8rem;margin:.7rem 0;page-break-inside:avoid}
+ .story li{margin:.1rem 0}
+ .counts td{text-align:center;font-weight:bold;font-size:1rem}
+</style></head><body>
+<h1>CAWASMA Security Report</h1>
+<p class="muted">Target: <strong>{{ scan.target_url }}</strong> &middot;
+ Status: {{ scan.status }} &middot; Completed: {{ scan.completed_at or "—" }}
+ {%- if scan.duration_seconds %} &middot; Duration: {{ "%.0f"|format(scan.duration_seconds) }} s{% endif %}</p>
+
+<h2>Summary by severity</h2>
+<table class="counts"><tr>
+{% for s in severities %}<th><span class="sev {{ s }}">{{ s }}</span></th>{% endfor %}
+</tr><tr>
+{% for s in severities %}<td>{{ summary.by_severity.get(s, 0) }}</td>{% endfor %}
+</tr></table>
+<p class="muted">{{ summary.total_findings }} findings &middot;
+ {{ summary.total_endpoints }} endpoints &middot;
+ {{ summary.total_chains }} attack chains &middot; highest score {{ summary.max_score }}</p>
+{% if insight %}<pre>{{ insight }}</pre>{% endif %}
+
+{% if chains %}
+<h2>Attack chains</h2>
+<p class="muted">Findings that together make a worse attack than each alone. A chain is
+scored with its own CVSS v3.1 vector (composite score).</p>
+<table><tr><th>Code</th><th>Chain</th><th>Composite</th><th>Severity</th><th>Members</th></tr>
+{% for c in chains %}<tr><td>{{ c.code }}</td>
+<td>{{ c.name }}{% if c.description %}<br><span class="muted">{{ c.description }}</span>{% endif %}
+ {% if c.composite_vector %}<br><span class="vec">{{ c.composite_vector }}</span>{% endif %}</td>
+<td><strong>{{ c.composite_score }}</strong></td>
+<td><span class="sev {{ c.severity }}">{{ c.severity }}</span></td>
+<td>{{ c.member_findings|join(", ") }}</td></tr>{% endfor %}
+</table>
+{% endif %}
+
+<h2>Findings, ranked by context-aware score</h2>
+<table><tr><th>#</th><th>Severity</th><th>Final</th><th>Base</th><th>Check</th><th>Endpoint</th></tr>
+{% for f in findings %}<tr><td>{{ loop.index }}</td>
+<td><span class="sev {{ f.severity }}">{{ f.severity }}</span></td>
+<td><strong>{{ f.cawasma_final_score }}</strong></td><td>{{ f.cvss_base_score }}</td>
+<td>{{ f.rule_id }} — {{ f.title }}</td>
+<td class="muted">{{ f.endpoint_url or "host-level" }}</td></tr>{% endfor %}
+</table>
+
+{% for f in findings %}
+<div class="finding">
+<h3>{{ loop.index }}. <span class="sev {{ f.severity }}">{{ f.severity }}</span>
+ {{ f.rule_id }} — {{ f.title }}</h3>
+<p class="muted">{{ f.endpoint_url or "Host-level finding" }}
+ {%- if f.context_class %} &middot; endpoint sensitivity {{ f.context_class }}{% endif %}
+ {%- if f.body_signals %} &middot; response contains {{ f.body_signals|join(", ") }}{% endif %}
+ {%- if f.owasp_map %} &middot; {{ f.owasp_map|join(", ") }}{% endif %}
+ {%- if f.cwe_map %} &middot; {{ f.cwe_map|join(", ") }}{% endif %}</p>
+<table>
+<tr><th style="width:9rem">CVSS v3.1 base</th><td><strong>{{ f.cvss_base_score }}</strong>
+ <span class="vec">{{ f.cvss_vector or "—" }}</span></td></tr>
+<tr><th>Context-aware final</th><td><strong>{{ f.cawasma_final_score }}</strong>
+ {% if f.final_vector %}<span class="vec">{{ f.final_vector }}</span>{% endif %}</td></tr>
+<tr><th>Why it differs</th><td><ul class="story">
+ {% for line in f.score_story %}<li>{{ line }}</li>{% endfor %}</ul></td></tr>
+</table>
+{% if f.evidence %}<p class="muted">Evidence (redacted)</p><pre>{{ f.evidence }}</pre>{% endif %}
+{% if f.recommendation %}<p><strong>Fix:</strong> {{ f.recommendation }}</p>{% endif %}
+{% if f.limitation %}<p class="limit">Limitation: {{ f.limitation }}</p>{% endif %}
+</div>
+{% endfor %}
+
+{% if endpoints %}
+<h2>Endpoints</h2>
+<table><tr><th>Path</th><th>Status</th><th>Sensitivity</th><th>Discovered</th></tr>
+{% for e in endpoints %}<tr><td>{{ e.path }}</td><td>{{ e.status_code or "—" }}</td>
+<td>{{ e.context_class or "—" }}</td><td>{{ e.discovered_by }}</td></tr>{% endfor %}
+</table>
+{% endif %}
+
+{% if tls %}
+<h2>TLS</h2>
+<table><tr><th>Host</th><th>Protocol</th><th>Cipher</th><th>Issuer</th><th>Expires</th><th>Self-signed</th></tr>
+{% for t in tls %}<tr><td>{{ t.host }}</td><td>{{ t.negotiated_protocol }}</td>
+<td>{{ t.negotiated_cipher }}</td><td>{{ t.cert_issuer }}</td>
+<td>{{ t.cert_not_after }}</td><td>{{ t.is_self_signed }}</td></tr>{% endfor %}
+</table>
+{% endif %}
+
+<hr><p class="muted">CAWASMA — Context-Aware Web &amp; API Security Misconfiguration
+Analyzer. The base score is the official CVSS v3.1 base score of the check's vector.
+The context-aware final score is CAWASMA's prioritisation (CVSS v3.1 environmental
+metrics driven by the endpoint's sensitivity and the data in its response, or the
+interim formula for older checks); it is not an official CVSS value. Evidence is
+redacted. Findings marked with a limitation need manual verification.</p>
+</body></html>

@@ -61,7 +61,8 @@ def live_scans(monkeypatch, sessionmaker_):
     async def quiet(self, *a, **k):
         return None
 
-    monkeypatch.setattr(settings, "AUTO_DISPATCH_SCANS", True)
+    # In-process (BackgroundTasks) instead of the Celery worker: same runner code.
+    monkeypatch.setattr(settings, "RUN_SCANS_INLINE", True)
     monkeypatch.setattr(runner, "session_scope", scope)
     monkeypatch.setattr(runner.RedisProgressPublisher, "publish", quiet)
     monkeypatch.setattr(runner.RedisProgressPublisher, "close", quiet)

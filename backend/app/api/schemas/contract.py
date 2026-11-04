@@ -23,7 +23,7 @@ from app.core.contracts import BodySignal, SensitivityClass
 from app.db.models.enums import FindingCategory, Severity
 from app.db.models.enums import ScanStatus as ScanState
 
-CONTRACT_VERSION = "1.2.0"
+CONTRACT_VERSION = "1.3.0"
 
 __all__ = [
     "CONTRACT_VERSION",
@@ -95,6 +95,11 @@ class ScanStatus(_Contract):
     completed_at: datetime | None = None
     error: str | None = Field(None, description="Why the scan failed (status FAILED).")
     severity_counts: SeverityCounts = Field(default_factory=SeverityCounts)
+    progress_detail: dict[str, Any] | None = Field(
+        None, examples=[{"stage": "checking", "endpoints_found": 42, "endpoints_checked": 17,
+                         "findings": 31}],
+        description="Since 1.3. Counts so far for the current stage (crawling, checking, "
+                    "scoring, completed); null until the worker reports. Display only.")
 
 
 class Finding(_Contract):
