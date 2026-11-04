@@ -144,8 +144,10 @@ Tests and checks (from `frontend/`):
 npm test               # Vitest + React Testing Library (src/**/*.test.ts(x)), single run
 npm run test:watch     # Vitest watch mode
 npx playwright install chromium   # once, for e2e
-npm run test:e2e       # Playwright (e2e/); builds and serves on :3100
+npm run test:e2e       # Playwright (e2e/): flows, axe a11y, 600-finding perf; mock-mode build on :3100
 E2E_BASE_URL=http://localhost:3000 npm run test:e2e   # against a running app
+bash frontend/scripts/eval-stack.sh   # (repo root) VAmPI + TLS front + CAWASMA api/worker; `down` to stop
+E2E_TARGET_URL=https://vampi-tls/ npm run test:e2e:real -- eval-flow   # full flow, real stack (CI job frontend-e2e-eval)
 npm run lint           # ESLint (next core-web-vitals + typescript, prettier-compatible)
 npm run format         # Prettier write (format:check in CI)
 npm run typecheck      # next typegen && tsc --noEmit
@@ -153,13 +155,17 @@ npm run gen:api        # regenerate src/lib/api-schema.ts from docs/openapi.json
 ```
 
 API layer (`src/lib/`): `api.ts` is the typed client (`createScan`,
-`getResults`, `getExportUrl`); it returns `ApiResult`s and never throws
-(errors are `network` / `client` 4xx / `server` 5xx). Contract types are in
-`api-types.ts` over the generated `api-schema.ts` (never hand-edit that one).
-Components fetch through the TanStack Query hooks in `queries.ts`. The MSW
-mocks are in `src/mocks/`: fixtures copied from `docs/examples/` (a test
-fails if they drift) and a simulated scan that goes QUEUED -> RUNNING -> DONE
-in about 10 s.
+`getResults`, `getFindingDetail`, `cancelScan`, `listScans`, `fetchExport`);
+it returns `ApiResult`s and never throws (errors are `network` / `client` 4xx /
+`server` 5xx). Contract types are in `api-types.ts` over the generated
+`api-schema.ts` (never hand-edit that one). Components fetch through the
+TanStack Query hooks in `queries.ts`. Live status follows the SSE stream
+`GET /api/scan/{id}/events` (`use-live-scan.ts`) and polls every 2 s while it
+is down. The MSW mocks are in `src/mocks/`: fixtures copied from
+`docs/examples/` (a test fails if they drift), a simulated scan that goes
+QUEUED -> RUNNING -> DONE in about 10 s (with its SSE stream and cancel), and a
+600-finding scan (`55555555-...`). MSW's `sse()` is only registered where
+`EventSource` exists (browser, tests); the Next.js server has none.
 
 Docker: `docker compose --profile frontend up -d --build` serves the app on
 http://localhost:3000 (`FRONTEND_HOST_PORT`) alongside the api on :8000.

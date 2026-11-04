@@ -72,7 +72,9 @@ export function FindingsFilters({
                 key={severity}
                 className={cn(
                   "flex cursor-pointer items-center gap-2 rounded-lg border px-2 py-1 text-sm has-focus-visible:ring-3 has-focus-visible:ring-ring/50",
-                  checked ? "border-foreground" : "opacity-80",
+                  // Selected chips get a strong border and a tint; never dim
+                  // the badge itself (that broke its 4.5:1 text contrast).
+                  checked ? "border-foreground bg-muted" : "border-dashed",
                 )}
               >
                 <input

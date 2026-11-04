@@ -1,48 +1,42 @@
 "use client";
 
-import { useEffect, useReducer, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { apiBaseUrl } from "./api";
-import {
-  INITIAL_PROGRESS,
-  applyLiveMessage,
-  liveStatusUrl,
-  parseLiveMessage,
-  type LiveMessage,
-  type LiveProgress,
-} from "./live-status";
+import type { ScanStatus } from "./api-types";
+import { isTerminal, liveStatusUrl, parseStatusEvent } from "./live-status";
 
 /**
- * - `connecting`: socket opening (results still come from polling)
- * - `live`: events arrive as the scanner works
- * - `polling`: the socket failed or dropped before the scan finished; the
- *   results query polls instead
- * - `off`: not connected (scan finished, or WebSockets unavailable)
+ * - `connecting`: stream opening
+ * - `live`: status events arrive as the scan changes
+ * - `polling`: the stream is down (reconnecting, or gave up); results poll
+ *   every 2 s until it is back
+ * - `off`: not connected (scan finished, or EventSource unavailable)
  */
 export type LiveMode = "connecting" | "live" | "polling" | "off";
 
 export interface UseLiveScanOptions {
   /** Connect only while the scan is queued or running. */
   enabled: boolean;
-  /** Called once when the socket reports DONE or FAILED. */
+  /** Called once when an event reports DONE or FAILED. */
   onTerminal?: () => void;
-  /** Tests may pass their own socket factory. */
-  createSocket?: (url: string) => WebSocket;
+  /** Tests may pass their own EventSource factory. */
+  createSource?: (url: string) => EventSource;
 }
 
-function reducer(state: LiveProgress, message: LiveMessage | "reset") {
-  return message === "reset"
-    ? INITIAL_PROGRESS
-    : applyLiveMessage(state, message);
-}
-
+/**
+ * Follows a scan over `GET /api/scan/{id}/events` (contract 1.3). The
+ * browser's EventSource reconnects by itself after a drop (the stream sends
+ * `retry: 3000`); while it is down the page polls instead, and switches back
+ * to live as soon as an event arrives again.
+ */
 export function useLiveScan(
   scanId: string,
-  { enabled, onTerminal, createSocket }: UseLiveScanOptions,
-): { mode: LiveMode; progress: LiveProgress } {
-  const supported = typeof window !== "undefined" && "WebSocket" in window;
-  const [progress, dispatch] = useReducer(reducer, INITIAL_PROGRESS);
-  const [socketMode, setSocketMode] = useState<
+  { enabled, onTerminal, createSource }: UseLiveScanOptions,
+): { mode: LiveMode; latest: ScanStatus | null } {
+  const supported = typeof window !== "undefined" && "EventSource" in window;
+  const [latest, setLatest] = useState<ScanStatus | null>(null);
+  const [streamMode, setStreamMode] = useState<
     "connecting" | "live" | "polling"
   >("connecting");
   const terminalCallback = useRef(onTerminal);
@@ -53,56 +47,41 @@ export function useLiveScan(
   useEffect(() => {
     if (!enabled || !supported) return;
     let finished = false;
-    let fellBack = false;
-    const fallBack = () => {
-      if (finished || fellBack) return;
-      fellBack = true;
-      setSocketMode("polling");
-    };
-
-    let socket: WebSocket;
+    let source: EventSource;
     try {
       const url = liveStatusUrl(apiBaseUrl(), scanId);
-      socket = createSocket ? createSocket(url) : new WebSocket(url);
+      source = createSource ? createSource(url) : new EventSource(url);
     } catch {
-      queueMicrotask(fallBack);
+      queueMicrotask(() => setStreamMode("polling"));
       return;
     }
 
-    socket.addEventListener("open", () => {
-      if (!fellBack) setSocketMode("live");
-    });
-    socket.addEventListener("message", (event) => {
-      const message = parseLiveMessage(String(event.data));
-      if (!message) return;
-      if (message.kind === "error") {
-        fallBack();
-        socket.close();
-        return;
-      }
-      dispatch(message);
-      const terminal =
-        message.kind === "snapshot"
-          ? message.terminal
-          : message.percent >= 100 ||
-            message.stage === "completed" ||
-            message.stage === "failed";
-      if (terminal && !finished) {
+    source.addEventListener("status", (event) => {
+      const scan = parseStatusEvent(String((event as MessageEvent).data));
+      if (!scan || finished) return;
+      setLatest(scan);
+      setStreamMode("live");
+      if (isTerminal(scan)) {
         finished = true;
+        // The server ends the stream; close so EventSource does not reconnect.
+        source.close();
         terminalCallback.current?.();
       }
     });
-    socket.addEventListener("close", fallBack);
-    socket.addEventListener("error", fallBack);
+    // Covers both a drop (EventSource will retry: CONNECTING) and a refusal
+    // such as a 404 (CLOSED). Either way, poll until events flow again.
+    source.addEventListener("error", () => {
+      if (!finished) setStreamMode("polling");
+    });
 
     return () => {
       finished = true;
-      socket.close();
-      dispatch("reset");
-      setSocketMode("connecting");
+      source.close();
+      setLatest(null);
+      setStreamMode("connecting");
     };
-  }, [enabled, supported, scanId, createSocket]);
+  }, [enabled, supported, scanId, createSource]);
 
-  const mode: LiveMode = !enabled || !supported ? "off" : socketMode;
-  return { mode, progress };
+  const mode: LiveMode = !enabled || !supported ? "off" : streamMode;
+  return { mode, latest };
 }

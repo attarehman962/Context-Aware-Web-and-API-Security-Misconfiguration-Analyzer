@@ -32,6 +32,8 @@ export type ApiError =
       message: string;
       /** Per-field problems, set on 422 responses. */
       details?: ValidationIssue[];
+      /** Seconds to wait, from `Retry-After` (429 RATE_LIMITED). */
+      retryAfter?: number;
     };
 
 export type ApiResult<T> =
@@ -112,11 +114,57 @@ function resultsSearch(query: ResultsQuery = {}): string {
 }
 
 /** Download link for a finished scan's report; use it as `<a href download>`. */
+/**
+ * `POST /api/scan/{id}/cancel` (since 1.3). A queued scan fails at once; a
+ * running one stops at its next step. 409 SCAN_FINISHED if already over.
+ */
+export function cancelScan(
+  scanId: string,
+  options: RequestOptions = {},
+): Promise<ApiResult<ScanStatus>> {
+  return request<ScanStatus>(`/api/scan/${encodeURIComponent(scanId)}/cancel`, {
+    method: "POST",
+    signal: options.signal,
+  });
+}
+
 export function getExportUrl(
   scanId: string,
   format: ExportFormat = "json",
 ): string {
   return `${apiBaseUrl()}/api/results/${encodeURIComponent(scanId)}/export?format=${format}`;
+}
+
+/**
+ * Downloads a finished scan's report (`GET .../export?format=`) as a Blob,
+ * so the page can show progress, name the file and explain errors (409 not
+ * finished, 501 PDF unavailable) instead of a broken download link.
+ */
+export async function fetchExport(
+  scanId: string,
+  format: ExportFormat,
+  options: RequestOptions = {},
+): Promise<ApiResult<Blob>> {
+  let response: Response;
+  try {
+    response = await fetch(getExportUrl(scanId, format), {
+      signal: options.signal,
+    });
+  } catch (err) {
+    if (options.signal?.aborted) throw err;
+    return {
+      ok: false,
+      error: {
+        kind: "network",
+        message: "Could not reach the CAWASMA API. Check that it is running.",
+      },
+    };
+  }
+  if (!response.ok) {
+    const body: unknown = await response.json().catch(() => undefined);
+    return { ok: false, error: toHttpError(response.status, body) };
+  }
+  return { ok: true, data: await response.blob() };
 }
 
 async function request<T>(
@@ -159,7 +207,10 @@ async function request<T>(
     return { ok: true, data: body as T };
   }
 
-  return { ok: false, error: toHttpError(response.status, body) };
+  const error = toHttpError(response.status, body);
+  const retryAfter = Number(response.headers.get("Retry-After"));
+  if (error.kind !== "network" && retryAfter > 0) error.retryAfter = retryAfter;
+  return { ok: false, error };
 }
 
 function toHttpError(status: number, body: unknown): ApiError {

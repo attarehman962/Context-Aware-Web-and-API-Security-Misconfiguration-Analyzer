@@ -1,5 +1,9 @@
-// Runs the real-stack e2e test (e2e/real-stack.spec.ts) against a running
-// CAWASMA API with Atta's demo target:
+// Runs the real-stack e2e tests against a running CAWASMA API:
+//   - e2e/real-stack.spec.ts: Atta's demo target (missing HSTS);
+//   - e2e/eval-flow.spec.ts: the full flow on an eval target (VAmPI), stack
+//     from scripts/eval-stack.sh; pass `-- eval-flow` to run only that.
+//
+// Demo target:
 //
 //   docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d --build --wait
 //   npm run test:e2e:real

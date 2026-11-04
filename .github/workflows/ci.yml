@@ -122,3 +122,67 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+      # Flows, axe accessibility checks and the 600-finding performance check,
+      # against a mock-mode build (MSW, no backend needed).
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: End-to-end tests (Playwright, mock API)
+        run: npm run test:e2e
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report
+          retention-days: 7
+
+  # Neelam. The whole journey on the real stack and a real evaluation target:
+  # new scan -> live status (SSE) -> results -> filter -> drill-down -> export,
+  # scanning VAmPI behind the eval TLS front (frontend/scripts/eval-stack.sh).
+  frontend-e2e-eval:
+    name: Frontend end-to-end on VAmPI (real stack)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
+      INSTALL_ML: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Certificate helper dependency
+        run: pip install cryptography
+      - name: Start VAmPI (TLS front) and CAWASMA (api + worker)
+        run: bash frontend/scripts/eval-stack.sh
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - name: Full flow (Playwright)
+        working-directory: frontend
+        env:
+          E2E_TARGET_URL: https://vampi-tls/
+        run: npm run test:e2e:real -- eval-flow
+      - name: CAWASMA logs
+        if: failure()
+        run: >-
+          docker compose -f docker-compose.yml -f docker-compose.eval-scan.yml
+          logs --tail 300 api worker
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-eval
+          path: |
+            frontend/playwright-report
+            frontend/test-results
+          retention-days: 7
+      - name: Stop the stack
+        if: always()
+        run: bash frontend/scripts/eval-stack.sh down

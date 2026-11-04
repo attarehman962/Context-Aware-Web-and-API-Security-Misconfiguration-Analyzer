@@ -101,6 +101,27 @@ export function submitErrors(error: ApiError): SubmitErrors {
       },
     };
   }
+  if (error.code === "RATE_LIMITED") {
+    const wait = error.retryAfter;
+    return {
+      fields: {},
+      form: {
+        title: "Too many scans started",
+        message: wait
+          ? `Wait ${wait} s, then start the scan again.`
+          : error.message,
+      },
+    };
+  }
+  if (error.code === "QUEUE_UNAVAILABLE") {
+    return {
+      fields: {},
+      form: {
+        title: "The scan queue is not running",
+        message: `${error.message} Your scan was not started; try again in a moment.`,
+      },
+    };
+  }
   if (error.code === "INVALID_TARGET") {
     return { fields: { url: error.message } };
   }

@@ -5,9 +5,20 @@
  * the client directly, so caching and polling behave the same everywhere.
  */
 
-import { useMutation, useQuery, type Query } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type Query,
+} from "@tanstack/react-query";
 
-import { createScan, getFindingDetail, getResults, listScans } from "./api";
+import {
+  cancelScan,
+  createScan,
+  getFindingDetail,
+  getResults,
+  listScans,
+} from "./api";
 import type {
   Finding,
   ScanRequest,
@@ -120,6 +131,16 @@ export function useScanHistory() {
     // Running scans change; refresh the list now and then while it is open.
     refetchInterval: (query: Query<ScanStatus[]>) =>
       query.state.data?.some((s) => !isFinished(s)) ? 10_000 : false,
+  });
+}
+
+/** Stop a queued or running scan (contract 1.3); refreshes its results. */
+export function useCancelScan(scanId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => unwrap(await cancelScan(scanId)),
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.results(scanId) }),
   });
 }
 
