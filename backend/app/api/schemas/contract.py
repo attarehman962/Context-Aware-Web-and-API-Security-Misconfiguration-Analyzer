@@ -17,7 +17,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.core.contracts import BodySignal, SensitivityClass
 from app.db.models.enums import FindingCategory, Severity
@@ -69,6 +69,14 @@ class ScanRequest(ScanOptions):
         ..., description="Must be true: the user confirms they are authorised to test "
                          "this target. Requests without it are rejected (422).",
     )
+
+    @field_validator("authorisation_confirmed", mode="before")
+    @classmethod
+    def _only_json_true(cls, value: Any) -> Any:
+        # Literal[True] alone accepts 1 (1 == True); only JSON true confirms (SEC-06).
+        if not isinstance(value, bool):
+            raise ValueError("must be true")
+        return value
 
 
 class SeverityCounts(_Contract):

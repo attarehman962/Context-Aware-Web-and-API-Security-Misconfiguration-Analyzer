@@ -458,6 +458,26 @@ async def test_events_stream_every_change_and_end_after_done(client, sessionmake
 
 
 @pytest.mark.asyncio
+async def test_events_streams_are_capped_per_client(client, sessionmaker_, sse_db, monkeypatch):
+    """SEC-09: each open stream polls the DB, so one client can't hold many."""
+    monkeypatch.setattr(settings, "SSE_MAX_STREAMS_PER_CLIENT", 1)
+    sid = await _add(sessionmaker_, ScanStatus.RUNNING)
+    first = asyncio.create_task(client.get(f"/api/scan/{sid}/events"))
+    await asyncio.sleep(0.1)                    # the first stream is open and polling
+
+    second = await client.get(f"/api/scan/{sid}/events")
+    assert second.status_code == 429 and second.json()["error"]["code"] == "RATE_LIMITED"
+
+    async with sessionmaker_() as s:
+        (await s.get(Scan, sid)).status = ScanStatus.DONE
+        await s.commit()
+    async with asyncio.timeout(10):
+        assert (await first).status_code == 200
+    third = await client.get(f"/api/scan/{sid}/events")      # the slot was given back
+    assert third.status_code == 200
+
+
+@pytest.mark.asyncio
 async def test_events_for_a_finished_scan_send_one_event(client, sessionmaker_, sse_db):
     sid = await _add(sessionmaker_, ScanStatus.FAILED)
     r = await client.get(f"/api/scan/{sid}/events")

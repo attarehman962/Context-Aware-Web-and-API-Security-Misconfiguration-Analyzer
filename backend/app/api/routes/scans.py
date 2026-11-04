@@ -3,9 +3,10 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.limits import check_scan_rate_limit
 from app.api.schemas.scan import (
     ScanCreate,
     ScanCreated,
@@ -22,9 +23,10 @@ router = APIRouter(prefix="/api/scans", tags=["scans"])
 
 @router.post("", response_model=ScanCreated, status_code=status.HTTP_201_CREATED)
 async def create_scan(
-    body: ScanCreate, session: AsyncSession = Depends(get_session)
+    body: ScanCreate, request: Request, session: AsyncSession = Depends(get_session)
 ) -> ScanCreated:
     """Create a scan job. Returns immediately with a queued scan id."""
+    await check_scan_rate_limit(request)
     # Same rule as POST /api/scan: no scan without the operator's confirmation.
     if not body.authorization_confirmed:
         raise HTTPException(

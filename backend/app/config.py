@@ -88,6 +88,7 @@ class Settings(BaseSettings):
     SCAN_RATE_LIMIT: str = "5/minute"
     # How often GET /api/scan/{id}/events re-reads the scan (seconds).
     SSE_POLL_SECONDS: float = 1.0
+    SSE_MAX_STREAMS_PER_CLIENT: int = 10    # open live-status streams per client IP
     # Contract v1 routes answer with example data (app/api/mock.py): no DB or
     # scanner needed. For frontend development only.
     MOCK_API: bool = False

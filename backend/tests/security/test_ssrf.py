@@ -15,7 +15,6 @@ from sqlalchemy import func, select
 from app.core.engine import HttpEngine, PinnedNetworkBackend
 from app.db.models import Scan
 from app.utils.security import SSRFError, parse_ip_literal, resolve_and_validate
-from tests.security.conftest import known_issue
 
 LOOPBACK_FORMS = [
     "127.0.0.1", "127.1", "127.0.1", "127.255.255.254",
@@ -39,8 +38,7 @@ INTERNAL_FORMS = [
     "198.18.0.1", "192.0.0.1", "192.0.2.1",          # benchmarking / IETF / docs
     "224.0.0.1", "[ff02::1]",                        # multicast
     "[fe80::1]", "[fc00::1]",                        # link-local, ULA
-    pytest.param("[fec0::1]", marks=known_issue(     # deprecated site-local
-        "SEC-07", "Atta", "fec0::/10 is not blocked")),
+    "[fec0::1]",                                     # deprecated site-local (SEC-07)
     "[::ffff:10.0.0.1]", "[::ffff:169.254.169.254]",
     "240.0.0.1", "255.255.255.255",                  # reserved / broadcast
 ]
@@ -184,7 +182,6 @@ async def test_api_refuses_internal_targets_and_stores_nothing(client, sessionma
 
 
 @pytest.mark.asyncio
-@known_issue("SEC-02", "Atta", "INVALID_TARGET message echoes the resolved private IP")
 async def test_refusal_does_not_reveal_what_an_internal_name_resolves_to(client, dns):
     """An error that echoes the resolved address turns the API into an oracle for
     the server's internal DNS (which names exist inside, and their IPs)."""

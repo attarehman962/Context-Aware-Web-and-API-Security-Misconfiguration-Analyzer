@@ -39,8 +39,16 @@ def validate_target_url(raw: str, *, require_https: bool = True) -> ParsedTarget
     raw = raw.strip()
     if len(raw) > 2048:
         raise InvalidTargetError("Target URL is too long.")
+    # urlsplit drops CR, LF and tab silently, so the URL scanned would not be the
+    # one submitted (SEC-04).
+    if any(ord(c) < 0x20 or ord(c) == 0x7F for c in raw):
+        raise InvalidTargetError("Target URL contains control characters.")
 
-    parsed = urlparse(raw)
+    try:
+        parsed = urlparse(raw)
+        port_given = parsed.port
+    except ValueError:      # "[::1" (unclosed IPv6), port not a number or > 65535
+        raise InvalidTargetError("Target URL is malformed (host or port).") from None
 
     if parsed.scheme not in ("http", "https"):
         raise InvalidTargetError(
@@ -51,12 +59,11 @@ def validate_target_url(raw: str, *, require_https: bool = True) -> ParsedTarget
 
     if not parsed.hostname:
         raise InvalidTargetError("Target URL has no host.")
+    # user:password@ would be stored with the scan and shown in every report (SEC-01).
+    if "@" in parsed.netloc:
+        raise InvalidTargetError("Target URL must not contain a user name or password.")
 
-    # Port: default by scheme, else must be 1-65535.
-    try:
-        port = parsed.port or (443 if parsed.scheme == "https" else 80)
-    except ValueError:
-        raise InvalidTargetError("Target URL has an invalid port.") from None
+    port = default_port(parsed.scheme) if port_given is None else port_given
     if not (1 <= port <= 65535):
         raise InvalidTargetError("Target port is out of range.")
 
@@ -76,9 +83,13 @@ def validate_target_url(raw: str, *, require_https: bool = True) -> ParsedTarget
     )
 
 
+def default_port(scheme: str) -> int:
+    return 443 if scheme == "https" else 80
+
+
 def same_origin(url_a: str, url_b: str) -> bool:
     """True if two URLs share scheme, host, and port (same-origin)."""
     a, b = urlparse(url_a), urlparse(url_b)
-    a_port = a.port or (443 if a.scheme == "https" else 80)
-    b_port = b.port or (443 if b.scheme == "https" else 80)
+    a_port = default_port(a.scheme) if a.port is None else a.port
+    b_port = default_port(b.scheme) if b.port is None else b.port
     return (a.scheme, a.hostname, a_port) == (b.scheme, b.hostname, b_port)

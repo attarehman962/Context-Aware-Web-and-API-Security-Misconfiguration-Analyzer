@@ -13,7 +13,6 @@ from sqlalchemy import func, select
 from app.config import settings
 from app.db.models import Scan
 from app.services import rate_limit
-from tests.security.conftest import known_issue
 
 pytestmark = pytest.mark.asyncio
 
@@ -35,7 +34,7 @@ async def _count(sessionmaker_) -> int:
 
 @pytest.mark.parametrize("flag", [
     "missing", False, None, "true", "True", "yes",
-    pytest.param(1, marks=known_issue("SEC-06", "Atta", "integer 1 is accepted as true")),
+    1,                                  # SEC-06 (fixed): 1 == True in lax mode
     "1", 0, [True], {"ok": True}, "",
 ])
 async def test_contract_route_needs_a_literal_true(client, sessionmaker_, flag):
@@ -93,15 +92,10 @@ async def test_mock_mode_applies_the_same_gate(client, monkeypatch):
     "javascript:alert(1)", "file:///etc/passwd", "ftp://example.com/", "gopher://example.com/",
     "http://example.com/", "https://", "https:///path", "//example.com/", "example.com",
     "https://exa mple.com/",
-    pytest.param("https://example.com:0/", marks=known_issue(
-        "SEC-05", "Atta", "port 0 is accepted (treated as 'no port')")),
-    pytest.param("https://example.com:99999/", marks=known_issue(
-        "SEC-05", "Atta", "out-of-range port is a 500, not a 400")),
-    pytest.param("https://example.com/\r\nX-Injected: 1", marks=known_issue(
-        "SEC-04", "Atta", "CR/LF silently stripped: a different URL is scanned")),
+    "https://example.com:0/", "https://example.com:99999/",          # SEC-05 (fixed)
+    "https://example.com/\r\nX-Injected: 1",                          # SEC-04 (fixed)
     "https://example.com/" + "a" * 3000, "", " ",
-    pytest.param("https://[::1", marks=known_issue(
-        "SEC-05", "Atta", "malformed IPv6 host is a 500, not a 400")),
+    "https://[::1",                                                     # SEC-05 (fixed)
     "https://example.com\\@169.254.169.254/",
 ])
 async def test_bad_urls_are_refused_and_nothing_is_stored(client, sessionmaker_, url):
@@ -110,7 +104,6 @@ async def test_bad_urls_are_refused_and_nothing_is_stored(client, sessionmaker_,
     assert await _count(sessionmaker_) == 0
 
 
-@known_issue("SEC-01", "Atta", "userinfo is accepted and stored in scans.target_url")
 async def test_credentials_in_the_url_are_refused_not_stored(client, sessionmaker_):
     """userinfo (https://user:password@host) would be stored in scans.target_url
     and shown in every report, history row and log line."""
@@ -149,7 +142,6 @@ async def test_contract_scan_creation_is_rate_limited(client, limit_two):
     assert codes == [202, 202, 429, 429]
 
 
-@known_issue("SEC-03", "Atta", "POST /api/scans has no rate limit")
 async def test_deprecated_scan_creation_is_rate_limited_too(client, limit_two):
     """POST /api/scans creates and dispatches scans like POST /api/scan; without
     the limit it is an open way around it."""

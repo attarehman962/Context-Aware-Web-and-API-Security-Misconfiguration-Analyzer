@@ -466,6 +466,14 @@ for history. The old dashboard list must switch to the new fields.
 
 ## Changelog
 
+- **1.3.0 fixes** (2026-11-05, security review SEC-01..07, SEC-09; no shape
+  changes, so the version stays): `POST /api/scan` and `POST /api/scans` refuse
+  with 400 `INVALID_TARGET` a URL with a user name or password, control
+  characters, port 0 or an out-of-range port, or a malformed IPv6 host;
+  `authorisation_confirmed` must be JSON `true` (1 is 422 now); the deprecated
+  `POST /api/scans` shares the scan rate limit; `GET /api/scan/{id}/events` can
+  return 429 `RATE_LIMITED` past `SSE_MAX_STREAMS_PER_CLIENT` open streams.
+
 - **1.3.0** (Sprint 4): additive. Scans run on the Celery worker. `ScanStatus`
   gains `progress_detail` (counts per stage). New `GET /api/scan/{id}/events`
   (SSE live status) and `POST /api/scan/{id}/cancel`. `POST /api/scan` can return

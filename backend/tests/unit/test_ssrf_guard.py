@@ -94,3 +94,9 @@ def test_allowed_internal_hosts_permit_private_ranges_only(monkeypatch):
 def test_allowed_internal_hosts_is_empty_by_default():
     assert settings.ALLOWED_INTERNAL_HOSTS == ""
     assert settings.allowed_internal_hosts == frozenset()
+
+
+def test_malformed_url_is_an_ssrf_error_not_a_crash():
+    for url in ("https://example.com:99999/", "https://[::1"):
+        with pytest.raises(SSRFError, match="malformed"):
+            validate_url_ssrf(url)

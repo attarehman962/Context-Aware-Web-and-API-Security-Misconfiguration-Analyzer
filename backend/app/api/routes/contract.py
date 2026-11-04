@@ -16,6 +16,7 @@ from fastapi.responses import StreamingResponse
 
 from app.api import mock
 from app.api.errors import ApiError
+from app.api.limits import check_scan_rate_limit, open_stream
 from app.api.schemas.common import ErrorResponse, Page, PaginationMeta
 from app.api.schemas.contract import (
     ExportFormat,
@@ -30,10 +31,10 @@ from app.db.models.enums import FindingCategory, Severity
 from app.db.models.enums import ScanStatus as ScanState
 from app.db.session import AsyncSessionLocal, SessionDep
 from app.dependencies import PaginationParams, pagination
-from app.services import contract_service, rate_limit, scan_dispatch, scan_runner, scan_service
+from app.services import contract_service, scan_dispatch, scan_runner, scan_service
 from app.services.scan_runner import run_scan_async
 from app.utils.security import SSRFError, validate_url_ssrf
-from app.utils.validators import InvalidTargetError
+from app.utils.validators import InvalidTargetError, validate_target_url
 
 router = APIRouter(prefix="/api", tags=["contract v1"])
 
@@ -65,22 +66,19 @@ async def start_scan(body: ScanRequest, session: SessionDep, request: Request,
     ``authorisation_confirmed`` must be ``true`` (the schema rejects anything
     else with 422). Rate-limited per client (SCAN_RATE_LIMIT, 429 RATE_LIMITED).
     """
-    decision = await rate_limit.limiter.hit(request.client.host if request.client else "?")
-    if not decision.allowed:
-        raise ApiError(status.HTTP_429_TOO_MANY_REQUESTS, "RATE_LIMITED",
-                       f"Too many scans: at most {decision.limit} per "
-                       f"{settings.SCAN_RATE_LIMIT.split('/')[1]}. Try again in "
-                       f"{decision.retry_after} s.",
-                       headers={"Retry-After": str(decision.retry_after)})
+    await check_scan_rate_limit(request)
     if settings.MOCK_API:
         if not body.url.startswith("https://"):
             raise ApiError(400, "INVALID_TARGET", "Only https:// targets are allowed.")
         result = mock.QUEUED_STATUS.model_copy(update={"url": body.url})
     else:
         try:
+            validate_target_url(body.url)
             # Reject private/loopback/unresolvable targets now, not mid-scan. The
             # engine re-checks every request (DNS rebinding), so this is UX only.
             await asyncio.to_thread(validate_url_ssrf, body.url)
+        except InvalidTargetError as exc:
+            raise ApiError(400, "INVALID_TARGET", exc.reason) from exc
         except SSRFError as exc:
             raise ApiError(400, "INVALID_TARGET", str(exc)) from exc
         try:
@@ -148,7 +146,7 @@ async def cancel_scan(scan_id: uuid.UUID, session: SessionDep) -> ScanStatus:
     responses={200: {"content": {"text/event-stream": {}},
                      "description": "`event: status` with a ScanStatus JSON each time it "
                                     "changes; ends after DONE or FAILED."},
-               **_errors(404, 422)},
+               **_errors(404, 422, 429)},
 )
 async def scan_events(scan_id: uuid.UUID, request: Request) -> StreamingResponse:
     """Since 1.3. One ``status`` event now, then one per change (progress, stage,
@@ -163,7 +161,7 @@ async def scan_events(scan_id: uuid.UUID, request: Request) -> StreamingResponse
     async with AsyncSessionLocal() as session:
         if await scan_service.get_scan(session, scan_id) is None:
             raise _not_found()
-    return _sse(_events(scan_id, request))
+    return _sse(open_stream(request, _events(scan_id, request)))
 
 
 def _sse(events: AsyncIterator[str]) -> StreamingResponse:
