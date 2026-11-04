@@ -19,8 +19,24 @@ type Schemas = components["schemas"];
 type Sent<T> = { [K in keyof T]-?: T[K] };
 
 export type ScanStatus = Sent<
-  Omit<Schemas["app__api__schemas__contract__ScanStatus"], "severity_counts">
-> & { severity_counts: SeverityCounts };
+  Omit<
+    Schemas["app__api__schemas__contract__ScanStatus"],
+    "severity_counts" | "progress_detail"
+  >
+> & { severity_counts: SeverityCounts; progress_detail: ProgressDetail | null };
+
+/**
+ * `ScanStatus.progress_detail` (since 1.3): counts so far. Free-form in
+ * openapi.json; this is the documented shape (docs/api-contract.md, "Scan
+ * status values"). Every key is optional.
+ */
+export interface ProgressDetail {
+  stage?: string;
+  endpoints_found?: number;
+  endpoints_checked?: number;
+  findings?: number;
+  chains?: number;
+}
 export type ScanState = Schemas["app__db__models__enums__ScanStatus"];
 export type ScanOptions = Sent<Schemas["ScanOptions"]>;
 export type Finding = Sent<Schemas["Finding"]>;
@@ -108,6 +124,9 @@ export type ApiErrorCode =
   | "NOT_FOUND"
   | "SCAN_NOT_FINISHED"
   | "FORMAT_UNAVAILABLE"
+  | "SCAN_FINISHED"
+  | "RATE_LIMITED"
+  | "QUEUE_UNAVAILABLE"
   | "INTERNAL_ERROR";
 
 /** One entry of `details` on a 422 response. */

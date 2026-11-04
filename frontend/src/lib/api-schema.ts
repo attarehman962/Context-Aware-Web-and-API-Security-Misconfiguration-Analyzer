@@ -55,13 +55,58 @@ export interface paths {
     put?: never;
     /**
      * Start a scan
-     * @description Validate the target and queue a scan. Poll ``GET /api/results/{scan_id}``.
+     * @description Validate the target and queue a scan on the Celery worker. Follow it with
+     *     ``GET /api/scan/{scan_id}/events`` (SSE) or poll ``GET /api/results/{scan_id}``.
      *
      *     ``authorisation_confirmed`` must be ``true`` (the schema rejects anything
-     *     else with 422). The scan runs in this process as a background task for now
-     *     (QUEUED -> RUNNING -> DONE | FAILED); the Celery worker takes over later.
+     *     else with 422). Rate-limited per client (SCAN_RATE_LIMIT, 429 RATE_LIMITED).
      */
     post: operations["start_scan_api_scan_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/scan/{scan_id}/cancel": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Cancel a queued or running scan
+     * @description Since 1.3. A QUEUED scan becomes FAILED ("Cancelled by the user.") at once;
+     *     a RUNNING one stops at its next progress step and ends the same way (follow
+     *     it on the events stream). 409 SCAN_FINISHED for a DONE or FAILED scan.
+     */
+    post: operations["cancel_scan_api_scan__scan_id__cancel_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/scan/{scan_id}/events": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Live status (Server-Sent Events)
+     * @description Since 1.3. One ``status`` event now, then one per change (progress, stage,
+     *     counts, status); a comment line every 15 s keeps proxies from closing it. The
+     *     stream ends after the DONE or FAILED event; then GET /api/results has the
+     *     findings. EventSource reconnects by itself (``retry: 3000``).
+     */
+    get: operations["scan_events_api_scan__scan_id__events_get"];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -972,7 +1017,7 @@ export interface components {
     ScanResults: {
       /**
        * Contract Version
-       * @default 1.2.0
+       * @default 1.3.0
        */
       contract_version: string;
       scan: components["schemas"]["app__api__schemas__contract__ScanStatus"];
@@ -1120,6 +1165,17 @@ export interface components {
        */
       error?: string | null;
       severity_counts?: components["schemas"]["SeverityCounts"];
+      /**
+       * Progress Detail
+       * @description Since 1.3. Counts so far for the current stage (crawling, checking, scoring, completed); null until the worker reports. Display only.
+       * @example {
+       *       "endpoints_checked": 17,
+       *       "endpoints_found": 42,
+       *       "findings": 31,
+       *       "stage": "checking"
+       *     }
+       */
+      progress_detail?: Record<string, unknown> | null;
     };
     /**
      * ScanStatus
@@ -1238,6 +1294,113 @@ export interface operations {
           "application/json": components["schemas"]["ErrorResponse"];
         };
       };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  cancel_scan_api_scan__scan_id__cancel_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        scan_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["app__api__schemas__contract__ScanStatus"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  scan_events_api_scan__scan_id__events_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        scan_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description `event: status` with a ScanStatus JSON each time it changes; ends after DONE or FAILED. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "text/event-stream": unknown;
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
     };
   };
   get_results_api_results__scan_id__get: {
@@ -1272,7 +1435,7 @@ export interface operations {
         content: {
           /**
            * @example {
-           *       "contract_version": "1.2.0",
+           *       "contract_version": "1.3.0",
            *       "scan": {
            *         "scan_id": "11111111-1111-4111-8111-111111111111",
            *         "url": "https://shop.example.com",
@@ -1293,6 +1456,13 @@ export interface operations {
            *           "medium": 3,
            *           "low": 0,
            *           "info": 0
+           *         },
+           *         "progress_detail": {
+           *           "stage": "completed",
+           *           "endpoints_found": 10,
+           *           "endpoints_checked": 10,
+           *           "findings": 7,
+           *           "chains": 1
            *         }
            *       },
            *       "findings": [
@@ -1843,7 +2013,7 @@ export interface operations {
            *           "url": "https://api.example.org",
            *           "status": "RUNNING",
            *           "progress": 45,
-           *           "stage": "analyzing",
+           *           "stage": "checking",
            *           "options": {
            *             "crawl_depth": 1,
            *             "use_wordlist": true,
@@ -1857,6 +2027,12 @@ export interface operations {
            *             "medium": 0,
            *             "low": 0,
            *             "info": 0
+           *           },
+           *           "progress_detail": {
+           *             "stage": "checking",
+           *             "endpoints_found": 38,
+           *             "endpoints_checked": 17,
+           *             "findings": 29
            *           }
            *         },
            *         {
@@ -1879,6 +2055,13 @@ export interface operations {
            *             "medium": 3,
            *             "low": 0,
            *             "info": 0
+           *           },
+           *           "progress_detail": {
+           *             "stage": "completed",
+           *             "endpoints_found": 10,
+           *             "endpoints_checked": 10,
+           *             "findings": 7,
+           *             "chains": 1
            *           }
            *         },
            *         {

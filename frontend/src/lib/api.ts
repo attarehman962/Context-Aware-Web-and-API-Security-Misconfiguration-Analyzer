@@ -32,6 +32,8 @@ export type ApiError =
       message: string;
       /** Per-field problems, set on 422 responses. */
       details?: ValidationIssue[];
+      /** Seconds to wait, from `Retry-After` (429 RATE_LIMITED). */
+      retryAfter?: number;
     };
 
 export type ApiResult<T> =
@@ -112,6 +114,20 @@ function resultsSearch(query: ResultsQuery = {}): string {
 }
 
 /** Download link for a finished scan's report; use it as `<a href download>`. */
+/**
+ * `POST /api/scan/{id}/cancel` (since 1.3). A queued scan fails at once; a
+ * running one stops at its next step. 409 SCAN_FINISHED if already over.
+ */
+export function cancelScan(
+  scanId: string,
+  options: RequestOptions = {},
+): Promise<ApiResult<ScanStatus>> {
+  return request<ScanStatus>(`/api/scan/${encodeURIComponent(scanId)}/cancel`, {
+    method: "POST",
+    signal: options.signal,
+  });
+}
+
 export function getExportUrl(
   scanId: string,
   format: ExportFormat = "json",
@@ -159,7 +175,10 @@ async function request<T>(
     return { ok: true, data: body as T };
   }
 
-  return { ok: false, error: toHttpError(response.status, body) };
+  const error = toHttpError(response.status, body);
+  const retryAfter = Number(response.headers.get("Retry-After"));
+  if (error.kind !== "network" && retryAfter > 0) error.retryAfter = retryAfter;
+  return { ok: false, error };
 }
 
 function toHttpError(status: number, body: unknown): ApiError {
