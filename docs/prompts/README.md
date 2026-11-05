@@ -11,4 +11,4 @@ The 30 prompts the three of us ran, one per branch (`<name>/pNN-topic`):
 Asim's and Neelam's files stay in `docs/project/` because they are imported
 from the team PDFs (`docs/project/tools/import.sh`). Atta's were never in a PDF,
 so they are kept here as pasted. How each prompt was carried out is checked in
-[`reviews/final-audit.md`](../../reviews/final-audit.md), section 1.
+[`docs/reviews/final-audit.md`](../reviews/final-audit.md), section 1.

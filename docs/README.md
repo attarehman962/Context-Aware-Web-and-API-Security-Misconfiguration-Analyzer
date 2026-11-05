@@ -50,6 +50,14 @@ Each file is self-contained; start with the Overview and follow the order below.
 | [Labelling guide](labelling-guide.md) | Definitions and examples for the four sensitivity classes |
 | [Literature review](lit-review.md) | Notes on CVSS, OWASP and related scanners |
 
+### Process: prompts and reviews
+
+| Document | What it covers |
+|----------|----------------|
+| [Prompts](prompts/README.md) | The 30 Claude Code prompts we ran, one per branch |
+| [Reviews](reviews/) | Atta's reviews of partner prompts, and the [final audit](reviews/final-audit.md) before submission |
+| [Security review](security-review.md) · [Evaluation method](evaluation-method.md) · [Performance](performance.md) · [Check coverage](check-coverage.md) | The tool's own security review, how it was evaluated, scan timings, tests per check |
+
 ### Related files (project root)
 
 - **[README.md](../README.md)**: quick project summary and quick start
