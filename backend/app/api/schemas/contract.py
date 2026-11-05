@@ -11,6 +11,7 @@ Frozen at the end of Sprint 1 (docs/api-contract.md). Rules for changing it:
 
 Importable as ``from app.api.schemas import ScanRequest, ...``.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -23,7 +24,7 @@ from app.core.contracts import BodySignal, SensitivityClass
 from app.db.models.enums import FindingCategory, Severity
 from app.db.models.enums import ScanStatus as ScanState
 
-CONTRACT_VERSION = "1.3.0"
+CONTRACT_VERSION = "1.4.0"
 
 __all__ = [
     "CONTRACT_VERSION",
@@ -42,6 +43,9 @@ __all__ = [
 ]
 
 ExportFormat = Literal["json", "csv", "html", "pdf"]
+# How final_score was computed: CVSS v3.1 environmental metrics, or the interim
+# formula the legacy @rule checks still use (docs/06-scoring-model.md).
+ScoringMethod = Literal["environmental", "legacy"]
 
 
 class _Contract(BaseModel):
@@ -52,22 +56,31 @@ class ScanOptions(_Contract):
     """How a scan runs. Stored on the scan and echoed back in ScanStatus."""
 
     crawl_depth: int = Field(2, ge=1, le=2, description="Link-following depth from the URL.")
-    use_wordlist: bool = Field(True, description="Probe a bounded list of common paths "
-                                                 "(e.g. /.env, /admin).")
-    passive_only: bool = Field(False, description="No active probes (TLS probe, rate-limit "
-                                                  "burst, redirect check): only observe "
-                                                  "normal GET responses.")
+    use_wordlist: bool = Field(
+        True, description="Probe a bounded list of common paths " "(e.g. /.env, /admin)."
+    )
+    passive_only: bool = Field(
+        False,
+        description="No active probes (TLS probe, rate-limit "
+        "burst, redirect check): only observe "
+        "normal GET responses.",
+    )
 
 
 class ScanRequest(ScanOptions):
     """Body of ``POST /api/scan``."""
 
-    url: str = Field(..., min_length=1, max_length=2048,
-                     examples=["https://shop.example.com"],
-                     description="HTTPS URL to scan. Must resolve to a public address.")
+    url: str = Field(
+        ...,
+        min_length=1,
+        max_length=2048,
+        examples=["https://shop.example.com"],
+        description="HTTPS URL to scan. Must resolve to a public address.",
+    )
     authorisation_confirmed: Literal[True] = Field(
-        ..., description="Must be true: the user confirms they are authorised to test "
-                         "this target. Requests without it are rejected (422).",
+        ...,
+        description="Must be true: the user confirms they are authorised to test "
+        "this target. Requests without it are rejected (422).",
     )
 
     @field_validator("authorisation_confirmed", mode="before")
@@ -95,8 +108,9 @@ class ScanStatus(_Contract):
     url: str
     status: ScanState = Field(..., description="QUEUED -> RUNNING -> DONE | FAILED")
     progress: int = Field(..., ge=0, le=100)
-    stage: str | None = Field(None, examples=["crawling"],
-                              description="Human-readable current step; display only.")
+    stage: str | None = Field(
+        None, examples=["crawling"], description="Human-readable current step; display only."
+    )
     options: ScanOptions
     created_at: datetime
     started_at: datetime | None = None
@@ -104,10 +118,13 @@ class ScanStatus(_Contract):
     error: str | None = Field(None, description="Why the scan failed (status FAILED).")
     severity_counts: SeverityCounts = Field(default_factory=SeverityCounts)
     progress_detail: dict[str, Any] | None = Field(
-        None, examples=[{"stage": "checking", "endpoints_found": 42, "endpoints_checked": 17,
-                         "findings": 31}],
+        None,
+        examples=[
+            {"stage": "checking", "endpoints_found": 42, "endpoints_checked": 17, "findings": 31}
+        ],
         description="Since 1.3. Counts so far for the current stage (crawling, checking, "
-                    "scoring, completed); null until the worker reports. Display only.")
+        "scoring, completed); null until the worker reports. Display only.",
+    )
 
 
 class Finding(_Contract):
@@ -115,38 +132,71 @@ class Finding(_Contract):
     check_id: str = Field(..., examples=["HDR-001"])
     title: str
     category: FindingCategory
-    endpoint_id: uuid.UUID | None = Field(None, description="Null for host-level findings "
-                                                            "(e.g. TLS).")
+    endpoint_id: uuid.UUID | None = Field(
+        None, description="Null for host-level findings " "(e.g. TLS)."
+    )
     endpoint_url: str | None = None
     owasp_map: list[str] = Field(..., examples=[["API8:2023"]])
     cwe_map: list[str] = Field(..., examples=[["CWE-319"]])
     cvss_vector: str = Field(..., examples=["CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N"])
     base_score: float = Field(..., ge=0, le=10, description="Official CVSS v3.1 base score.")
-    final_score: float = Field(..., ge=0, le=10,
-                               description="CAWASMA context-aware score (not official CVSS).")
+    final_score: float = Field(
+        ..., ge=0, le=10, description="CAWASMA context-aware score (not official CVSS)."
+    )
     final_vector: str | None = Field(
-        None, examples=["CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N/CR:M/IR:M/AR:L"],
+        None,
+        examples=["CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N/CR:M/IR:M/AR:L"],
         description="Since 1.1. The base vector plus the CR/IR/AR environmental requirements "
-                    "final_score was computed from (CVSS v3.1 environmental score). Null for "
-                    "findings still scored by the interim formula.")
+        "final_score was computed from (CVSS v3.1 environmental score). Null for "
+        "findings still scored by the interim formula.",
+    )
     score_reasons: list[str] = Field(
-        default_factory=list, examples=[["sensitivity:LOW", "no-context-change",
-                                         "base:5.9", "environmental:5.9"]],
-        description="Since 1.1. Why each requirement was set; empty when final_vector is null.")
+        default_factory=list,
+        examples=[["sensitivity:LOW", "no-context-change", "base:5.9", "environmental:5.9"]],
+        description="Since 1.1. Why each requirement was set; empty when final_vector is null.",
+    )
+    scoring_method: ScoringMethod = Field(
+        "legacy",
+        description="Since 1.4. 'environmental': final_score is the CVSS v3.1 environmental "
+        "score of final_vector. 'legacy': the interim formula (base x context multiplier + "
+        "body bonus) and final_vector is null. The two are different scales: label them, "
+        "don't compare them as one.",
+    )
     severity_bucket: Severity
-    evidence: dict[str, Any] = Field(..., description="Redacted. Always has 'text'; other "
-                                                      "keys depend on the check.")
+    evidence: dict[str, Any] = Field(
+        ..., description="Redacted. Always has 'text'; other " "keys depend on the check."
+    )
     # Drill-down context
     sensitivity_class: SensitivityClass | None = Field(
-        None, description="Sensitivity class of the endpoint (null for host-level findings).")
+        None, description="Sensitivity class of the endpoint (null for host-level findings)."
+    )
     body_signals: list[BodySignal] = Field(
-        default_factory=list, description="Sensitive data seen in the endpoint's response.")
-    chain_ids: list[uuid.UUID] = Field(default_factory=list,
-                                       description="Ids of chains in ScanResults.chains "
-                                                   "this finding belongs to.")
+        default_factory=list, description="Sensitive data seen in the endpoint's response."
+    )
+    chain_ids: list[uuid.UUID] = Field(
+        default_factory=list,
+        description="Ids of chains in ScanResults.chains " "this finding belongs to.",
+    )
     recommendation: str | None = None
-    limitation: str | None = Field(None, description="Set when black-box testing cannot "
-                                                     "confirm the finding; show it.")
+    limitation: str | None = Field(
+        None, description="Set when black-box testing cannot " "confirm the finding; show it."
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _derive_scoring_method(cls, data: Any) -> Any:
+        if isinstance(data, dict) and "scoring_method" not in data:
+            method = "environmental" if data.get("final_vector") else "legacy"
+            data = {**data, "scoring_method": method}
+        return data
+
+    @model_validator(mode="after")
+    def _scoring_method_matches_vector(self) -> Finding:
+        if (self.scoring_method == "environmental") != (self.final_vector is not None):
+            raise ValueError(
+                "scoring_method must be 'environmental' exactly when final_vector is set"
+            )
+        return self
 
 
 class Chain(_Contract):
@@ -154,18 +204,26 @@ class Chain(_Contract):
     chain_code: str = Field(..., examples=["C005"])
     name: str
     description: str | None = None
-    composite_score: float = Field(..., ge=0, le=10,
-                                   description="CVSS v3.1 base score of composite_vector "
-                                               "(always above every member's score).")
+    composite_score: float = Field(
+        ...,
+        ge=0,
+        le=10,
+        description="CVSS v3.1 base score of composite_vector "
+        "(always above every member's score).",
+    )
     severity: Severity
     finding_ids: list[uuid.UUID]
     composite_vector: str | None = Field(
-        None, examples=["CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H"],
-        description="Since 1.2. The chain's own CVSS v3.1 vector (config/chains.yaml).")
+        None,
+        examples=["CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H"],
+        description="Since 1.2. The chain's own CVSS v3.1 vector (config/chains.yaml).",
+    )
     evidence: dict[str, Any] | None = Field(
-        None, description="Since 1.2. Why it fired: scope (kind, value), the matched "
-                          "check ids per group, and the context (sensitivity class or body "
-                          "signal) that satisfied the template.")
+        None,
+        description="Since 1.2. Why it fired: scope (kind, value), the matched "
+        "check ids per group, and the context (sensitivity class or body "
+        "signal) that satisfied the template.",
+    )
 
 
 class FindingsMeta(_Contract):
@@ -175,8 +233,9 @@ class FindingsMeta(_Contract):
     page: int | None = Field(None, ge=1, description="Null when not paginated.")
     limit: int | None = Field(None, ge=1)
     pages: int | None = Field(None, ge=0)
-    filters: dict[str, Any] = Field(default_factory=dict,
-                                    description="The filters applied, as given.")
+    filters: dict[str, Any] = Field(
+        default_factory=dict, description="The filters applied, as given."
+    )
 
 
 class EndpointDetail(_Contract):
@@ -193,9 +252,11 @@ class EndpointDetail(_Contract):
     sensitivity_reason: list[str] = Field(default_factory=list)
     body_signals: list[BodySignal] = Field(default_factory=list)
     security_headers: dict[str, str] = Field(
-        default_factory=dict, description="Security-relevant response headers (redacted).")
+        default_factory=dict, description="Security-relevant response headers (redacted)."
+    )
     cookies: list[dict[str, Any]] = Field(
-        default_factory=list, description="Cookie metadata: name, flags, scope. Never values.")
+        default_factory=list, description="Cookie metadata: name, flags, scope. Never values."
+    )
 
 
 class ScanResults(_Contract):
@@ -204,12 +265,16 @@ class ScanResults(_Contract):
     contract_version: str = CONTRACT_VERSION
     scan: ScanStatus
     findings: list[Finding] = Field(
-        ..., description="Ranked by final_score, highest first (ties: check_id). Empty "
-                         "until status is DONE. Filtered/paginated when the request asks.")
+        ...,
+        description="Ranked by final_score, highest first (ties: check_id). Empty "
+        "until status is DONE. Filtered/paginated when the request asks.",
+    )
     chains: list[Chain] = Field(default_factory=list)
     findings_meta: FindingsMeta | None = Field(
-        None, description="Since 1.2. Set when the request filters or paginates: the "
-                          "filtered total and the page. Null otherwise and in exports.")
+        None,
+        description="Since 1.2. Set when the request filters or paginates: the "
+        "filtered total and the page. Null otherwise and in exports.",
+    )
 
     @model_validator(mode="after")
     def _rank_findings(self) -> ScanResults:
@@ -224,5 +289,6 @@ class FindingDetail(Finding):
     impact: str | None = None
     references: list[str] = Field(default_factory=list)
     endpoint: EndpointDetail | None = Field(None, description="Null for host-level findings.")
-    chains: list[Chain] = Field(default_factory=list,
-                                description="The chains this finding belongs to.")
+    chains: list[Chain] = Field(
+        default_factory=list, description="The chains this finding belongs to."
+    )

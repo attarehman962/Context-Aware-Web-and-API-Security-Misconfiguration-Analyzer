@@ -3,6 +3,7 @@
 Each test gives the rule a context it must report and a close one it must not,
 so a rule that fires on everything or on nothing fails.
 """
+
 from __future__ import annotations
 
 import json
@@ -21,12 +22,14 @@ def _tls(**fields) -> TlsProbe:
     return TlsProbe(host="shop.example.com", reachable=True, **fields)
 
 
-# ------------------------------------------------------------------- REST API
+# REST API
+
 
 def test_api001_rate_limit_headers():
     assert_rule_fires("API-001", context(API, content_type=JSON))
-    assert_rule_no_fire("API-001", context(API, content_type=JSON,
-                                           headers={"X-RateLimit-Limit": "100"}))
+    assert_rule_no_fire(
+        "API-001", context(API, content_type=JSON, headers={"X-RateLimit-Limit": "100"})
+    )
 
 
 def test_api002_trace():
@@ -60,8 +63,7 @@ def test_api008_deprecation_header():
 
 
 def test_api009_many_methods():
-    assert_rule_fires("API-009", context(allowed_methods={"GET", "POST", "PUT", "DELETE",
-                                                          "PATCH"}))
+    assert_rule_fires("API-009", context(allowed_methods={"GET", "POST", "PUT", "DELETE", "PATCH"}))
     assert_rule_no_fire("API-009", context(allowed_methods={"GET", "HEAD", "OPTIONS"}))
 
 
@@ -75,8 +77,9 @@ def test_api010_jwt():
 def test_api011_overfetching():
     many = json.dumps({f"field{i}": i for i in range(41)})
     assert_rule_fires("API-011", context(API, content_type=JSON, body=many))
-    assert_rule_no_fire("API-011", context(API, content_type=JSON,
-                                           body=json.dumps({"id": 1, "total": 9})))
+    assert_rule_no_fire(
+        "API-011", context(API, content_type=JSON, body=json.dumps({"id": 1, "total": 9}))
+    )
 
 
 def test_api012_graphql_introspection():
@@ -94,11 +97,13 @@ def test_api014_injection_error_reflected():
     assert_rule_no_fire("API-014", context())
 
 
-# ---------------------------------------------------------------------- auth
+# Auth
+
 
 def test_aut001_basic_auth():
-    assert_rule_fires("AUT-001", context(status=401,
-                                         headers={"WWW-Authenticate": 'Basic realm="x"'}))
+    assert_rule_fires(
+        "AUT-001", context(status=401, headers={"WWW-Authenticate": 'Basic realm="x"'})
+    )
     assert_rule_no_fire("AUT-001", context(status=401, headers={"WWW-Authenticate": "Bearer"}))
 
 
@@ -134,7 +139,8 @@ def test_aut007_redirect_parameter():
     assert_rule_no_fire("AUT-007", context("https://shop.example.com/login?page=2"))
 
 
-# ------------------------------------------------------------------- cookies
+# Cookies
+
 
 def test_cki004_session_token_in_url():
     assert_rule_fires("CKI-004", context("https://shop.example.com/a?sessionid=abc"))
@@ -151,7 +157,8 @@ def test_cki006_short_session_cookie():
     assert_rule_no_fire("CKI-006", context(cookies=["sessionid=" + "a1" * 16]))
 
 
-# ---------------------------------------------------------------------- CORS
+# CORS
+
 
 def test_cor001_wildcard_origin():
     assert_rule_fires("COR-001", context(cors_acao="*"))
@@ -159,37 +166,39 @@ def test_cor001_wildcard_origin():
 
 
 def test_cor004_unsafe_methods_cross_origin():
-    assert_rule_fires("COR-004", context(cors_acao="https://a.example",
-                                         cors_methods="GET, PUT, DELETE"))
-    assert_rule_no_fire("COR-004", context(cors_acao="https://a.example",
-                                           cors_methods="GET, POST"))
+    assert_rule_fires(
+        "COR-004", context(cors_acao="https://a.example", cors_methods="GET, PUT, DELETE")
+    )
+    assert_rule_no_fire("COR-004", context(cors_acao="https://a.example", cors_methods="GET, POST"))
 
 
 def test_cor005_preflight_without_max_age():
     assert_rule_fires("COR-005", context(cors_preflight_acao="https://a.example"))
-    assert_rule_no_fire("COR-005", context(cors_preflight_acao="https://a.example",
-                                           cors_max_age="600"))
+    assert_rule_no_fire(
+        "COR-005", context(cors_preflight_acao="https://a.example", cors_max_age="600")
+    )
 
 
-# ------------------------------------------------------------------- headers
+# Headers
+
 
 def test_hdr009_coop():
     assert_rule_fires("HDR-009", context())
-    assert_rule_no_fire("HDR-009", context(headers={"Cross-Origin-Opener-Policy":
-                                                    "same-origin"}))
+    assert_rule_no_fire("HDR-009", context(headers={"Cross-Origin-Opener-Policy": "same-origin"}))
 
 
 def test_hdr010_corp():
     assert_rule_fires("HDR-010", context())
-    assert_rule_no_fire("HDR-010", context(headers={"Cross-Origin-Resource-Policy":
-                                                    "same-origin"}))
+    assert_rule_no_fire("HDR-010", context(headers={"Cross-Origin-Resource-Policy": "same-origin"}))
 
 
 def test_hdr011_cache_on_sensitive_endpoint():
-    assert_rule_fires("HDR-011", context(context_class=ContextClass.HIGH,
-                                         headers={"Cache-Control": "public"}))
-    assert_rule_no_fire("HDR-011", context(context_class=ContextClass.HIGH,
-                                           headers={"Cache-Control": "no-store"}))
+    assert_rule_fires(
+        "HDR-011", context(context_class=ContextClass.HIGH, headers={"Cache-Control": "public"})
+    )
+    assert_rule_no_fire(
+        "HDR-011", context(context_class=ContextClass.HIGH, headers={"Cache-Control": "no-store"})
+    )
     assert_rule_no_fire("HDR-011", context(context_class=ContextClass.LOW))
 
 
@@ -199,7 +208,8 @@ def test_hdr012_expect_ct():
     assert_rule_no_fire("HDR-012", context(headers={**hsts, "Expect-CT": "max-age=86400"}))
 
 
-# ------------------------------------------------------- information disclosure
+# Information disclosure
+
 
 def test_inf001_internal_ip():
     assert_rule_fires("INF-001", context(body_class=BodyClassification(internal_ip=True)))
@@ -208,22 +218,24 @@ def test_inf001_internal_ip():
 
 def test_inf003_env_file():
     env = "https://shop.example.com/.env"
-    assert_rule_fires("INF-003", context(env, content_type="text/plain",
-                                         body="DB_PASSWORD=cawasma-fake-value\n"))
+    assert_rule_fires(
+        "INF-003", context(env, content_type="text/plain", body="DB_PASSWORD=cawasma-fake-value\n")
+    )
     assert_rule_no_fire("INF-003", context(env, body="<html>Not found</html>"))
 
 
 def test_inf004_git_metadata():
     head = "https://shop.example.com/.git/HEAD"
-    assert_rule_fires("INF-004", context(head, content_type="text/plain",
-                                         body="ref: refs/heads/main\n"))
+    assert_rule_fires(
+        "INF-004", context(head, content_type="text/plain", body="ref: refs/heads/main\n")
+    )
     assert_rule_no_fire("INF-004", context(head, status=404, body="ref: refs/heads/main"))
 
 
 def test_inf005_backup_file():
     backup = "https://shop.example.com/backup.zip"
     assert_rule_fires("INF-005", context(backup, content_type="application/zip"))
-    assert_rule_no_fire("INF-005", context(backup, content_type="text/html"))   # catch-all page
+    assert_rule_no_fire("INF-005", context(backup, content_type="text/html"))  # catch-all page
 
 
 def test_inf006_api_docs():
@@ -231,7 +243,8 @@ def test_inf006_api_docs():
     assert_rule_no_fire("INF-006", context(body="<html>Shop</html>"))
 
 
-# ----------------------------------------------------------------------- TLS
+# TLS
+
 
 def test_tls001_legacy_protocols():
     assert_rule_fires("TLS-001", context(tls=_tls(protocols_offered=["TLSv1", "TLSv1.2"])))
@@ -261,10 +274,10 @@ def test_tls006_mixed_content():
 
 
 def test_tls007_hsts_without_preload():
-    assert_rule_fires("TLS-007", context(headers={"Strict-Transport-Security":
-                                                  "max-age=31536000"}))
-    assert_rule_no_fire("TLS-007", context(headers={"Strict-Transport-Security":
-                                                    "max-age=31536000; preload"}))
+    assert_rule_fires("TLS-007", context(headers={"Strict-Transport-Security": "max-age=31536000"}))
+    assert_rule_no_fire(
+        "TLS-007", context(headers={"Strict-Transport-Security": "max-age=31536000; preload"})
+    )
 
 
 def test_tls008_hostname_mismatch():
@@ -290,4 +303,4 @@ def test_a_check_with_a_spec_reports_the_spec_vector():
         finding = make(rule_id, "evidence")
         assert finding.cvss_vector == specs[rule_id].base_cvss_vector, rule_id
         assert finding.base_score == base_score(specs[rule_id].base_cvss_vector), rule_id
-    assert make("HDR-009").cvss_vector == CATALOG["HDR-009"].cvss_vector    # no spec
+    assert make("HDR-009").cvss_vector == CATALOG["HDR-009"].cvss_vector  # no spec

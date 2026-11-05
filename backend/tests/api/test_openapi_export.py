@@ -1,4 +1,5 @@
 """docs/openapi.json is the published contract: it must match the code."""
+
 from __future__ import annotations
 
 import json
@@ -14,12 +15,20 @@ def test_committed_openapi_matches_the_code():
 def test_openapi_declares_the_contract():
     spec = json.loads(export_openapi.render())
     assert spec["info"]["x-contract-version"] == CONTRACT_VERSION
-    for path in ("/api/scan", "/api/results/{scan_id}", "/api/results/{scan_id}/export",
-                 "/api/scans"):
+    for path in (
+        "/api/scan",
+        "/api/results/{scan_id}",
+        "/api/results/{scan_id}/export",
+        "/api/scans",
+    ):
         assert path in spec["paths"], path
-    assert "/api/scans/{scan_id}" not in spec["paths"]          # pre-contract routes removed
-    assert not any(op.get("deprecated") for item in spec["paths"].values()
-                   for op in item.values() if isinstance(op, dict))
+    assert "/api/scans/{scan_id}" not in spec["paths"]  # pre-contract routes removed
+    assert not any(
+        op.get("deprecated")
+        for item in spec["paths"].values()
+        for op in item.values()
+        if isinstance(op, dict)
+    )
 
 
 def test_committed_example_json_matches_mock_mode():
@@ -28,5 +37,6 @@ def test_committed_example_json_matches_mock_mode():
     assert {"results-done.json", "scans.json", "scan-request.json"} <= set(examples)
     for name, content in examples.items():
         committed = export_openapi.EXAMPLES_DIR / name
-        assert committed.exists() and committed.read_text() == content, (
-            f"docs/examples/{name} is stale: run `make openapi`")
+        assert (
+            committed.exists() and committed.read_text() == content
+        ), f"docs/examples/{name} is stale: run `make openapi`"

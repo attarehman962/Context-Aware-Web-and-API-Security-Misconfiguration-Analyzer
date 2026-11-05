@@ -4,6 +4,7 @@ Rules are pure functions ``detect(ctx) -> RawFinding | None``. They read only
 from the :class:`CheckContext` and never touch the database, so each is trivial
 to unit-test. The registry is populated by importing the category modules.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -28,13 +29,13 @@ class CheckContext:
     context_class: ContextClass | None = None
     body_class: BodyClassification | None = None
 
-    # Optional probe-derived signals (populated by the pipeline in Phase 13).
+    # Probe-derived signals, filled in by the pipeline (empty in passive mode).
     allowed_methods: set[str] = field(default_factory=set)
-    cors_acao: str | None = None            # Access-Control-Allow-Origin (probe)
-    cors_acac: str | None = None            # Access-Control-Allow-Credentials
-    cors_methods: str | None = None         # Access-Control-Allow-Methods
+    cors_acao: str | None = None  # Access-Control-Allow-Origin (probe)
+    cors_acac: str | None = None  # Access-Control-Allow-Credentials
+    cors_methods: str | None = None  # Access-Control-Allow-Methods
     cors_preflight_acao: str | None = None  # ACAO on a real preflight (OPTIONS + Origin)
-    cors_max_age: str | None = None         # Access-Control-Max-Age on that preflight
+    cors_max_age: str | None = None  # Access-Control-Max-Age on that preflight
     probe_origin: str = "https://cawasma-probe.example"
     tls: TlsProbe | None = None
     graphql_introspection: bool = False
@@ -92,7 +93,7 @@ def base_vector(rule_id: str) -> str:
 
     try:
         spec = load_specs().get(rule_id)
-    except SpecError:                   # no or invalid checks.yaml: catalog only
+    except SpecError:  # no or invalid checks.yaml: catalog only
         spec = None
     return spec.base_cvss_vector if spec is not None else CATALOG[rule_id].cvss_vector
 

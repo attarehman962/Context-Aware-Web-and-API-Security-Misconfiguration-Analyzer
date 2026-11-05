@@ -4,6 +4,7 @@ Runs against SQLite by default and against PostgreSQL when ``TEST_DATABASE_URL``
 is set (as in CI). Tests are sync because Alembic's async env calls
 ``asyncio.run`` itself.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -77,9 +78,10 @@ def test_migrated_schema_matches_models(cfg, db_url):
     command.upgrade(cfg, "head")
 
     diff = _inspect(
-        db_url, lambda c: compare_metadata(
+        db_url,
+        lambda c: compare_metadata(
             MigrationContext.configure(c, opts={"compare_type": True}), Base.metadata
-        )
+        ),
     )
     assert diff == [], f"models and migrations differ; run alembic revision --autogenerate: {diff}"
 

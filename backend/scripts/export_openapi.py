@@ -8,6 +8,7 @@ holds one committed response per contract shape, taken from the same data as
 MOCK_API mode (app/api/mock.py). CI and the test suite fail when either no
 longer matches the code.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -37,18 +38,20 @@ def render() -> str:
 def render_examples() -> dict[str, str]:
     """One file per shape: request, each scan state, history, an error."""
     request = ScanRequest(url=mock.TARGET, authorisation_confirmed=True)
-    history = Page[ScanStatus](items=mock.SCANS, meta=PaginationMeta(
-        page=1, limit=20, total=len(mock.SCANS), pages=1))
-    error = ErrorResponse(error=ErrorDetail(code="INVALID_TARGET",
-                                            message="Only HTTPS targets are allowed."))
+    history = Page[ScanStatus](
+        items=mock.SCANS, meta=PaginationMeta(page=1, limit=20, total=len(mock.SCANS), pages=1)
+    )
+    error = ErrorResponse(
+        error=ErrorDetail(code="INVALID_TARGET", message="Only HTTPS targets are allowed.")
+    )
     files = {
-        "scan-request.json": request,                          # POST /api/scan body
-        "scan-status-queued.json": mock.QUEUED_STATUS,          # POST /api/scan 202
-        "results-done.json": mock.RESULTS[mock.DONE_ID],        # GET /api/results/{id}
+        "scan-request.json": request,  # POST /api/scan body
+        "scan-status-queued.json": mock.QUEUED_STATUS,  # POST /api/scan 202
+        "results-done.json": mock.RESULTS[mock.DONE_ID],  # GET /api/results/{id}
         "results-running.json": mock.RESULTS[mock.RUNNING_ID],
         "results-failed.json": mock.RESULTS[mock.FAILED_ID],
-        "scans.json": history,                                  # GET /api/scans
-        "error.json": error,                                    # any 4xx/5xx
+        "scans.json": history,  # GET /api/scans
+        "error.json": error,  # any 4xx/5xx
     }
     return {name: _json(model.model_dump(mode="json")) for name, model in files.items()}
 
@@ -65,8 +68,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     outputs = _outputs()
     if args.check:
-        stale = [p for p, text in outputs.items()
-                 if not p.exists() or p.read_text(encoding="utf-8") != text]
+        stale = [
+            p
+            for p, text in outputs.items()
+            if not p.exists() or p.read_text(encoding="utf-8") != text
+        ]
         for path in stale:
             print(f"{path} is out of date: run `make openapi` and commit it.")
         if not stale:

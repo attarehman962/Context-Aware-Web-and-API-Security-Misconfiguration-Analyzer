@@ -3,6 +3,7 @@
 Docker does not publish ports for containers whose only network is internal,
 so the targets are reached from a collector service inside the network.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -37,6 +38,9 @@ def test_collector_defaults_point_at_compose_services():
 
 def test_targets_do_not_carry_cawasma_settings():
     # ALLOWED_INTERNAL_HOSTS is a CAWASMA (scanner) setting; the targets ignore it.
-    offenders = [name for name, svc in SERVICES.items()
-                 if "ALLOWED_INTERNAL_HOSTS" in (svc.get("environment") or {})]
+    offenders = [
+        name
+        for name, svc in SERVICES.items()
+        if "ALLOWED_INTERNAL_HOSTS" in (svc.get("environment") or {})
+    ]
     assert offenders == []

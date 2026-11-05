@@ -8,6 +8,7 @@ Then every table of the database, the captured logs, every export format
 and every read route are searched for each
 secret value.
 """
+
 from __future__ import annotations
 
 import contextlib
@@ -40,11 +41,14 @@ async def scanned(logging_target, sessionmaker_, monkeypatch, caplog):
             yield s
 
     monkeypatch.setattr(runner, "session_scope", scope)
-    monkeypatch.setattr(runner, "run_pipeline", functools.partial(run_pipeline,
-                                                                  allow_private=True))
+    monkeypatch.setattr(runner, "run_pipeline", functools.partial(run_pipeline, allow_private=True))
     async with sessionmaker_() as s:
-        scan = Scan(target_url=logging_target.url, status=ScanStatus.QUEUED, progress=0,
-                    options={"passive_only": False, "use_wordlist": True, "crawl_depth": 2})
+        scan = Scan(
+            target_url=logging_target.url,
+            status=ScanStatus.QUEUED,
+            progress=0,
+            options={"passive_only": False, "use_wordlist": True, "crawl_depth": 2},
+        )
         s.add(scan)
         await s.commit()
     caplog.set_level(logging.DEBUG)
@@ -98,7 +102,7 @@ async def test_contract_exports_hold_no_secret(client, scanned, fmt):
 async def test_read_routes_hold_no_secret(client, scanned, sessionmaker_, monkeypatch):
     from app.api.routes import contract
 
-    monkeypatch.setattr(contract, "AsyncSessionLocal", sessionmaker_)   # SSE's own session
+    monkeypatch.setattr(contract, "AsyncSessionLocal", sessionmaker_)  # SSE's own session
     paths = [f"/api/results/{scanned}?limit=500", f"/api/scan/{scanned}/events", "/api/scans"]
     results = (await client.get(f"/api/results/{scanned}?limit=500")).json()
     paths += [f"/api/results/{scanned}/findings/{f['id']}" for f in results["findings"]]
@@ -122,8 +126,10 @@ def _pdf_text(pdf: bytes) -> str:
     tool = shutil.which("pdftotext")
     if tool is None:
         pytest.skip("pdftotext not installed (poppler-utils)")
-    return subprocess.run([tool, "-", "-"], input=pdf, capture_output=True,  # noqa: S603 - fixed tool, our PDF
-                          check=True).stdout.decode()
+    done = subprocess.run(  # noqa: S603 - fixed tool, our PDF
+        [tool, "-", "-"], input=pdf, capture_output=True, check=True
+    )
+    return done.stdout.decode()
 
 
 def test_secret_fixture_values_are_distinct():

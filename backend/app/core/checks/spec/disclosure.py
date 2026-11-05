@@ -7,6 +7,7 @@
 Evidence is a short excerpt around the first match, passed through
 ``utils/redaction.py`` (a trace or debug page may quote secrets).
 """
+
 from __future__ import annotations
 
 import re
@@ -38,7 +39,7 @@ def excerpt(check_id: str, body: str) -> str | None:
             m = re.search(rule.value, body)
             if m:
                 start = max(0, m.start() - 40)
-                text = " ".join(body[start:start + _EXCERPT].split())
+                text = " ".join(body[start : start + _EXCERPT].split())
                 return redact_text(text)
     return None
 
@@ -47,8 +48,10 @@ def _make(check_id: str, summary: str) -> CheckFn:
     def check(resp: ScanResponse, endpoint: EndpointInfo) -> list[RawFinding]:
         if not resp.ok or not condition_matches(check_id, resp):
             return []
-        evidence: dict[str, object] = {"text": f"{summary} on {endpoint.path}",
-                                       "status": resp.status_code}
+        evidence: dict[str, object] = {
+            "text": f"{summary} on {endpoint.path}",
+            "status": resp.status_code,
+        }
         snippet = excerpt(check_id, resp.body)
         if snippet:
             evidence["excerpt"] = snippet

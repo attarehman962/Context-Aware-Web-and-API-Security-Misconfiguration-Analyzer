@@ -14,6 +14,7 @@ persists the result, and records failures honestly.
   is RUNNING it is never retried (it would scan the target again); a repeated
   delivery of a finished scan is ignored.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -45,7 +46,7 @@ class ScanCancelled(ScanError):
 async def run_scan_async(scan_id: str | uuid.UUID, *, probe: bool = True) -> None:
     """Run the scan identified by ``scan_id``; never raises."""
     sid = uuid.UUID(str(scan_id))
-    scan_id_var.set(str(sid))           # tags every log line of this scan
+    scan_id_var.set(str(sid))  # tags every log line of this scan
     started = datetime.now(UTC)
 
     async with session_scope() as session:
@@ -71,27 +72,32 @@ async def run_scan_async(scan_id: str | uuid.UUID, *, probe: bool = True) -> Non
 
         active = scan  # narrowed to Scan for the closure below
 
-        async def on_progress(stage: str, percent: int, message: str,
-                              detail: dict[str, int]) -> None:
+        async def on_progress(
+            stage: str, percent: int, message: str, detail: dict[str, int]
+        ) -> None:
             # A fresh read (not the cached attribute): the API sets it from outside.
             if await session.scalar(select(Scan.cancel_requested).where(Scan.id == sid)):
                 raise ScanCancelled
             active.progress = max(percent, active.progress)
             active.current_stage = stage
             active.progress_detail = {"stage": stage, **detail}
-            await session.commit()            # one per endpoint at most (bounded)
+            await session.commit()  # one per endpoint at most (bounded)
 
         try:
             opts = scan.options or {}
             passive = bool(opts.get("passive_only", False))
             try:
-                result = await asyncio.wait_for(run_pipeline(
-                    scan.target_url, on_progress,
-                    probe=probe and not passive,
-                    passive_only=passive,
-                    crawl_depth=opts.get("crawl_depth"),
-                    use_wordlist=opts.get("use_wordlist", True),
-                ), timeout=settings.SCAN_TIMEOUT)
+                result = await asyncio.wait_for(
+                    run_pipeline(
+                        scan.target_url,
+                        on_progress,
+                        probe=probe and not passive,
+                        passive_only=passive,
+                        crawl_depth=opts.get("crawl_depth"),
+                        use_wordlist=opts.get("use_wordlist", True),
+                    ),
+                    timeout=settings.SCAN_TIMEOUT,
+                )
             except TimeoutError:
                 raise ScanError(f"Scan timed out after {settings.SCAN_TIMEOUT:.0f} s.") from None
             await persist_result(session, scan, result)
@@ -101,17 +107,23 @@ async def run_scan_async(scan_id: str | uuid.UUID, *, probe: bool = True) -> Non
             scan.completed_at = datetime.now(UTC)
             scan.duration_seconds = (scan.completed_at - started).total_seconds()
             await session.commit()
-            logger.info("scan completed", extra={
-                k: result.stats.get(k)
-                for k in ("endpoints", "findings", "chains", "requests", "stage_seconds")})
-        except Exception as exc:  # noqa: BLE001 - record failure, never propagate
+            logger.info(
+                "scan completed",
+                extra={
+                    k: result.stats.get(k)
+                    for k in ("endpoints", "findings", "chains", "requests", "stage_seconds")
+                },
+            )
+        except Exception as exc:
             logger.exception("scan %s failed", sid)
             # Shown to the user: only ScanError messages are written for them.
-            message = (str(exc) if isinstance(exc, ScanError)
-                       else "Internal error while scanning; the server log has details.")
+            message = (
+                str(exc)
+                if isinstance(exc, ScanError)
+                else "Internal error while scanning; the server log has details."
+            )
             await session.rollback()
-            scan = (await session.execute(
-                select(Scan).where(Scan.id == sid))).scalar_one_or_none()
+            scan = (await session.execute(select(Scan).where(Scan.id == sid))).scalar_one_or_none()
             if scan is not None:
                 scan.status = ScanStatus.FAILED
                 scan.error_message = message[:500]

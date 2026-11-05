@@ -5,6 +5,7 @@ The seeded scan is changed so one finding's stored evidence holds a raw secret
 HTML in it. No format may carry the secret; HTML must escape the title; the
 report shows vectors, the score story and the chains.
 """
+
 from __future__ import annotations
 
 import contextlib
@@ -39,10 +40,32 @@ async def scan_id(sessionmaker_, monkeypatch):
     await seed_mod.seed()
     sid = seed_mod.RESCAN_SCAN_ID
     async with sessionmaker_() as s:
-        top = (await s.execute(select(Finding).where(Finding.scan_id == sid)
-                               .order_by(Finding.final_score.desc()))).scalars().first()
+        top = (
+            (
+                await s.execute(
+                    select(Finding)
+                    .where(Finding.scan_id == sid)
+                    .order_by(Finding.final_score.desc())
+                )
+            )
+            .scalars()
+            .first()
+        )
         top.evidence = {"text": RAW_EVIDENCE, "headers": {"x-debug": f"token={SECRET}"}}
         top.title = f"Leaky endpoint {XSS}"
+        # One environmental finding next to the seed's legacy ones.
+        second = (
+            (
+                await s.execute(
+                    select(Finding)
+                    .where(Finding.scan_id == sid)
+                    .order_by(Finding.final_score.desc())
+                )
+            )
+            .scalars()
+            .all()[1]
+        )
+        second.final_vector = second.cvss_vector + "/CR:L/IR:X/AR:X"
         await s.commit()
     return sid
 
@@ -98,8 +121,10 @@ def _pdf_text(pdf: bytes) -> str | None:
     tool = shutil.which("pdftotext")
     if tool is None:
         return None
-    return subprocess.run([tool, "-", "-"], input=pdf, capture_output=True,  # noqa: S603 - fixed tool, our own PDF
-                          check=True).stdout.decode()
+    done = subprocess.run(  # noqa: S603 - fixed tool, our own PDF
+        [tool, "-", "-"], input=pdf, capture_output=True, check=True
+    )
+    return done.stdout.decode()
 
 
 async def test_pdf_report_is_rendered_from_the_same_html(client, scan_id):
@@ -125,31 +150,58 @@ async def test_every_format_refuses_an_unfinished_scan(client, sessionmaker_):
         assert r.status_code == 409 and r.json()["error"]["code"] == "SCAN_NOT_FINISHED"
 
 
-# ---------------------------------------------------------- renderer units
+# Renderer units
+
 
 def _finding(**kw):
-    base = {"rule_id": "HDR-002", "title": "t", "severity": "MEDIUM", "cvss_vector": "V",
-            "cvss_base_score": 5.4, "cawasma_final_score": 6.4, "endpoint_url": None,
-            "evidence": None, "recommendation": None, "limitation": None}
+    base = {
+        "rule_id": "HDR-002",
+        "title": "t",
+        "severity": "MEDIUM",
+        "cvss_vector": "V",
+        "cvss_base_score": 5.4,
+        "cawasma_final_score": 6.4,
+        "endpoint_url": None,
+        "evidence": None,
+        "recommendation": None,
+        "limitation": None,
+    }
     return {**base, **kw}
 
 
 def test_score_story_explains_environmental_requirements():
-    story = reports.score_story(_finding(
-        final_vector="V/CR:H", score_reasons=[
-            "sensitivity:CRITICAL", "signal:PII", "CR:H<-sensitivity:CRITICAL+signal:PII",
-            "base:5.4", "environmental:6.4"]))
-    assert ("Confidentiality requirement High because endpoint sensitivity is CRITICAL, "
-            "the response contains PII.") in story
+    story = reports.score_story(
+        _finding(
+            final_vector="V/CR:H",
+            score_reasons=[
+                "sensitivity:CRITICAL",
+                "signal:PII",
+                "CR:H<-sensitivity:CRITICAL+signal:PII",
+                "base:5.4",
+                "environmental:6.4",
+            ],
+        )
+    )
+    assert (
+        "Confidentiality requirement High because endpoint sensitivity is CRITICAL, "
+        "the response contains PII."
+    ) in story
     assert story[-1] == "Base 5.4 → final 6.4 (+1.0)."
 
 
 def test_score_story_for_unchanged_and_legacy_scores():
-    same = reports.score_story(_finding(cawasma_final_score=5.4, final_vector="V",
-                                        score_reasons=["no-context-change"]))
+    same = reports.score_story(
+        _finding(cawasma_final_score=5.4, final_vector="V", score_reasons=["no-context-change"])
+    )
     assert any("equals the base score" in s for s in same) and same[-1].endswith("(unchanged).")
-    legacy = reports.score_story(_finding(cawasma_context_multiplier=1.2, response_bonus=0.5,
-                                          context_class="HIGH", body_signals=["PII"]))
+    legacy = reports.score_story(
+        _finding(
+            cawasma_context_multiplier=1.2,
+            response_bonus=0.5,
+            context_class="HIGH",
+            body_signals=["PII"],
+        )
+    )
     assert "interim formula" in legacy[0]
     assert "Context multiplier ×1.2 for a HIGH endpoint." in legacy
     assert "Response bonus +0.5 for sensitive data in the response (PII)." in legacy
@@ -157,3 +209,20 @@ def test_score_story_for_unchanged_and_legacy_scores():
 
 def test_template_is_packaged_next_to_the_code():
     assert (reports._TEMPLATES / reports.TEMPLATE).is_file()
+
+
+async def test_every_export_labels_how_each_finding_was_scored(client, scan_id):
+    live = (await client.get(f"/api/results/{scan_id}")).json()["findings"]
+    methods = {f["id"]: f["scoring_method"] for f in live}
+    assert set(methods.values()) <= {"environmental", "legacy"}
+    assert all(
+        (m == "environmental") == bool(f["final_vector"])
+        for f, m in zip(live, methods.values(), strict=True)
+    )
+    rows = list(csv.DictReader(io.StringIO((await _export(client, scan_id, "csv")).text)))
+    assert {r["id"]: r["scoring_method"] for r in rows} == methods
+    html = (await _export(client, scan_id, "html")).text
+    legacy = sum(1 for m in methods.values() if m == "legacy")
+    assert 0 < legacy < len(methods), "the fixture should hold both kinds"
+    assert html.count("legacy interim formula") == legacy
+    assert html.count("CVSS v3.1 environmental</span>") == len(methods) - legacy

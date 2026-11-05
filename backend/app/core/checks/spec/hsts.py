@@ -7,6 +7,7 @@ Both fire exactly when their ``http_condition`` in config/checks.yaml holds;
 the code only adds what the spec format can't say (HSTS is meaningful on
 HTTPS responses only, as the spec descriptions state) and builds evidence.
 """
+
 from __future__ import annotations
 
 import re
@@ -42,10 +43,16 @@ def _hsts_evidence(resp: ScanResponse) -> dict[str, Any]:
 def missing_hsts(resp: ScanResponse, endpoint: EndpointInfo) -> list[RawFinding]:
     if not _is_https(resp) or not condition_matches("HDR-001", resp):
         return []
-    return [RawFinding("HDR-001", endpoint, {
-        "text": f"Missing Strict-Transport-Security on {endpoint.path}",
-        **_hsts_evidence(resp),
-    })]
+    return [
+        RawFinding(
+            "HDR-001",
+            endpoint,
+            {
+                "text": f"Missing Strict-Transport-Security on {endpoint.path}",
+                **_hsts_evidence(resp),
+            },
+        )
+    ]
 
 
 @register_check("TLS-009")
@@ -58,7 +65,13 @@ def weak_hsts(resp: ScanResponse, endpoint: EndpointInfo) -> list[RawFinding]:
         reasons.append(f"max-age={evidence['max_age']} is short")
     if not evidence.get("include_subdomains"):
         reasons.append("includeSubDomains is missing")
-    return [RawFinding("TLS-009", endpoint, {
-        "text": f"Weak Strict-Transport-Security on {endpoint.path}: {'; '.join(reasons)}",
-        **evidence,
-    })]
+    return [
+        RawFinding(
+            "TLS-009",
+            endpoint,
+            {
+                "text": f"Weak Strict-Transport-Security on {endpoint.path}: {'; '.join(reasons)}",
+                **evidence,
+            },
+        )
+    ]

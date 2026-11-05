@@ -17,6 +17,7 @@ cannot point it at an internal service. Where the local OpenSSL
 build refuses to even attempt a legacy protocol, that is reported as a
 limitation rather than a false negative.
 """
+
 from __future__ import annotations
 
 import ipaddress
@@ -54,8 +55,8 @@ class TlsProbe:
     error: str | None = None
     # SSLyze results (empty / None when it did not run)
     accepted_ciphers: list[str] = field(default_factory=list)
-    cert_trusted: bool | None = None          # chain verified against a trust store
-    scanner: str = "ssl"                      # "sslyze" when SSLyze ran
+    cert_trusted: bool | None = None  # chain verified against a trust store
+    scanner: str = "ssl"  # "sslyze" when SSLyze ran
 
 
 # Cipher-name fragments that mark a cipher suite as weak (check TLS-002).
@@ -98,8 +99,7 @@ def _parse_cert(der: bytes, host: str, probe: TlsProbe) -> None:
         try:
             san = cert.extensions.get_extension_for_class(x509.SubjectAlternativeName)
             if literal is not None:
-                probe.hostname_matches = literal in san.value.get_values_for_type(
-                    x509.IPAddress)
+                probe.hostname_matches = literal in san.value.get_values_for_type(x509.IPAddress)
                 return
             names = san.value.get_values_for_type(x509.DNSName)
         except x509.ExtensionNotFound:
@@ -155,9 +155,14 @@ def probe_tls(host: str, port: int = 443, *, allow_private: bool = False) -> Tls
 
 
 # SSLyze scan command attribute -> protocol name (as ssl.SSLSocket.version() names them)
-_SSLYZE_PROTOCOLS = (("ssl_2_0_cipher_suites", "SSLv2"), ("ssl_3_0_cipher_suites", "SSLv3"),
-                     ("tls_1_0_cipher_suites", "TLSv1"), ("tls_1_1_cipher_suites", "TLSv1.1"),
-                     ("tls_1_2_cipher_suites", "TLSv1.2"), ("tls_1_3_cipher_suites", "TLSv1.3"))
+_SSLYZE_PROTOCOLS = (
+    ("ssl_2_0_cipher_suites", "SSLv2"),
+    ("ssl_3_0_cipher_suites", "SSLv3"),
+    ("tls_1_0_cipher_suites", "TLSv1"),
+    ("tls_1_1_cipher_suites", "TLSv1.1"),
+    ("tls_1_2_cipher_suites", "TLSv1.2"),
+    ("tls_1_3_cipher_suites", "TLSv1.3"),
+)
 
 
 def _sslyze_scan(host: str, ip: str, port: int, probe: TlsProbe) -> bool:
@@ -180,12 +185,14 @@ def _sslyze_scan(host: str, ip: str, port: int, probe: TlsProbe) -> bool:
         # ip_address pins SSLyze to the address the SSRF guard just validated.
         server_location=ServerNetworkLocation(hostname=host, port=port, ip_address=ip),
         network_configuration=ServerNetworkConfiguration(
-            tls_server_name_indication=host, network_timeout=5, network_max_retries=1),
+            tls_server_name_indication=host, network_timeout=5, network_max_retries=1
+        ),
         scan_commands=commands,
     )
     try:
-        scanner = Scanner(per_server_concurrent_connections_limit=4,
-                          concurrent_server_scans_limit=1)
+        scanner = Scanner(
+            per_server_concurrent_connections_limit=4, concurrent_server_scans_limit=1
+        )
         scanner.queue_scans([request])
         result = next(iter(scanner.get_results()))
     except Exception as exc:  # noqa: BLE001 - a scanner failure must not end the scan
@@ -197,19 +204,25 @@ def _sslyze_scan(host: str, ip: str, port: int, probe: TlsProbe) -> bool:
     offered, ciphers = [], []
     for attr, name in _SSLYZE_PROTOCOLS:
         attempt = getattr(result.scan_result, attr)
-        if attempt.status == ScanCommandAttemptStatusEnum.COMPLETED and \
-                attempt.result.accepted_cipher_suites:
+        if (
+            attempt.status == ScanCommandAttemptStatusEnum.COMPLETED
+            and attempt.result.accepted_cipher_suites
+        ):
             offered.append(name)
             ciphers += [c.cipher_suite.name for c in attempt.result.accepted_cipher_suites]
     cert = result.scan_result.certificate_info
-    if (cert.status == ScanCommandAttemptStatusEnum.COMPLETED and cert.result is not None
-            and cert.result.certificate_deployments):
+    if (
+        cert.status == ScanCommandAttemptStatusEnum.COMPLETED
+        and cert.result is not None
+        and cert.result.certificate_deployments
+    ):
         # Trusted if the chain validates against any trust store SSLyze ships
         # (Mozilla, Apple, Microsoft, ...). The hostname match stays our own
         # certificate check above (SSLyze 6 no longer reports it here).
         deployment = cert.result.certificate_deployments[0]
-        probe.cert_trusted = any(r.verified_certificate_chain is not None
-                                 for r in deployment.path_validation_results)
+        probe.cert_trusted = any(
+            r.verified_certificate_chain is not None for r in deployment.path_validation_results
+        )
     probe.protocols_offered = offered
     probe.accepted_ciphers = ciphers
     probe.legacy_probe_inconclusive = False

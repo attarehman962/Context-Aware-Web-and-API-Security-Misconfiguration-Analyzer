@@ -5,6 +5,7 @@ so every api process shares the count. If Redis is unreachable it falls back to
 a per-process counter rather than letting a Redis outage disable the limit, or
 scanning altogether.
 """
+
 from __future__ import annotations
 
 import time
@@ -24,11 +25,11 @@ class Decision:
     allowed: bool
     limit: int
     remaining: int
-    retry_after: int          # seconds until the window resets
+    retry_after: int  # seconds until the window resets
 
 
 def parse(rule: str) -> tuple[int, int] | None:
-    """"5/minute" -> (5, 60); empty -> None (no limit)."""
+    """ "5/minute" -> (5, 60); empty -> None (no limit)."""
     if not rule.strip():
         return None
     count, _, period = rule.strip().partition("/")
@@ -48,8 +49,9 @@ class ScanRateLimiter:
             if self._redis is None:
                 import redis.asyncio as aioredis
 
-                self._redis = aioredis.from_url(settings.REDIS_URL, socket_timeout=0.5,
-                                                socket_connect_timeout=0.5)
+                self._redis = aioredis.from_url(
+                    settings.REDIS_URL, socket_timeout=0.5, socket_connect_timeout=0.5
+                )
             async with self._redis.pipeline(transaction=True) as pipe:
                 count, _ = await pipe.incr(key).expire(key, window).execute()
             return int(count)

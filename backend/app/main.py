@@ -5,6 +5,7 @@ CORS (explicit origins only), a consistent error envelope, structured logging,
 and the router set. Scanner/scan routers are added in later phases; the health
 router is live now.
 """
+
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
@@ -32,9 +33,7 @@ async def lifespan(app: FastAPI):
     configure_logging()
     # Fail fast if a check is implemented without a spec in checks.yaml.
     validate_registry_at_startup()
-    logger.info(
-        "starting cawasma backend env=%s debug=%s", settings.ENVIRONMENT, settings.DEBUG
-    )
+    logger.info("starting cawasma backend env=%s debug=%s", settings.ENVIRONMENT, settings.DEBUG)
     if settings.MOCK_API:
         logger.warning("MOCK_API=true: contract routes return example data, not scans")
     else:
@@ -77,7 +76,7 @@ def create_app() -> FastAPI:
         redoc_url="/redoc",
     )
 
-    # --- CORS: explicit origins only, never "*" --------------------------
+    # CORS: explicit origins only, never "*"
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.frontend_origins,
@@ -88,7 +87,7 @@ def create_app() -> FastAPI:
         expose_headers=["Location", "X-Contract-Version", "Content-Disposition"],
     )
 
-    # --- Consistent error handling ---------------------------------------
+    # Consistent error handling
     @app.exception_handler(StarletteHTTPException)
     async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         code = {
@@ -101,30 +100,29 @@ def create_app() -> FastAPI:
             501: "NOT_IMPLEMENTED",
         }.get(exc.status_code, "HTTP_ERROR")
         detail = exc.detail if isinstance(exc.detail, str) else "Request failed."
-        return JSONResponse(
-            status_code=exc.status_code, content=_error_body(code, detail)
-        )
+        return JSONResponse(status_code=exc.status_code, content=_error_body(code, detail))
 
     @app.exception_handler(ApiError)
     async def api_error_handler(request: Request, exc: ApiError):
         return JSONResponse(
-            status_code=exc.status_code, content=_error_body(exc.code, exc.message),
+            status_code=exc.status_code,
+            content=_error_body(exc.code, exc.message),
             headers=exc.headers,
         )
 
     @app.exception_handler(RequestValidationError)
-    async def validation_exception_handler(
-        request: Request, exc: RequestValidationError
-    ):
+    async def validation_exception_handler(request: Request, exc: RequestValidationError):
         return JSONResponse(
             status_code=422,
-            content=_error_body(
-                "VALIDATION_ERROR", "Request validation failed."
-            )
+            content=_error_body("VALIDATION_ERROR", "Request validation failed.")
             # loc/msg/type only: "input" would echo the body, "ctx" may hold
             # exception objects that aren't JSON.
-            | {"details": [{"loc": list(e["loc"]), "msg": e["msg"], "type": e["type"]}
-                           for e in exc.errors()]},
+            | {
+                "details": [
+                    {"loc": list(e["loc"]), "msg": e["msg"], "type": e["type"]}
+                    for e in exc.errors()
+                ]
+            },
         )
 
     @app.exception_handler(Exception)
@@ -133,9 +131,7 @@ def create_app() -> FastAPI:
         logger.exception("unhandled error on %s %s", request.method, request.url.path)
         return JSONResponse(
             status_code=500,
-            content=_error_body(
-                "INTERNAL_ERROR", "An internal error occurred."
-            ),
+            content=_error_body("INTERNAL_ERROR", "An internal error occurred."),
         )
 
     # Every response says which API contract it follows.
@@ -145,7 +141,7 @@ def create_app() -> FastAPI:
         response.headers["X-Contract-Version"] = CONTRACT_VERSION
         return response
 
-    # --- Routers ---------------------------------------------------------
+    # Routers
     app.include_router(health.router)
     app.include_router(contract.router)
 

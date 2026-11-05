@@ -13,6 +13,7 @@ converted to their async driver, so older commands keep working.
 All models are imported via ``app.db.models`` so ``target_metadata`` sees every
 table for autogenerate.
 """
+
 from __future__ import annotations
 
 import asyncio

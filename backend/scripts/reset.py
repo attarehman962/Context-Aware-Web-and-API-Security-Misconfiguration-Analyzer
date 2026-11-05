@@ -7,6 +7,7 @@ Alembic version table and PostgreSQL enum types, then runs
     python scripts/reset.py --yes          # drop + migrate
     python scripts/reset.py --yes --seed   # drop + migrate + sample data (make reset)
 """
+
 from __future__ import annotations
 
 import argparse

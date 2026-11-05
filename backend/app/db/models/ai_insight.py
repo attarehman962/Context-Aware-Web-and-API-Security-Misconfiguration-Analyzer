@@ -3,6 +3,7 @@
 Optional by design: the core scanner works with no LLM key (spec section 35).
 Sensitive data is redacted before ever being sent to an external model.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -20,9 +21,7 @@ if TYPE_CHECKING:
 class AiInsight(Base, TimestampMixin):
     __tablename__ = "ai_insights"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     scan_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("scans.id", ondelete="CASCADE"), nullable=False, index=True
     )

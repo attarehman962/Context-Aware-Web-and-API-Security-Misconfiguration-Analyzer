@@ -1,4 +1,5 @@
 """Pipeline wiring of spec-registry checks to environmental scoring (Atta Prompt 7)."""
+
 from __future__ import annotations
 
 import pytest
@@ -15,9 +16,14 @@ load_implementations()
 
 
 def _spec(resp, cls=SensitivityClass.LOW, signals=frozenset()):
-    return pipeline._spec_findings(resp, endpoint(resp.final_url),
-                                   context_class=cls, confidence=0.9,
-                                   signals=set(signals), ep_index=0)
+    return pipeline._spec_findings(
+        resp,
+        endpoint(resp.final_url),
+        context_class=cls,
+        confidence=0.9,
+        signals=set(signals),
+        ep_index=0,
+    )
 
 
 def test_missing_hsts_is_scored_with_a_recomputable_environmental_vector():
@@ -35,15 +41,19 @@ def test_missing_hsts_is_scored_with_a_recomputable_environmental_vector():
 def test_context_raises_the_score_of_the_same_finding():
     resp = response(headers={})
     low = next(f for f in _spec(resp) if f.raw.rule_id == "HDR-001")
-    high = next(f for f in _spec(resp, SensitivityClass.CRITICAL, {BodySignal.CREDENTIALS})
-                if f.raw.rule_id == "HDR-001")
+    high = next(
+        f
+        for f in _spec(resp, SensitivityClass.CRITICAL, {BodySignal.CREDENTIALS})
+        if f.raw.rule_id == "HDR-001"
+    )
     assert high.cvss_base_score == low.cvss_base_score
     assert high.cawasma_final_score > low.cawasma_final_score
 
 
 def test_no_spec_findings_when_hsts_is_strong():
-    resp = response(headers={"Strict-Transport-Security":
-                             "max-age=31536000; includeSubDomains; preload"})
+    resp = response(
+        headers={"Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload"}
+    )
     assert not [f for f in _spec(resp) if f.raw.rule_id in {"HDR-001", "TLS-009"}]
 
 

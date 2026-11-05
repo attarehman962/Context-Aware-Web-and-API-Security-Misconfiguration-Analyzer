@@ -1,4 +1,5 @@
 """eval/labels/label.py (review asim-p04 #21)."""
+
 from __future__ import annotations
 
 import csv
@@ -7,8 +8,11 @@ import pytest
 
 from tests.eval.conftest import load_eval_script
 
-ROWS = [("vampi", "GET", "/users/v1"), ("vampi", "POST", "/users/v1/login"),
-        ("vampi", "GET", "/books/v1")]
+ROWS = [
+    ("vampi", "GET", "/users/v1"),
+    ("vampi", "POST", "/users/v1/login"),
+    ("vampi", "GET", "/books/v1"),
+]
 
 
 @pytest.fixture
@@ -49,7 +53,7 @@ def _rows_of(path):
 
 
 def test_invalid_key_reprompts_the_same_endpoint(labeller, monkeypatch):
-    _feed(monkeypatch, "9", "2", "q")   # typo, then MEDIUM, quit
+    _feed(monkeypatch, "9", "2", "q")  # typo, then MEDIUM, quit
     assert labeller.main(["--labeler", "asim"]) == 0
     assert _labels(labeller) == {("GET", "/users/v1"): "MEDIUM"}
 
@@ -64,10 +68,12 @@ def test_ctrl_d_or_ctrl_c_saves_and_exits_cleanly(labeller, monkeypatch, interru
 def test_resume_skips_already_labelled_rows(labeller, monkeypatch):
     _feed(monkeypatch, "1", "q")
     labeller.main(["--labeler", "asim"])
-    _feed(monkeypatch, "4", "q")   # next run starts at the second row
+    _feed(monkeypatch, "4", "q")  # next run starts at the second row
     labeller.main(["--labeler", "asim"])
-    assert _labels(labeller) == {("GET", "/users/v1"): "LOW",
-                                 ("POST", "/users/v1/login"): "CRITICAL"}
+    assert _labels(labeller) == {
+        ("GET", "/users/v1"): "LOW",
+        ("POST", "/users/v1/login"): "CRITICAL",
+    }
 
 
 def test_name_is_asked_once_and_a_note_can_follow_the_key(labeller, monkeypatch):
@@ -78,12 +84,11 @@ def test_name_is_asked_once_and_a_note_can_follow_the_key(labeller, monkeypatch)
     assert {r["labeler"] for r in rows.values()} == {"asim"}
 
 
-def test_second_labeller_gets_the_same_sample_in_their_own_file(labeller, monkeypatch,
-                                                                tmp_path):
+def test_second_labeller_gets_the_same_sample_in_their_own_file(labeller, monkeypatch, tmp_path):
     _feed(monkeypatch, "1", "1", "q")
     labeller.main(["--labeler", "asim", "--sample", "2"])
     other = tmp_path / "neelam.csv"
     _feed(monkeypatch, "2", "2", "q")
     labeller.main(["--labeler", "neelam", "--sample", "2", "--output", str(other)])
-    assert set(_rows_of(other)) == set(_rows_of(labeller.OUTPUT))   # same paths
+    assert set(_rows_of(other)) == set(_rows_of(labeller.OUTPUT))  # same paths
     assert {r["sensitivity_class"] for r in _rows_of(labeller.OUTPUT).values()} == {"LOW"}

@@ -4,6 +4,7 @@ The API layer calls these functions; they own the scan table's database access,
 so routes stay thin and the scanner modules stay DB-free. Results are read
 through ``contract_service``.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -39,8 +40,12 @@ def scan_options() -> dict[str, Any]:
 
 
 async def create_scan(
-    session: AsyncSession, target_url: str, *, authorization_confirmed: bool = False,
-    options: dict[str, Any] | None = None, dispatch: bool = True,
+    session: AsyncSession,
+    target_url: str,
+    *,
+    authorization_confirmed: bool = False,
+    options: dict[str, Any] | None = None,
+    dispatch: bool = True,
 ) -> Scan:
     """Validate the target and create a QUEUED scan record.
 
@@ -104,9 +109,11 @@ async def fail_interrupted_scans(session: AsyncSession) -> int:
     for ever. Celery-dispatched scans are left alone: the worker still has them.
     Call once at API start-up.
     """
-    rows = (await session.scalars(
-        select(Scan).where(Scan.status.in_([ScanStatus.QUEUED, ScanStatus.RUNNING]))
-    )).all()
+    rows = (
+        await session.scalars(
+            select(Scan).where(Scan.status.in_([ScanStatus.QUEUED, ScanStatus.RUNNING]))
+        )
+    ).all()
     stale = [s for s in rows if (s.options or {}).get("runner") == "api"]
     for scan in stale:
         scan.status = ScanStatus.FAILED

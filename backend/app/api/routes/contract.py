@@ -4,6 +4,7 @@ With ``MOCK_API=true`` every route here answers from :mod:`app.api.mock`
 without touching the database or the scanner, so the frontend can be built
 before the pipeline is finished.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -58,8 +59,13 @@ def _not_found() -> ApiError:
     summary="Start a scan",
     responses={202: _example(mock.QUEUED_STATUS), **_errors(400, 422, 429, 503)},
 )
-async def start_scan(body: ScanRequest, session: SessionDep, request: Request,
-                     response: Response, background: BackgroundTasks) -> ScanStatus:
+async def start_scan(
+    body: ScanRequest,
+    session: SessionDep,
+    request: Request,
+    response: Response,
+    background: BackgroundTasks,
+) -> ScanStatus:
     """Validate the target and queue a scan on the Celery worker. Follow it with
     ``GET /api/scan/{scan_id}/events`` (SSE) or poll ``GET /api/results/{scan_id}``.
 
@@ -83,25 +89,32 @@ async def start_scan(body: ScanRequest, session: SessionDep, request: Request,
             raise ApiError(400, "INVALID_TARGET", str(exc)) from exc
         try:
             scan = await scan_service.create_scan(
-                session, body.url, authorization_confirmed=body.authorisation_confirmed,
-                options={**body.model_dump(include={"crawl_depth", "use_wordlist",
-                                                     "passive_only"}),
-                         # "api" scans die with this process: see fail_interrupted_scans
-                         "runner": "api" if settings.RUN_SCANS_INLINE else "celery"},
+                session,
+                body.url,
+                authorization_confirmed=body.authorisation_confirmed,
+                options={
+                    **body.model_dump(include={"crawl_depth", "use_wordlist", "passive_only"}),
+                    # "api" scans die with this process: see fail_interrupted_scans
+                    "runner": "api" if settings.RUN_SCANS_INLINE else "celery",
+                },
                 dispatch=False,
             )
         except InvalidTargetError as exc:
             raise ApiError(400, "INVALID_TARGET", exc.reason) from exc
         if settings.RUN_SCANS_INLINE:
             background.add_task(run_scan_async, scan.id)
-        elif settings.AUTO_DISPATCH_SCANS:      # off in tests (no broker)
+        elif settings.AUTO_DISPATCH_SCANS:  # off in tests (no broker)
             try:
                 await asyncio.to_thread(scan_dispatch.queue_scan, scan.id)
             except scan_dispatch.QueueUnavailable as exc:
-                await scan_service.mark_failed(session, scan, "Could not queue the scan: "
-                                                              "the scan worker is unavailable.")
-                raise ApiError(status.HTTP_503_SERVICE_UNAVAILABLE, "QUEUE_UNAVAILABLE",
-                               "The scan queue is unavailable; try again shortly.") from exc
+                await scan_service.mark_failed(
+                    session, scan, "Could not queue the scan: " "the scan worker is unavailable."
+                )
+                raise ApiError(
+                    status.HTTP_503_SERVICE_UNAVAILABLE,
+                    "QUEUE_UNAVAILABLE",
+                    "The scan queue is unavailable; try again shortly.",
+                ) from exc
         result = contract_service.scan_status(scan)
     response.headers["Location"] = f"/api/results/{result.scan_id}"
     return result
@@ -124,16 +137,21 @@ async def cancel_scan(scan_id: uuid.UUID, session: SessionDep) -> ScanStatus:
             raise _not_found()
         current = found.scan
         if current.status in (ScanState.DONE, ScanState.FAILED):
-            raise ApiError(status.HTTP_409_CONFLICT, "SCAN_FINISHED",
-                           f"Scan is already {current.status.value}.")
-        return current.model_copy(update={"status": ScanState.FAILED,
-                                          "error": scan_runner.CANCELLED})
+            raise ApiError(
+                status.HTTP_409_CONFLICT,
+                "SCAN_FINISHED",
+                f"Scan is already {current.status.value}.",
+            )
+        return current.model_copy(
+            update={"status": ScanState.FAILED, "error": scan_runner.CANCELLED}
+        )
     scan = await scan_service.get_scan(session, scan_id)
     if scan is None:
         raise _not_found()
     if scan.status in (ScanState.DONE, ScanState.FAILED):
-        raise ApiError(status.HTTP_409_CONFLICT, "SCAN_FINISHED",
-                       f"Scan is already {scan.status.value}.")
+        raise ApiError(
+            status.HTTP_409_CONFLICT, "SCAN_FINISHED", f"Scan is already {scan.status.value}."
+        )
     await scan_service.request_cancel(session, scan)
     await asyncio.to_thread(scan_dispatch.revoke_scan, scan.id)
     return contract_service.scan_status(scan)
@@ -143,10 +161,14 @@ async def cancel_scan(scan_id: uuid.UUID, session: SessionDep) -> ScanStatus:
     "/scan/{scan_id}/events",
     summary="Live status (Server-Sent Events)",
     response_class=StreamingResponse,
-    responses={200: {"content": {"text/event-stream": {}},
-                     "description": "`event: status` with a ScanStatus JSON each time it "
-                                    "changes; ends after DONE or FAILED."},
-               **_errors(404, 422, 429)},
+    responses={
+        200: {
+            "content": {"text/event-stream": {}},
+            "description": "`event: status` with a ScanStatus JSON each time it "
+            "changes; ends after DONE or FAILED.",
+        },
+        **_errors(404, 422, 429),
+    },
 )
 async def scan_events(scan_id: uuid.UUID, request: Request) -> StreamingResponse:
     """Since 1.3. One ``status`` event now, then one per change (progress, stage,
@@ -165,8 +187,11 @@ async def scan_events(scan_id: uuid.UUID, request: Request) -> StreamingResponse
 
 
 def _sse(events: AsyncIterator[str]) -> StreamingResponse:
-    return StreamingResponse(events, media_type="text/event-stream", headers={
-        "Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+    return StreamingResponse(
+        events,
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 def _event(status_: ScanStatus) -> str:
@@ -174,7 +199,7 @@ def _event(status_: ScanStatus) -> str:
 
 
 async def _mock_events(current: ScanStatus) -> AsyncIterator[str]:
-    yield "retry: 3000\n\n" + _event(current)      # mock scans don't move: one event
+    yield "retry: 3000\n\n" + _event(current)  # mock scans don't move: one event
 
 
 async def _events(scan_id: uuid.UUID, request: Request) -> AsyncIterator[str]:
@@ -192,8 +217,7 @@ async def _events(scan_id: uuid.UUID, request: Request) -> AsyncIterator[str]:
         if shown != last:
             last, idle = shown, 0.0
             yield _event(current)
-        if current.status in (ScanState.DONE, ScanState.FAILED) or \
-                await request.is_disconnected():
+        if current.status in (ScanState.DONE, ScanState.FAILED) or await request.is_disconnected():
             return
         await asyncio.sleep(settings.SSE_POLL_SECONDS)
         idle += settings.SSE_POLL_SECONDS
@@ -209,19 +233,26 @@ async def _events(scan_id: uuid.UUID, request: Request) -> AsyncIterator[str]:
     responses={200: _example(mock.RESULTS[mock.DONE_ID]), **_errors(404, 422)},
 )
 async def get_results(
-    scan_id: uuid.UUID, session: SessionDep,
+    scan_id: uuid.UUID,
+    session: SessionDep,
     severity: list[Severity] | None = Query(
-        None, description="Since 1.2. Keep these severity buckets (repeat the parameter)."),
+        None, description="Since 1.2. Keep these severity buckets (repeat the parameter)."
+    ),
     category: list[FindingCategory] | None = Query(
-        None, description="Since 1.2. Keep these categories (repeat the parameter)."),
+        None, description="Since 1.2. Keep these categories (repeat the parameter)."
+    ),
     owasp: list[str] | None = Query(
-        None, description="Since 1.2. Keep findings mapped to any of these OWASP ids, "
-                          "e.g. A05:2021 or API8:2023 (case-insensitive)."),
+        None,
+        description="Since 1.2. Keep findings mapped to any of these OWASP ids, "
+        "e.g. A05:2021 or API8:2023 (case-insensitive).",
+    ),
     in_chain: bool | None = Query(
-        None, description="Since 1.2. true: only attack-chain members; false: only others."),
+        None, description="Since 1.2. true: only attack-chain members; false: only others."
+    ),
     page: int | None = Query(None, ge=1, description="Since 1.2. Paginate findings."),
-    limit: int | None = Query(None, ge=1, le=500,
-                              description="Since 1.2. Findings per page (default 50)."),
+    limit: int | None = Query(
+        None, ge=1, le=500, description="Since 1.2. Findings per page (default 50)."
+    ),
 ) -> ScanResults:
     """Always 200 for a known scan. ``findings`` and ``chains`` stay empty until
     ``scan.status`` is ``DONE``. Filters combine with AND (values of one filter
@@ -237,8 +268,11 @@ async def get_results(
             raise _not_found()
         results = found
     flt = contract_service.FindingFilter(
-        severity=frozenset(severity or ()), category=frozenset(category or ()),
-        owasp=frozenset(owasp or ()), in_chain=in_chain)
+        severity=frozenset(severity or ()),
+        category=frozenset(category or ()),
+        owasp=frozenset(owasp or ()),
+        in_chain=in_chain,
+    )
     return contract_service.select_findings(results, flt, page, limit)
 
 
@@ -246,11 +280,14 @@ async def get_results(
     "/results/{scan_id}/findings/{finding_id}",
     response_model=FindingDetail,
     summary="One finding with its endpoint, score breakdown and chains",
-    responses={200: _example(mock.finding_detail(mock.DONE_ID, mock.CHAIN_MEMBER_ID)),
-               **_errors(404, 422)},
+    responses={
+        200: _example(mock.finding_detail(mock.DONE_ID, mock.CHAIN_MEMBER_ID)),
+        **_errors(404, 422),
+    },
 )
-async def get_finding(scan_id: uuid.UUID, finding_id: uuid.UUID,
-                      session: SessionDep) -> FindingDetail:
+async def get_finding(
+    scan_id: uuid.UUID, finding_id: uuid.UUID, session: SessionDep
+) -> FindingDetail:
     """Since 1.2. 404 when the scan or the finding (in that scan) doesn't exist."""
     if settings.MOCK_API:
         detail = mock.finding_detail(scan_id, finding_id)
@@ -266,14 +303,17 @@ async def get_finding(scan_id: uuid.UUID, finding_id: uuid.UUID,
     summary="Download results as JSON, CSV, HTML or PDF",
     response_class=Response,
     responses={
-        200: {"content": {t: {} for t in contract_service.MEDIA_TYPES.values()},
-              "description": "File download (Content-Disposition: attachment)."},
+        200: {
+            "content": {t: {} for t in contract_service.MEDIA_TYPES.values()},
+            "description": "File download (Content-Disposition: attachment).",
+        },
         **_errors(404, 409, 422, 501),
     },
 )
 async def export_results(
-    scan_id: uuid.UUID, session: SessionDep,
-    format: ExportFormat = Query("json", description="json | csv | html | pdf"),  # noqa: A002
+    scan_id: uuid.UUID,
+    session: SessionDep,
+    format: ExportFormat = Query("json", description="json | csv | html | pdf"),
 ) -> Response:
     if settings.MOCK_API:
         results = mock.RESULTS.get(scan_id)
@@ -282,8 +322,11 @@ async def export_results(
     if results is None:
         raise _not_found()
     if results.scan.status != ScanState.DONE:
-        raise ApiError(status.HTTP_409_CONFLICT, "SCAN_NOT_FINISHED",
-                       f"Scan is {results.scan.status.value}; export is available when DONE.")
+        raise ApiError(
+            status.HTTP_409_CONFLICT,
+            "SCAN_NOT_FINISHED",
+            f"Scan is {results.scan.status.value}; export is available when DONE.",
+        )
     try:
         content = contract_service.export(results, format)
     except ReportFormatUnavailable as exc:
@@ -299,19 +342,34 @@ async def export_results(
     "/scans",
     response_model=Page[ScanStatus],
     summary="Scan history, newest first",
-    responses={200: {"content": {"application/json": {"example": {
-        "items": [s.model_dump(mode="json") for s in mock.SCANS],
-        "meta": {"page": 1, "limit": 20, "total": len(mock.SCANS), "pages": 1},
-    }}}}, **_errors(422)},
+    responses={
+        200: {
+            "content": {
+                "application/json": {
+                    "example": {
+                        "items": [s.model_dump(mode="json") for s in mock.SCANS],
+                        "meta": {"page": 1, "limit": 20, "total": len(mock.SCANS), "pages": 1},
+                    }
+                }
+            }
+        },
+        **_errors(422),
+    },
 )
 async def list_scans(
-    session: SessionDep, page: PaginationParams = Depends(pagination),
+    session: SessionDep,
+    page: PaginationParams = Depends(pagination),
 ) -> Page[ScanStatus]:
     if settings.MOCK_API:
-        items, total = mock.SCANS[page.offset:page.offset + page.limit], len(mock.SCANS)
+        items, total = mock.SCANS[page.offset : page.offset + page.limit], len(mock.SCANS)
     else:
         items, total = await contract_service.list_scans(session, page.offset, page.limit)
-    return Page[ScanStatus](items=items, meta=PaginationMeta(
-        page=page.page, limit=page.limit, total=total,
-        pages=(total + page.limit - 1) // page.limit,
-    ))
+    return Page[ScanStatus](
+        items=items,
+        meta=PaginationMeta(
+            page=page.page,
+            limit=page.limit,
+            total=total,
+            pages=(total + page.limit - 1) // page.limit,
+        ),
+    )

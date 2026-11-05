@@ -9,6 +9,7 @@ implemented; whether it has fire and no-fire tests (``assert_fires`` /
 legacy rule, with its id); and whether every test that names the id
 passed in a fresh pytest run.
 """
+
 from __future__ import annotations
 
 import ast
@@ -27,10 +28,14 @@ from app.core.checks import registry as spec_registry  # noqa: E402
 from app.core.checks.catalog import CATALOG  # noqa: E402
 
 OUTPUT = BACKEND.parent / "docs" / "check-coverage.md"
-TEST_FILES = sorted({*BACKEND.glob("tests/checks/test_*.py"),
-                     BACKEND / "tests/unit/test_checks.py",
-                     BACKEND / "tests/unit/test_review_fixes.py",
-                     BACKEND / "tests/integration/test_tls_sslyze.py"})
+TEST_FILES = sorted(
+    {
+        *BACKEND.glob("tests/checks/test_*.py"),
+        BACKEND / "tests/unit/test_checks.py",
+        BACKEND / "tests/unit/test_review_fixes.py",
+        BACKEND / "tests/integration/test_tls_sslyze.py",
+    }
+)
 
 # Specs that stay on their legacy rule until Asim answers (see the doc's questions).
 BLOCKED = {
@@ -43,13 +48,24 @@ BLOCKED = {
 
 
 def _ids(node: ast.AST) -> set[str]:
-    return {n.value for n in ast.walk(node) if isinstance(n, ast.Constant)
-            and isinstance(n.value, str) and len(n.value) == 7 and n.value[3] == "-"
-            and n.value[:3].isalpha() and n.value[4:].isdigit()}
+    return {
+        n.value
+        for n in ast.walk(node)
+        if isinstance(n, ast.Constant)
+        and isinstance(n.value, str)
+        and len(n.value) == 7
+        and n.value[3] == "-"
+        and n.value[:3].isalpha()
+        and n.value[4:].isdigit()
+    }
 
 
-_KIND = {"assert_fires": "fires", "assert_rule_fires": "fires",
-         "assert_no_fire": "no_fire", "assert_rule_no_fire": "no_fire"}
+_KIND = {
+    "assert_fires": "fires",
+    "assert_rule_fires": "fires",
+    "assert_no_fire": "no_fire",
+    "assert_rule_no_fire": "no_fire",
+}
 
 
 def test_index() -> tuple[dict[str, set[str]], dict[str, set[str]]]:
@@ -59,14 +75,19 @@ def test_index() -> tuple[dict[str, set[str]], dict[str, set[str]]]:
     for path in TEST_FILES:
         rel = path.relative_to(BACKEND).as_posix()
         for node in ast.parse(path.read_text()).body:
-            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef) and \
-                    node.name.startswith("test_"):
+            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef) and node.name.startswith(
+                "test_"
+            ):
                 for cid in _ids(node):
                     tests[cid].add(f"{rel}::{node.name}")
                 for call in ast.walk(node):
-                    if (isinstance(call, ast.Call) and isinstance(call.func, ast.Name)
-                            and call.func.id in _KIND
-                            and call.args and isinstance(call.args[0], ast.Constant)):
+                    if (
+                        isinstance(call, ast.Call)
+                        and isinstance(call.func, ast.Name)
+                        and call.func.id in _KIND
+                        and call.args
+                        and isinstance(call.args[0], ast.Constant)
+                    ):
                         kinds[call.args[0].value].add(_KIND[call.func.id])
     return tests, kinds
 
@@ -75,9 +96,22 @@ def run_tests() -> dict[str, bool]:
     """test node id (without params) -> passed."""
     with tempfile.TemporaryDirectory() as tmp:
         report = Path(tmp) / "junit.xml"
-        subprocess.run([sys.executable, "-m", "pytest",  # noqa: S603 - fixed args, own tests "-q", "-p", "no:cacheprovider",
-                        f"--junitxml={report}", *map(str, TEST_FILES)],
-                       cwd=BACKEND, capture_output=True, check=False)
+        args = [
+            sys.executable,
+            "-m",
+            "pytest",
+            "-q",
+            "-p",
+            "no:cacheprovider",
+            f"--junitxml={report}",
+            *map(str, TEST_FILES),
+        ]
+        subprocess.run(  # noqa: S603 - fixed args, our own tests
+            args,
+            cwd=BACKEND,
+            capture_output=True,
+            check=False,
+        )
         passed: dict[str, bool] = {}
         root = ET.parse(report).getroot()  # noqa: S314 - the report pytest just wrote
         for case in root.iter("testcase"):
@@ -91,8 +125,9 @@ def run_tests() -> dict[str, bool]:
 def main() -> int:
     spec_registry.load_implementations()
     specs = spec_registry.load_specs()
-    legacy = {fn.__name__.split("_")[0].upper() + "-" + fn.__name__.split("_")[1]: fn
-              for fn in REGISTRY}
+    legacy = {
+        fn.__name__.split("_")[0].upper() + "-" + fn.__name__.split("_")[1]: fn for fn in REGISTRY
+    }
     tests, kinds = test_index()
     passed = run_tests()
 
@@ -114,18 +149,26 @@ def main() -> int:
         fire = "yes" if {"fires", "no_fire"} <= kinds[cid] else "no"
         nodes = sorted(tests[cid])
         results = [passed.get(n) for n in nodes]
-        status = ("no tests" if not nodes else
-                  "pass" if all(results) else "**FAIL**" if any(r is False for r in results)
-                  else "not run")
+        status = (
+            "no tests"
+            if not nodes
+            else "pass"
+            if all(results)
+            else "**FAIL**"
+            if any(r is False for r in results)
+            else "not run"
+        )
         totals[status] += 1
-        rows.append(f"| {cid} | {title} | {'yes' if cid in specs else 'no'} | {impl} | "
-                    f"{fire} | {len(nodes)} | {status} |")
+        rows.append(
+            f"| {cid} | {title} | {'yes' if cid in specs else 'no'} | {impl} | "
+            f"{fire} | {len(nodes)} | {status} |"
+        )
 
     lines = [
         "# Check coverage",
         "",
         "Generated by `backend/scripts/check_coverage.py` (`make check-coverage`); do not",
-        "edit by hand. \"Tests\" counts the test functions that name the check id; \"passing\"",
+        'edit by hand. "Tests" counts the test functions that name the check id; "passing"',
         "is from a fresh pytest run of those files.",
         "",
         f"**{len(rows)} check ids**: {totals['spec']} spec-registry checks (scored with CVSS",
@@ -148,8 +191,10 @@ def main() -> int:
         "",
     ]
     OUTPUT.write_text("\n".join(lines))
-    print(f"wrote {OUTPUT}: {len(rows)} checks, {totals['pass']} passing, "
-          f"{totals['**FAIL**']} failing")
+    print(
+        f"wrote {OUTPUT}: {len(rows)} checks, {totals['pass']} passing, "
+        f"{totals['**FAIL**']} failing"
+    )
     return 1 if totals["**FAIL**"] else 0
 
 

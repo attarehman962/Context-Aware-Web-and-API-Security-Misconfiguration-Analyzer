@@ -12,6 +12,7 @@ including requests a proxy would never be asked to forward.
 ``dns`` maps names to addresses through a monkeypatched ``getaddrinfo``.
 No test ever resolves or contacts a real internal host.
 """
+
 from __future__ import annotations
 
 import socket
@@ -24,8 +25,10 @@ import pytest
 
 # Fake secrets the target serves. None may appear unredacted anywhere.
 # Each one is assembled at run time, so no secret-shaped literal sits in the repo.
-JWT = ("eyJ" + "hbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsInJvbGUiOiJyb290In0."
-       "c2lnbmF0dXJlLWZha2UtZm9yLXRlc3Rz")
+JWT = (
+    "eyJ" + "hbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsInJvbGUiOiJyb290In0."
+    "c2lnbmF0dXJlLWZha2UtZm9yLXRlc3Rz"
+)
 AWS_KEY = "AKIAIOSFODNN7EXAMPLE"
 SECRETS = {
     "jwt": JWT,
@@ -39,15 +42,23 @@ SECRETS = {
     "card": "4111111111111111",
 }
 
-ENV_FILE = (f"DB_PASSWORD={SECRETS['db_password']}\n"
-            f"AWS_ACCESS_KEY_ID={AWS_KEY}\n"
-            f"AWS_SECRET_ACCESS_KEY={SECRETS['aws_secret']}\n")
-API_USERS = ('{"users": [{"id": 1, "email": "alice@example.com", '
-             f'"password": "{SECRETS["json_password"]}", "card": "{SECRETS["card"]}", '
-             f'"token": "{JWT}", "api_key": "{SECRETS["api_key"]}", '
-             '"internal_host": "10.20.30.40"}]}')
-PRIVATE_KEY = ("-----BEGIN " + "RSA PRIVATE KEY-----\n" + SECRETS["private_key_body"]
-               + "\n-----END RSA PRIVATE KEY-----\n")
+ENV_FILE = (
+    f"DB_PASSWORD={SECRETS['db_password']}\n"
+    f"AWS_ACCESS_KEY_ID={AWS_KEY}\n"
+    f"AWS_SECRET_ACCESS_KEY={SECRETS['aws_secret']}\n"
+)
+API_USERS = (
+    '{"users": [{"id": 1, "email": "alice@example.com", '
+    f'"password": "{SECRETS["json_password"]}", "card": "{SECRETS["card"]}", '
+    f'"token": "{JWT}", "api_key": "{SECRETS["api_key"]}", '
+    '"internal_host": "10.20.30.40"}]}'
+)
+PRIVATE_KEY = (
+    "-----BEGIN "
+    + "RSA PRIVATE KEY-----\n"
+    + SECRETS["private_key_body"]
+    + "\n-----END RSA PRIVATE KEY-----\n"
+)
 
 
 def known_issue(issue: str, owner: str, what: str):
@@ -110,12 +121,22 @@ class _Handler(BaseHTTPRequestHandler):
         pass
 
     def _record(self) -> None:
-        self.target.log.append(Logged(self.command, self.headers.get("Host", ""),
-                                      self.path, {k.lower(): v for k, v in
-                                                  self.headers.items()}))
+        self.target.log.append(
+            Logged(
+                self.command,
+                self.headers.get("Host", ""),
+                self.path,
+                {k.lower(): v for k, v in self.headers.items()},
+            )
+        )
 
-    def _send(self, code: int, body: str = "", ctype: str = "text/html",
-              extra: dict[str, str] | None = None) -> None:
+    def _send(
+        self,
+        code: int,
+        body: str = "",
+        ctype: str = "text/html",
+        extra: dict[str, str] | None = None,
+    ) -> None:
         data = body.encode()
         self.send_response(code)
         self.send_header("Content-Type", ctype)
@@ -132,14 +153,18 @@ class _Handler(BaseHTTPRequestHandler):
         path = self.path.split("?")[0]
         port = self.target.port
         if host != "target.test":
-            self._send(200, "out of scope")          # logged; must never happen
+            self._send(200, "out of scope")  # logged; must never happen
         elif path == "/":
-            self._send(200, _index(port), extra={
-                "Set-Cookie": f"sessionid={SECRETS['session_cookie']}; Path=/",
-                "X-Debug-Token": SECRETS["api_key"],
-                "Server": "Apache/2.4.1 (Unix)",
-                "Access-Control-Allow-Origin": "*",
-            })
+            self._send(
+                200,
+                _index(port),
+                extra={
+                    "Set-Cookie": f"sessionid={SECRETS['session_cookie']}; Path=/",
+                    "X-Debug-Token": SECRETS["api_key"],
+                    "Server": "Apache/2.4.1 (Unix)",
+                    "Access-Control-Allow-Origin": "*",
+                },
+            )
         elif path == "/about":
             self._send(200, "<html><body>About</body></html>")
         elif path == "/redirect-out":
@@ -151,11 +176,17 @@ class _Handler(BaseHTTPRequestHandler):
         elif path == "/.env":
             self._send(200, ENV_FILE, "text/plain")
         elif path == "/static/app.js":
-            self._send(200, 'fetch("/api/orders"); const k = "' + PRIVATE_KEY.replace(
-                "\n", "\\n") + '";', "application/javascript")
+            self._send(
+                200,
+                'fetch("/api/orders"); const k = "' + PRIVATE_KEY.replace("\n", "\\n") + '";',
+                "application/javascript",
+            )
         elif path == "/api/orders":
-            self._send(200, '{"orders": [], "debug": "Authorization: Bearer '
-                       + JWT + '"}', "application/json")
+            self._send(
+                200,
+                '{"orders": [], "debug": "Authorization: Bearer ' + JWT + '"}',
+                "application/json",
+            )
         else:
             self._send(404, "not found")
 

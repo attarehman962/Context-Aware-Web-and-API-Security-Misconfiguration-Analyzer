@@ -6,6 +6,7 @@ annotation) yields a session per request and guarantees cleanup. Celery workers
 and scripts create their own short-lived sessions via :func:`session_scope`
 since they run outside the request lifecycle.
 """
+
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator

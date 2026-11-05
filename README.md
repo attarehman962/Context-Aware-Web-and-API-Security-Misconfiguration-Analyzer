@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🛡️ CAWASMA
+# CAWASMA
 
 ### Context-Aware Web & API Security Misconfiguration Analyzer
 
@@ -19,7 +19,7 @@ APIs, built as a BS Computer Science Final Year Project at FAST-NUCES.
 
 ![The ranked report for a scan](docs/screenshots/03-results.png)
 
-> ⚠️ **Authorised testing only.** Scan only systems you own or have written
+> **Authorised testing only.** Scan only systems you own or have written
 > permission to test. CAWASMA sends bounded, non-destructive requests (mostly
 > `GET`, `HEAD`, `OPTIONS`) to HTTPS targets, refuses private addresses, and
 > redacts secrets before anything is stored. It does not exploit anything.

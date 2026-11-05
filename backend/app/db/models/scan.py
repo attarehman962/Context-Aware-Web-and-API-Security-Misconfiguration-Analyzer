@@ -5,6 +5,7 @@ hangs off a scan and is deleted with it via ON DELETE CASCADE. A scan also
 records the options it ran with and the operator's confirmation that they are
 authorised to test the target.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -40,9 +41,7 @@ if TYPE_CHECKING:
 class Scan(Base, TimestampMixin):
     __tablename__ = "scans"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     target_url: Mapped[str] = mapped_column(String(2048), nullable=False)
     status: Mapped[ScanStatus] = mapped_column(
         Enum(ScanStatus, name="scan_status"),
@@ -63,23 +62,19 @@ class Scan(Base, TimestampMixin):
     options: Mapped[dict[str, Any]] = mapped_column(JSONType, default=dict, nullable=False)
 
     # Operator confirmed they are authorised to test the target, and when.
-    authorization_confirmed: Mapped[bool] = mapped_column(
-        Boolean, default=False, nullable=False
-    )
+    authorization_confirmed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     authorization_confirmed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
 
     # Timezone-aware: the scan runner writes datetime.now(UTC).
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    completed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # --- Relationships (all cascade-delete with the scan) ------------------
+    # Relationships (all cascade-delete with the scan)
     endpoints: Mapped[list[Endpoint]] = relationship(
         back_populates="scan", cascade="all, delete-orphan", passive_deletes=True
     )
