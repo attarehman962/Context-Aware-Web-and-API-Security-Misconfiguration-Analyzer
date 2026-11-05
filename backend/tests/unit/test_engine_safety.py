@@ -37,7 +37,7 @@ def engine():
     return HttpEngine(retries=1, max_concurrency=4)
 
 
-# ------------------------------------------------------------------- SSRF
+# SSRF
 
 
 @pytest.mark.parametrize(
@@ -102,7 +102,7 @@ async def test_public_redirects_are_followed_and_recorded(engine):
     assert result.redirect_chain == ["https://cdn.example/a"]
 
 
-# ----------------------------------------------------------- passive mode
+# Passive mode
 
 
 @pytest.mark.parametrize("method", ["POST", "PUT", "DELETE", "PATCH", "OPTIONS", "TRACE"])
@@ -124,7 +124,7 @@ async def test_passive_mode_allows_get_and_head():
         assert (await engine.fetch("https://site.example/", method="HEAD")).status == 200
 
 
-# ---------------------------------------------------- normalised response
+# Normalised response
 
 
 async def test_scan_response_is_normalised(engine, monkeypatch):
@@ -150,7 +150,7 @@ async def test_scan_response_is_normalised(engine, monkeypatch):
     assert result.redirect_chain == [] and result.tls is None  # TLS placeholder
 
 
-# ------------------------------------------------- retries / concurrency
+# Retries / concurrency
 
 
 async def test_transient_errors_are_retried_for_get_only(engine):
@@ -189,7 +189,7 @@ async def test_http2_and_pinned_backend_are_configured(engine):
     assert isinstance(pool._network_backend, PinnedNetworkBackend)
 
 
-# ------------------------------------------------------- DNS rebinding
+# DNS rebinding
 
 
 class _FakeBackend:

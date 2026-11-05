@@ -58,7 +58,7 @@ def mock_mode(monkeypatch):
     monkeypatch.setattr(settings, "MOCK_API", True)
 
 
-# ------------------------------------------------------------- real mode
+# Real mode
 
 
 async def test_start_scan_queues_with_options(client):
@@ -151,7 +151,7 @@ async def test_scan_history_newest_first(client, seeded):
     assert body["items"][0]["scan_id"] == str(seeded)  # the rescan is newer
 
 
-# ------------------------------------------------------------- mock mode
+# Mock mode
 
 
 async def test_mock_mode_serves_every_example_state(client, mock_mode):

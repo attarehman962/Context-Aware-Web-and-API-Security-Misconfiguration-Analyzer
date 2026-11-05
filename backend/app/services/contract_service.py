@@ -311,7 +311,7 @@ def _finding(f: FindingRow) -> Finding:
     )
 
 
-# ------------------------------------------------------------------- export
+# Export
 
 MEDIA_TYPES: dict[str, str] = {
     "json": "application/json",

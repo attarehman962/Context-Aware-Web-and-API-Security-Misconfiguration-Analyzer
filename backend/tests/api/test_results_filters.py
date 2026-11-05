@@ -105,7 +105,7 @@ async def test_finding_detail_404s(client, seeded):  # noqa: F811
         assert r.status_code == 404 and r.json()["error"]["code"] == "NOT_FOUND"
 
 
-# ------------------------------------------------------------- mock mode
+# Mock mode
 
 
 async def test_mock_mode_filters_and_detail_match_the_real_shapes(client, mock_mode):  # noqa: F811

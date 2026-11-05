@@ -56,7 +56,7 @@ def _ids(ctx: CheckContext) -> set[str]:
     return {f.rule_id for f in run_checks(ctx)}
 
 
-# ------------------------------------------------------------- redaction
+# Redaction
 
 
 @pytest.mark.parametrize(
@@ -75,7 +75,7 @@ def test_redaction_masks_common_secret_forms(text, secret):
     assert secret not in out and MASK in out
 
 
-# ------------------------------------------------------- body classifier
+# Body classifier
 
 
 @pytest.mark.parametrize(
@@ -106,7 +106,7 @@ def test_body_classifier_still_finds_real_signals(body, signal):
     assert getattr(classify_body(body, "application/json"), signal)
 
 
-# ------------------------------------------------------ rule heuristics
+# Rule heuristics
 
 
 @pytest.mark.parametrize(
@@ -151,7 +151,7 @@ def test_cor005_judges_the_preflight_not_the_get_response():
     assert "COR-005" not in _ids(_ctx(cors_preflight_acao="*", cors_max_age="600"))
 
 
-# ------------------------------------------------------------ reports
+# Reports
 
 
 def test_html_report_escapes_target_controlled_text():
@@ -195,7 +195,7 @@ def test_csv_cells_cannot_start_a_formula(value, safe):
     assert reports.csv_safe(value) == safe
 
 
-# ------------------------------------------------------------- engine
+# Engine
 
 
 @pytest.mark.asyncio
@@ -220,7 +220,7 @@ async def test_redirect_without_location_keeps_its_headers(fake_dns):
     assert resp.status_code == 302 and resp.headers["server"] == "nginx/1.18.0"
 
 
-# ------------------------------------------------------------ crawler
+# Crawler
 
 
 @pytest.mark.asyncio
@@ -250,7 +250,7 @@ async def test_links_resolve_against_the_redirected_page(fake_dns):
     assert "/en/about" in {e.path for e in found}
 
 
-# ----------------------------------------------------- TLS + host rules
+# TLS + host rules
 
 
 def test_tls_probe_goes_through_the_ssrf_guard():
@@ -280,7 +280,7 @@ def test_host_level_tls_findings_are_reported_once_without_an_endpoint():
     assert pipeline._host_findings(SITE + "/", seed, None, None) == []
 
 
-# --------------------------------------------------- legacy base scores
+# Legacy base scores
 
 
 def test_legacy_findings_report_the_score_of_their_own_vector():

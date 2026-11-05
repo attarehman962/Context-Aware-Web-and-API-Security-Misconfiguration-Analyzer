@@ -38,7 +38,7 @@ def _mutated(**changes: object) -> dict:
     return data
 
 
-# ------------------------------------------------------------ shipped files
+# Shipped files
 
 
 def test_shipped_spec_files_are_valid():
@@ -53,7 +53,7 @@ def test_shipped_spec_files_are_valid():
     )
 
 
-# --------------------------------------------------------- invalid checks
+# Invalid checks
 
 
 @pytest.mark.parametrize(
@@ -109,7 +109,7 @@ def test_duplicate_check_ids_and_bad_files_are_rejected(tmp_path):
         load_checks(_write(tmp_path, {**VALID, "spec_version": 2}))
 
 
-# ------------------------------------------------- mapping and chains rules
+# Mapping and chains rules
 
 
 def test_mapping_must_cover_every_class_and_signal(tmp_path):
@@ -152,7 +152,7 @@ def test_invalid_chains_are_rejected(tmp_path, changes, message):
     assert any(message in p for p in err.value.problems), err.value.problems
 
 
-# --------------------------------------------------------- ML contract
+# ML contract
 
 
 def test_builtin_classifiers_conform_to_the_ml_contract():
@@ -186,7 +186,7 @@ def test_conformance_catches_contract_violations():
     assert any("raised" in p for p in problems)
 
 
-# ---------------------------------------------------------------- CLI
+# CLI
 
 
 def test_validator_cli_exit_codes(tmp_path, capsys):
@@ -196,7 +196,7 @@ def test_validator_cli_exit_codes(tmp_path, capsys):
     assert "FAIL" in capsys.readouterr().out
 
 
-# ------------------------------------- per-person plan, Contract 1 (gaps)
+# Per-person plan, Contract 1 (gaps)
 
 
 def test_owasp_top10_2025_ids_are_accepted(tmp_path):

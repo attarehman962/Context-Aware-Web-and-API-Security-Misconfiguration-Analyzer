@@ -74,7 +74,7 @@ class Scan(Base, TimestampMixin):
 
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # --- Relationships (all cascade-delete with the scan) ------------------
+    # Relationships (all cascade-delete with the scan)
     endpoints: Mapped[list[Endpoint]] = relationship(
         back_populates="scan", cascade="all, delete-orphan", passive_deletes=True
     )

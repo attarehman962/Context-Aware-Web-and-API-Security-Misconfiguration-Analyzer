@@ -30,7 +30,7 @@ def public_dns(monkeypatch):
     monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
 
 
-# ------------------------------------------------------------------ cache
+# Cache
 
 
 async def test_plain_gets_are_sent_once_per_scan(public_dns):
@@ -75,7 +75,7 @@ async def test_cache_can_be_disabled(public_dns):
     assert route.call_count == 2
 
 
-# ---------------------------------------------------------------- crawler
+# Crawler
 
 
 async def test_js_routes_beyond_api_are_discovered(public_dns):
@@ -139,7 +139,7 @@ async def test_crawl_result_order_is_deterministic():
     assert first == second and first[0].rstrip("/") == base.rstrip("/")
 
 
-# --------------------------------------------------------------- pipeline
+# Pipeline
 
 
 async def test_scan_reports_stage_timings_and_request_count():

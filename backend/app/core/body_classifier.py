@@ -19,7 +19,7 @@ from typing import Any
 from app.core.cvss import RESPONSE_BONUS
 from app.utils.redaction import safe_evidence
 
-# --- Patterns --------------------------------------------------------------
+# Patterns
 _CRED_PATTERNS = [
     re.compile(r"eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}"),  # JWT
     re.compile(r"AKIA[0-9A-Z]{16}"),  # AWS

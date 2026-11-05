@@ -124,7 +124,7 @@ def test_redaction_format():
     assert card.evidence.startswith("****") and len(card.evidence) == 8
 
 
-# ------------------------------------------------------ signals + contract
+# Signals + contract
 
 
 def test_kinds_map_onto_the_four_contract_signals():
@@ -149,7 +149,7 @@ def test_never_raises(monkeypatch):
     assert bc.analyze(_load(FIXTURES / "pii.fire.email.json")) == set()
 
 
-# ------------------------------------------------------ scope and limits
+# Scope and limits
 
 
 def test_only_text_like_content_is_scanned():

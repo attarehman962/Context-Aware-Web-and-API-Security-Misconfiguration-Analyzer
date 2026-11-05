@@ -34,7 +34,7 @@ SIGNAL_SETS = [
 ]
 
 
-# --------------------------------------------- independent FIRST oracle
+# Independent FIRST oracle
 
 _W = {
     "AV": {"N": 0.85, "A": 0.62, "L": 0.55, "P": 0.2},
@@ -70,7 +70,7 @@ def oracle_environmental(vector: str) -> float:
     return _roundup(_roundup(min(total, 10)))  # temporal metrics X -> x1
 
 
-# ------------------------------------------------------------- examples
+# Examples
 
 
 @pytest.mark.parametrize(
@@ -94,7 +94,7 @@ def test_every_check_and_context_matches_the_first_equations():
         assert result.final_score == oracle_environmental(result.vector), (vector, cls, signals)
 
 
-# ---------------------------------------------------------- properties
+# Properties
 
 
 def test_higher_sensitivity_never_lowers_the_score():
@@ -145,7 +145,7 @@ def test_severity_buckets_follow_the_v31_ranges(score, bucket, name):
     assert severity_bucket(score) == (bucket, name)
 
 
-# ------------------------------------------------- reasons + findings
+# Reasons + findings
 
 
 def test_score_reasons_say_where_each_requirement_came_from():

@@ -87,7 +87,7 @@ def _engine(recorder: Recorder) -> HttpEngine:
     return eng
 
 
-# ---------------------------------------------------------------- resolver
+# Resolver
 
 
 @pytest.mark.parametrize("host", LOOPBACK_FORMS + INTERNAL_FORMS)
@@ -140,7 +140,7 @@ def test_allowed_internal_hosts_never_open_loopback_or_metadata(dns, monkeypatch
     assert resolve_and_validate("lab.example").ips == ("10.9.8.7",)
 
 
-# -------------------------------------------------------------- engine
+# Engine
 
 
 @pytest.mark.asyncio
@@ -221,7 +221,7 @@ async def test_redirects_to_internal_hosts_are_not_followed(dns, location):
     assert r.final_url == "https://public.example/" or "SSRF" in (r.error or "")
 
 
-# ------------------------------------------------------------------- API
+# API
 
 
 @pytest.mark.asyncio

@@ -61,7 +61,7 @@ ClassifyFn = Callable[[EndpointInfo], SensitivityClass]
 AnalyzeFn = Callable[[ResponseInfo], set[BodySignal]]
 
 
-# ------------------------------------------------- built-in implementations
+# Built-in implementations
 
 
 def builtin_classify(endpoint: EndpointInfo) -> SensitivityClass:
@@ -85,7 +85,7 @@ def builtin_analyze(response: ResponseInfo) -> set[BodySignal]:
     return {signal for signal, present in flags.items() if present}
 
 
-# ---------------------------------------------------------------- conformance
+# Conformance
 
 _PROBE_ENDPOINTS = [
     EndpointInfo("https://shop.example.com/", "/"),

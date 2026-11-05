@@ -97,9 +97,7 @@ def compute_score(
     )
 
 
-# ---------------------------------------------------------------------------
 # CVSS v3.1 environmental scoring (Atta Prompt 6)
-# ---------------------------------------------------------------------------
 
 _REQUIREMENT_ORDER = {"L": 1, "M": 2, "H": 3}  # X (Not Defined) contributes nothing
 _V31_BUCKETS = (

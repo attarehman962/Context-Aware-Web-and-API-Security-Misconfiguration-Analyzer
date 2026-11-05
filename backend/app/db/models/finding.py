@@ -47,7 +47,7 @@ class Finding(Base, TimestampMixin):
         ForeignKey("endpoints.id", ondelete="SET NULL"), nullable=True, index=True
     )
 
-    # --- Identity ----------------------------------------------------------
+    # Identity
     # Catalog rule id, e.g. "HDR-003" (backend/app/core/checks/catalog.py).
     check_id: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -59,17 +59,17 @@ class Finding(Base, TimestampMixin):
     owasp_map: Mapped[list[str]] = mapped_column(JSONType, default=list, nullable=False)
     cwe_map: Mapped[list[str]] = mapped_column(JSONType, default=list, nullable=False)
 
-    # --- Context (from endpoint classification) ----------------------------
+    # Context (from endpoint classification)
     context_class: Mapped[ContextClass | None] = mapped_column(
         Enum(ContextClass, name="finding_context_class"), nullable=True
     )
     context_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
 
-    # --- Official CVSS v3.1 (standard, unmodified) -------------------------
+    # Official CVSS v3.1 (standard, unmodified)
     cvss_vector: Mapped[str] = mapped_column(String(128), nullable=False)
     base_score: Mapped[float] = mapped_column(Float, nullable=False)
 
-    # --- CAWASMA custom context-aware score (NOT official CVSS) -------------
+    # CAWASMA custom context-aware score (NOT official CVSS)
     cawasma_context_multiplier: Mapped[float | None] = mapped_column(Float, nullable=True)
     response_bonus: Mapped[float | None] = mapped_column(Float, nullable=True)
     final_score: Mapped[float] = mapped_column(Float, nullable=False)
@@ -87,7 +87,7 @@ class Finding(Base, TimestampMixin):
         index=True,
     )
 
-    # --- Evidence / guidance (evidence is stored redacted) -----------------
+    # Evidence / guidance (evidence is stored redacted)
     evidence: Mapped[dict[str, Any]] = mapped_column(JSONType, default=dict, nullable=False)
     impact: Mapped[str | None] = mapped_column(Text, nullable=True)
     recommendation: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -95,7 +95,7 @@ class Finding(Base, TimestampMixin):
     # For checks that can't be confirmed in black-box mode (spec section 47).
     limitation: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # --- Relationships -----------------------------------------------------
+    # Relationships
     scan: Mapped[Scan] = relationship(back_populates="findings")
     endpoint: Mapped[Endpoint | None] = relationship(back_populates="findings")
     feedback: Mapped[list[Feedback]] = relationship(

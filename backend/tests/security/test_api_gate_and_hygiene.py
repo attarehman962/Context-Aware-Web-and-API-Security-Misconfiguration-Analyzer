@@ -31,7 +31,7 @@ async def _count(sessionmaker_) -> int:
         return int(await s.scalar(select(func.count()).select_from(Scan)))
 
 
-# ----------------------------------------------------------- authorisation
+# Authorisation
 
 
 @pytest.mark.parametrize(
@@ -103,7 +103,7 @@ async def test_mock_mode_applies_the_same_gate(client, monkeypatch):
     assert r.status_code == 422
 
 
-# --------------------------------------------------------- URL validation
+# URL validation
 
 
 @pytest.mark.parametrize(
@@ -156,7 +156,7 @@ async def test_idn_targets_are_accepted(client):
     assert r.status_code == 202, r.text
 
 
-# ------------------------------------------------------------ rate limit
+# Rate limit
 
 
 @pytest.fixture
@@ -188,7 +188,7 @@ async def test_rate_limit_ignores_spoofed_forwarded_for(client, limit_two):
     assert codes[-1] == 429, codes
 
 
-# ------------------------------------------------------- error responses
+# Error responses
 
 
 @pytest.fixture

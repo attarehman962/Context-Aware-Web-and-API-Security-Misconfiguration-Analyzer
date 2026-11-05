@@ -9,7 +9,7 @@ from tests.checks.helpers import assert_fires, assert_no_fire, response
 STRONG = {"Strict-Transport-Security": "max-age=31536000; includeSubDomains"}
 
 
-# --------------------------------------------------------------- HDR-001
+# HDR-001
 
 
 def test_hdr001_fires_when_hsts_is_missing():
@@ -25,7 +25,7 @@ def test_hdr001_no_fire_on_plain_http():
     assert_no_fire("HDR-001", response("http://shop.example.com/", headers={}))
 
 
-# --------------------------------------------------------------- TLS-009
+# TLS-009
 
 
 @pytest.mark.parametrize(

@@ -89,7 +89,7 @@ def assert_no_fire(check_id: str, resp: ScanResponse, ep: EndpointInfo | None = 
     assert not found, f"{check_id} fired unexpectedly: {found}"
 
 
-# ---------------------------------------------------------------- legacy rules
+# Legacy rules
 # Legacy ``@rule`` checks read a CheckContext instead; same pattern:
 #     assert_rule_fires("HDR-009", context(headers={}))
 

@@ -72,7 +72,7 @@ def register_check(check_id: str) -> Callable[[CheckFn], CheckFn]:
     return decorate
 
 
-# ------------------------------------------------------------------- specs
+# Specs
 
 
 @lru_cache
@@ -117,7 +117,7 @@ def validate_registry_at_startup() -> None:
     validate_registry(load_specs())
 
 
-# ------------------------------------------------------------------ running
+# Running
 
 
 def response_info(resp: ScanResponse) -> ResponseInfo:

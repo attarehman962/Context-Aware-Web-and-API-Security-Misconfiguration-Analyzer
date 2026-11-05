@@ -76,7 +76,7 @@ def create_app() -> FastAPI:
         redoc_url="/redoc",
     )
 
-    # --- CORS: explicit origins only, never "*" --------------------------
+    # CORS: explicit origins only, never "*"
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.frontend_origins,
@@ -87,7 +87,7 @@ def create_app() -> FastAPI:
         expose_headers=["Location", "X-Contract-Version", "Content-Disposition"],
     )
 
-    # --- Consistent error handling ---------------------------------------
+    # Consistent error handling
     @app.exception_handler(StarletteHTTPException)
     async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         code = {
@@ -141,7 +141,7 @@ def create_app() -> FastAPI:
         response.headers["X-Contract-Version"] = CONTRACT_VERSION
         return response
 
-    # --- Routers ---------------------------------------------------------
+    # Routers
     app.include_router(health.router)
     app.include_router(contract.router)
 

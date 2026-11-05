@@ -22,7 +22,7 @@ def _tls(**fields) -> TlsProbe:
     return TlsProbe(host="shop.example.com", reachable=True, **fields)
 
 
-# ------------------------------------------------------------------- REST API
+# REST API
 
 
 def test_api001_rate_limit_headers():
@@ -97,7 +97,7 @@ def test_api014_injection_error_reflected():
     assert_rule_no_fire("API-014", context())
 
 
-# ---------------------------------------------------------------------- auth
+# Auth
 
 
 def test_aut001_basic_auth():
@@ -139,7 +139,7 @@ def test_aut007_redirect_parameter():
     assert_rule_no_fire("AUT-007", context("https://shop.example.com/login?page=2"))
 
 
-# ------------------------------------------------------------------- cookies
+# Cookies
 
 
 def test_cki004_session_token_in_url():
@@ -157,7 +157,7 @@ def test_cki006_short_session_cookie():
     assert_rule_no_fire("CKI-006", context(cookies=["sessionid=" + "a1" * 16]))
 
 
-# ---------------------------------------------------------------------- CORS
+# CORS
 
 
 def test_cor001_wildcard_origin():
@@ -179,7 +179,7 @@ def test_cor005_preflight_without_max_age():
     )
 
 
-# ------------------------------------------------------------------- headers
+# Headers
 
 
 def test_hdr009_coop():
@@ -208,7 +208,7 @@ def test_hdr012_expect_ct():
     assert_rule_no_fire("HDR-012", context(headers={**hsts, "Expect-CT": "max-age=86400"}))
 
 
-# ------------------------------------------------------- information disclosure
+# Information disclosure
 
 
 def test_inf001_internal_ip():
@@ -243,7 +243,7 @@ def test_inf006_api_docs():
     assert_rule_no_fire("INF-006", context(body="<html>Shop</html>"))
 
 
-# ----------------------------------------------------------------------- TLS
+# TLS
 
 
 def test_tls001_legacy_protocols():

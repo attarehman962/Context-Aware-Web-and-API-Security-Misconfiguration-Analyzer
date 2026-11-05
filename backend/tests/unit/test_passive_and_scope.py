@@ -31,7 +31,7 @@ def public_dns(monkeypatch):
     monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
 
 
-# ------------------------------------------------------------------ engine
+# Engine
 
 
 @pytest.mark.parametrize(
@@ -90,7 +90,7 @@ async def test_passive_engine_refuses_every_non_get_head_method(public_dns, meth
     assert not route.called and "passive mode" in (r.error or "")
 
 
-# ---------------------------------------------------------------- pipeline
+# Pipeline
 
 
 @pytest.fixture

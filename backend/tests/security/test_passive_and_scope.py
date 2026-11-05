@@ -38,7 +38,7 @@ async def _scan(target, **kw):
     return await run_pipeline(target.url, allow_private=True, crawl_depth=2, **kw)
 
 
-# ---------------------------------------------------------------- passive
+# Passive
 
 
 async def test_passive_scan_sends_only_get_and_head(logging_target):
@@ -94,7 +94,7 @@ async def test_passive_scan_through_the_runner_is_passive(
     assert not _unlinked_probes(logging_target)
 
 
-# ------------------------------------------------------------------ scope
+# Scope
 
 
 @pytest.mark.parametrize("passive", [True, False])

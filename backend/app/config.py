@@ -32,14 +32,14 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # --- Environment -------------------------------------------------------
+    # Environment
     ENVIRONMENT: Literal["development", "staging", "production", "test"] = "development"
     DEBUG: bool = True
     # "json": one JSON object per line (Docker default, for log shippers);
     # "text": human-readable, for local runs.
     LOG_FORMAT: Literal["text", "json"] = "text"
 
-    # --- Datastores --------------------------------------------------------
+    # Datastores
     # Async driver (asyncpg) everywhere: FastAPI, the scanner pipeline, Celery
     # tasks and Alembic migrations.
     DATABASE_URL: str = "postgresql+asyncpg://cawasma:cawasma@localhost:5432/cawasma"
@@ -47,12 +47,12 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
 
-    # --- Frontend / CORS ---------------------------------------------------
+    # Frontend / CORS
     # Comma-separated list of allowed origins. Never "*": the scanner returns
     # sensitive assessment data, so origins are explicit.
     FRONTEND_ORIGIN: str = "http://localhost:3000"  # Neelam's Next.js app
 
-    # --- Scanner safety limits ---------------------------------------------
+    # Scanner safety limits
     REQUEST_TIMEOUT: float = 15.0  # seconds per HTTP request
     MAX_RESPONSE_SIZE: int = 5_000_000  # bytes; larger bodies are truncated
     MAX_ENDPOINTS: int = 200  # hard cap on discovered endpoints
@@ -97,7 +97,7 @@ class Settings(BaseSettings):
     # repo's config/ dir; in Docker that resolves to /config (mounted).
     CONFIG_DIR: str = str(Path(__file__).resolve().parents[2] / "config")
 
-    # --- Optional LLM (never required for core scanning) -------------------
+    # Optional LLM (never required for core scanning)
     # Used by the NLP classifier to expand URL abbreviations (usr -> user).
     # When disabled or no key is set, the built-in abbreviation table is used.
     OPENAI_API_KEY: str | None = None
@@ -106,7 +106,7 @@ class Settings(BaseSettings):
     LLM_PROVIDER: Literal["openai", "anthropic"] = "anthropic"
     LLM_MODEL: str = ""  # blank -> provider default
 
-    # --- Derived helpers ---------------------------------------------------
+    # Derived helpers
     @property
     def allowed_internal_hosts(self) -> frozenset[str]:
         return frozenset(

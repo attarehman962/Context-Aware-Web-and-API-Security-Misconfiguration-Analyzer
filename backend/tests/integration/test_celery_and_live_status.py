@@ -31,7 +31,7 @@ from app.workers.celery_app import celery_app
 BODY = {"url": "https://example.com", "authorisation_confirmed": True}
 
 
-# ------------------------------------------------------------------ helpers
+# Helpers
 
 
 class _FakeEngine:
@@ -116,7 +116,7 @@ def worker_db(tmp_path, monkeypatch):
     return SimpleNamespace(scan_id=scan_id, load=lambda: asyncio.run(load(scan_id)))
 
 
-# ------------------------------------------------------------------ Celery
+# Celery
 
 
 def test_queued_scan_runs_on_the_celery_task_and_stores_progress(eager, worker_db, monkeypatch):
@@ -276,7 +276,7 @@ def test_a_scan_cancelled_while_queued_never_starts(eager, worker_db, monkeypatc
     assert scan.status == ScanStatus.FAILED and scan.error_message == runner.CANCELLED
 
 
-# --------------------------------------------------------- POST /api/scan
+# POST /api/scan
 
 
 @pytest.fixture
@@ -314,7 +314,7 @@ async def test_post_scan_answers_503_when_the_queue_is_down(client, monkeypatch,
     assert [x.status for x in scans] == [ScanStatus.FAILED]  # not left QUEUED forever
 
 
-# -------------------------------------------------------------- rate limit
+# Rate limit
 
 
 @pytest.fixture
@@ -363,7 +363,7 @@ def test_bad_rate_limit_rules_are_rejected(rule):
         rate_limit.parse(rule)
 
 
-# ------------------------------------------------------------------ cancel
+# Cancel
 
 
 async def _add(sessionmaker_, status_: ScanStatus) -> uuid.UUID:
@@ -409,7 +409,7 @@ async def test_cancel_unknown_or_finished(client, sessionmaker_, revoked):
     assert revoked == []
 
 
-# --------------------------------------------------------------------- SSE
+# SSE
 
 
 def _events(text: str) -> list[dict]:

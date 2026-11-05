@@ -63,7 +63,7 @@ class _Strict(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
-# ---------------------------------------------------------------- checks.yaml
+# Checks.yaml
 
 HeaderOp = Literal[
     "missing", "present", "equals", "not_equals", "contains", "not_contains", "matches"
@@ -237,7 +237,7 @@ class CheckSpecFile(_Strict):
         return self
 
 
-# ---------------------------------------------------------- cvss_mapping.yaml
+# Cvss_mapping.yaml
 
 # CVSS v3.1 Security Requirements: L(ow), M(edium), H(igh), X (Not Defined).
 Requirement = Literal["L", "M", "H", "X"]
@@ -265,7 +265,7 @@ class CvssMapping(_Strict):
         return self
 
 
-# --------------------------------------------------------------- chains.yaml
+# Chains.yaml
 
 ChainScope = Literal["same_endpoint", "same_host", "any_endpoint"]
 
@@ -365,7 +365,7 @@ class ChainsFile(_Strict):
         return self
 
 
-# ------------------------------------------------------------------- loading
+# Loading
 
 
 def _reject_duplicates(values: list[str], what: str) -> None:

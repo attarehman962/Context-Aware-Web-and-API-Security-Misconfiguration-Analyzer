@@ -137,7 +137,7 @@ async def test_every_format_refuses_an_unfinished_scan(client, sessionmaker_):
         assert r.status_code == 409 and r.json()["error"]["code"] == "SCAN_NOT_FINISHED"
 
 
-# ---------------------------------------------------------- renderer units
+# Renderer units
 
 
 def _finding(**kw):

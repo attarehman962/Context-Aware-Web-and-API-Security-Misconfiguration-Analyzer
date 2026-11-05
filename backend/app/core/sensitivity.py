@@ -254,7 +254,7 @@ class SensitivityClassifier:
         """
         tokens = set(_tokenize(path, extra_expansions))
 
-        # --- Keyword layer (authoritative for the reasons) -----------------
+        # Keyword layer (authoritative for the reasons)
         matched: list[tuple[ContextClass, str]] = []
         for cls, reason, family in _KEYWORD_RULES:
             if _family_match(tokens, family):
@@ -269,7 +269,7 @@ class SensitivityClassifier:
             reasons = ["No sensitive tokens detected; treated as low-sensitivity"]
             kw_conf = 0.5
 
-        # --- Optional embedding layer (blends confidence) ------------------
+        # Optional embedding layer (blends confidence)
         if self._embeddings_ok and self._model is not None:
             try:
                 import numpy as np

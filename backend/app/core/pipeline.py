@@ -523,7 +523,7 @@ async def run_pipeline(
         if seed.status_code is None:
             raise ScanError(f"Target unreachable: {seed.error or 'no response'}")
 
-        # --- Discovery + host-level probes (concurrently) -----------------
+        # Discovery + host-level probes (concurrently)
         # The TLS handshake analysis (a thread) and the plain-HTTP probe don't
         # depend on the crawl, so they run while it does.
         port = urlparse(target).port or 443
@@ -571,7 +571,7 @@ async def run_pipeline(
         tls, http_probe = await tls_task, await http_task
         probe_origin = f"https://cawasma-{secrets.token_hex(6)}.example"  # COR-002
 
-        # --- Per-endpoint analysis (bounded concurrency, ordered output) ----
+        # Per-endpoint analysis (bounded concurrency, ordered output)
         done = 0
         found = 0
         report_lock = asyncio.Lock()
@@ -623,7 +623,7 @@ async def run_pipeline(
         findings.extend(_host_findings(target, seed, tls, http_probe))
         clock.start("scoring")
 
-        # --- Attack-chain correlation -----------------------------------
+        # Attack-chain correlation
         await report(
             "scoring",
             92,

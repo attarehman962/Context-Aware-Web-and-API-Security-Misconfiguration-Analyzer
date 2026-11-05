@@ -37,7 +37,7 @@ def test_hdr003_fires_only_without_deny_or_sameorigin(value, fires):
     assert CHECKS["HDR-003"].http_condition.matches(_resp(headers)) is fires
 
 
-# --------------------------------------------- review asim-p04 #1, #14, #15
+# Review asim-p04 #1, #14, #15
 
 
 @pytest.mark.parametrize(

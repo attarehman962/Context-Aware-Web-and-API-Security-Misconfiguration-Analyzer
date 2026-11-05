@@ -51,7 +51,7 @@ class Endpoint(Base, TimestampMixin):
     status_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
     content_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
-    # --- NLP sensitivity classification (contribution 1) -------------------
+    # NLP sensitivity classification (contribution 1)
     # ``context_class`` is the endpoint-sensitivity class (CRITICAL..LOW).
     context_class: Mapped[ContextClass | None] = mapped_column(
         Enum(ContextClass, name="context_class"), nullable=True
@@ -60,7 +60,7 @@ class Endpoint(Base, TimestampMixin):
     # Explainable reasons, e.g. ["Contains authentication-related tokens"].
     context_reason: Mapped[list[str] | None] = mapped_column(JSONType, nullable=True)
 
-    # --- Response-body signals (contribution 3), redacted -------------------
+    # Response-body signals (contribution 3), redacted
     body_signals: Mapped[dict[str, Any]] = mapped_column(JSONType, default=dict, nullable=False)
 
     response_time: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -70,7 +70,7 @@ class Endpoint(Base, TimestampMixin):
         nullable=False,
     )
 
-    # --- Relationships -----------------------------------------------------
+    # Relationships
     scan: Mapped[Scan] = relationship(back_populates="endpoints")
     findings: Mapped[list[Finding]] = relationship(back_populates="endpoint", passive_deletes=True)
     headers: Mapped[list[Header]] = relationship(
