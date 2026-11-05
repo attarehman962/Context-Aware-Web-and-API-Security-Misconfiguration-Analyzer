@@ -24,10 +24,10 @@ describe("FindingsPanel: sorting and the base/final toggle", () => {
     render(<Harness />);
     const badged = (id: string) =>
       row(id).querySelector('[data-scoring-method="legacy"]') !== null;
-    expect(badged("API-003")).toBe(true); // interim formula
-    expect(badged("TLS-001")).toBe(true);
-    expect(badged("CKI-003")).toBe(false); // CVSS environmental
-    expect(badged("HDR-001")).toBe(false);
+    expect(badged("TLS-001")).toBe(true); // interim formula
+    expect(badged("HDR-012")).toBe(true);
+    expect(badged("API-003")).toBe(false); // CVSS environmental
+    expect(badged("CKI-003")).toBe(false);
   });
 
   it("ranks by context-aware score by default", () => {

@@ -96,7 +96,16 @@ describe("scoreStory: CVSS environmental scoring", () => {
 
 describe("scoreStory: interim formula", () => {
   it("names the context and says it is the interim formula", () => {
-    const story = scoreStory(byCheck("API-003"));
+    // API-003 as a legacy rule scored it, before it moved to checks.yaml.
+    const legacy: Finding = {
+      ...byCheck("API-003"),
+      base_score: 7.5,
+      final_score: 10,
+      final_vector: null,
+      scoring_method: "legacy",
+      score_reasons: [],
+    };
+    const story = scoreStory(legacy);
     expect(story.sentence).toBe(
       "Raised from 9.1 to 10.0 because the endpoint is classified as Authentication and the response contains personal data (CAWASMA's interim formula; this check is not yet scored with CVSS environmental metrics).",
     );
