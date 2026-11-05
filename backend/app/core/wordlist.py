@@ -4,6 +4,7 @@ The paths live in ``app/data/wordlist.txt`` so they can be reviewed and edited
 without touching code. Deliberately small and defensive: this is NOT a
 brute-force enumeration list.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

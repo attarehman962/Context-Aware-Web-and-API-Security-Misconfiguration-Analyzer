@@ -3,6 +3,7 @@
 Skipped unless the ml extra is installed (pip install -e ".[ml]"); inside the
 api image run `make ml-smoke`.
 """
+
 from __future__ import annotations
 
 import pytest

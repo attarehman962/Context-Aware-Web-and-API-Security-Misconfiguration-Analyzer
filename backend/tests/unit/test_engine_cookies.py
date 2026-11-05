@@ -5,6 +5,7 @@ DVWA sets PHPSESSID on the ``/`` -> ``/login.php`` redirect and again on
 /login.php only when the request has no session cookie. With a shared jar the
 second request sends it back and the insecure cookie is never seen.
 """
+
 from __future__ import annotations
 
 import httpx
@@ -55,4 +56,4 @@ async def test_set_cookie_on_a_redirect_hop_is_kept(public_dns):
     # Both hops set it (the redirect, and login.php since no cookie was sent).
     assert r.set_cookie_headers == [COOKIE, COOKIE]
     assert [c["name"] for c in r.cookies] == ["PHPSESSID", "PHPSESSID"]
-    assert all("abc123" not in str(c) for c in r.cookies)        # metadata only
+    assert all("abc123" not in str(c) for c in r.cookies)  # metadata only

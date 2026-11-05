@@ -1,4 +1,5 @@
 """eval/labels/collect_endpoints.py (review asim-p04 #3, #6)."""
+
 from __future__ import annotations
 
 import csv
@@ -13,9 +14,9 @@ collector = load_eval_script("labels/collect_endpoints.py")
 
 PAGES = {
     "/": '<a href="/users/1">u</a><a href="/users/2">u</a><a href="/about">a</a>'
-         '<script src="/main.js"></script><img src="/logo.png"><link href="/site.css">',
+    '<script src="/main.js"></script><img src="/logo.png"><link href="/site.css">',
     "/main.js": 'fetch("/api/Products/42");const u=`/rest/user/${id}/basket`;'
-                'http.get("/identity/api/auth/login");const x="https://cdn.example/api/x";',
+    'http.get("/identity/api/auth/login");const x="https://cdn.example/api/x";',
     "/about": "<p>about</p>",
     "/users/1": "{}",
     "/users/2": "{}",
@@ -57,8 +58,16 @@ def test_collects_and_normalises_paths(site, tmp_path):
 
 def test_unreachable_target_fails_loudly(site, tmp_path, capsys):
     out = tmp_path / "raw.csv"
-    code = collector.main(["--base-url", f"demo={site}", "--base-url", "down=http://127.0.0.1:9",
-                           "--output", str(out)])
+    code = collector.main(
+        [
+            "--base-url",
+            f"demo={site}",
+            "--base-url",
+            "down=http://127.0.0.1:9",
+            "--output",
+            str(out),
+        ]
+    )
     assert code == 1
     assert "down: 0 endpoints" in capsys.readouterr().err
 
@@ -77,5 +86,5 @@ def test_spa_routes_come_from_javascript_and_assets_are_skipped(site, tmp_path):
     assert collector.main(["--base-url", f"demo={site}", "--output", str(out)]) == 0
     paths = {r["path"] for r in _rows(out)}
     assert {"/api/Products/:id", "/rest/user/:id/basket", "/identity/api/auth/login"} <= paths
-    assert not {"/main.js", "/logo.png", "/site.css"} & paths     # assets aren't endpoints
-    assert not any("cdn.example" in p for p in paths)               # off-origin URLs ignored
+    assert not {"/main.js", "/logo.png", "/site.css"} & paths  # assets aren't endpoints
+    assert not any("cdn.example" in p for p in paths)  # off-origin URLs ignored

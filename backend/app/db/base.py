@@ -4,6 +4,7 @@ All ORM models inherit from :class:`Base`. Kept in its own module so that both
 the application and Alembic can import the metadata without triggering the
 async engine in ``session.py``.
 """
+
 from __future__ import annotations
 
 from datetime import datetime

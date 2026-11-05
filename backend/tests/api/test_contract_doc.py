@@ -2,6 +2,7 @@
 
 Examples are marked ``<!-- example: ModelName -->`` directly above a ```json block.
 """
+
 from __future__ import annotations
 
 import json

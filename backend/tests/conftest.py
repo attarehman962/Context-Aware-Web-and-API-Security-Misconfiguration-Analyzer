@@ -6,6 +6,7 @@ without a real PostgreSQL. Set ``TEST_DATABASE_URL`` (e.g.
 same suite against PostgreSQL, as CI does. The scanner modules are DB-free and
 tested directly.
 """
+
 from __future__ import annotations
 
 import os
@@ -24,7 +25,7 @@ from app.db.models import Base
 from app.db.session import enable_sqlite_foreign_keys, get_session
 
 _settings.AUTO_DISPATCH_SCANS = False  # no Celery broker in tests
-_settings.SCAN_RATE_LIMIT = ""          # tests create many scans; test_rate_limit enables it
+_settings.SCAN_RATE_LIMIT = ""  # tests create many scans; test_rate_limit enables it
 from app.main import app  # noqa: E402 - must follow the settings override
 
 TEST_DB = os.environ.get("TEST_DATABASE_URL", "sqlite+aiosqlite:///./_test.db")

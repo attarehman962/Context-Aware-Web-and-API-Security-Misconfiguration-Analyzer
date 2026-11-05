@@ -1,4 +1,5 @@
 """HDR-002..HDR-008, HDR-013, HDR-014 (checks/spec/security_headers.py)."""
+
 from __future__ import annotations
 
 import pytest
@@ -16,8 +17,9 @@ def test_hdr002_no_fire_with_csp():
     assert_no_fire("HDR-002", response(headers={"Content-Security-Policy": GOOD_CSP}))
 
 
-@pytest.mark.parametrize("csp", ["script-src 'self' 'unsafe-inline'",
-                                 "default-src 'self' 'unsafe-eval'"])
+@pytest.mark.parametrize(
+    "csp", ["script-src 'self' 'unsafe-inline'", "default-src 'self' 'unsafe-eval'"]
+)
 def test_hdr013_fires_on_unsafe_csp(csp):
     assert_fires("HDR-013", response(headers={"Content-Security-Policy": csp}))
 
@@ -57,15 +59,16 @@ def test_hdr004_no_fire_with_nosniff(value):
     assert_no_fire("HDR-004", response(headers={"X-Content-Type-Options": value}))
 
 
-@pytest.mark.parametrize("policy", [None, "unsafe-url", "no-referrer-when-downgrade",
-                                    "origin-when-cross-origin"])
+@pytest.mark.parametrize(
+    "policy", [None, "unsafe-url", "no-referrer-when-downgrade", "origin-when-cross-origin"]
+)
 def test_hdr005_fires_on_missing_or_leaky_referrer_policy(policy):
-    assert_fires("HDR-005", response(headers={} if policy is None
-                                     else {"Referrer-Policy": policy}))
+    assert_fires("HDR-005", response(headers={} if policy is None else {"Referrer-Policy": policy}))
 
 
-@pytest.mark.parametrize("policy", ["strict-origin-when-cross-origin", "no-referrer",
-                                    "same-origin"])
+@pytest.mark.parametrize(
+    "policy", ["strict-origin-when-cross-origin", "no-referrer", "same-origin"]
+)
 def test_hdr005_no_fire_on_strict_referrer_policy(policy):
     assert_no_fire("HDR-005", response(headers={"Referrer-Policy": policy}))
 
@@ -78,8 +81,9 @@ def test_hdr006_no_fire_with_permissions_policy():
     assert_no_fire("HDR-006", response(headers={"Permissions-Policy": "geolocation=()"}))
 
 
-@pytest.mark.parametrize("server", ["Apache/2.4.25 (Debian)", "nginx/1.18.0",
-                                    "Werkzeug/2.2.3 Python/3.11.15"])
+@pytest.mark.parametrize(
+    "server", ["Apache/2.4.25 (Debian)", "nginx/1.18.0", "Werkzeug/2.2.3 Python/3.11.15"]
+)
 def test_hdr007_fires_on_versioned_server_banner(server):
     [f] = assert_fires("HDR-007", response(headers={"Server": server}))
     assert f.evidence["headers"]["Server"] == server
@@ -90,8 +94,10 @@ def test_hdr007_no_fire_without_a_version(headers):
     assert_no_fire("HDR-007", response(headers=headers))
 
 
-@pytest.mark.parametrize("headers", [{"X-Powered-By": "PHP/7.4.3"}, {"X-AspNet-Version": "4.0"},
-                                     {"X-AspNetMvc-Version": "5.2"}])
+@pytest.mark.parametrize(
+    "headers",
+    [{"X-Powered-By": "PHP/7.4.3"}, {"X-AspNet-Version": "4.0"}, {"X-AspNetMvc-Version": "5.2"}],
+)
 def test_hdr008_fires_on_framework_banner(headers):
     assert_fires("HDR-008", response(headers=headers))
 

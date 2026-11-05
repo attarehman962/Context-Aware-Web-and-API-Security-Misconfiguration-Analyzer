@@ -11,6 +11,7 @@
 ``assert_fires`` or no ``assert_no_fire`` call, or a legacy ``@rule`` no
 ``assert_rule_fires`` or ``assert_rule_no_fire`` call.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -25,10 +26,17 @@ from app.core.engine import ScanResponse
 URL = "https://shop.example.com/account"
 
 
-def response(url: str = URL, *, status: int = 200, headers: dict[str, str] | None = None,
-             body: str = "", method: str = "GET", content_type: str = "text/html",
-             cookies: list[str] | None = None,
-             request_headers: dict[str, str] | None = None) -> ScanResponse:
+def response(
+    url: str = URL,
+    *,
+    status: int = 200,
+    headers: dict[str, str] | None = None,
+    body: str = "",
+    method: str = "GET",
+    content_type: str = "text/html",
+    cookies: list[str] | None = None,
+    request_headers: dict[str, str] | None = None,
+) -> ScanResponse:
     """A normalised response, as the engine returns it (headers lowercased).
 
     ``cookies`` are separate Set-Cookie headers (the engine keeps each one);
@@ -36,11 +44,18 @@ def response(url: str = URL, *, status: int = 200, headers: dict[str, str] | Non
     """
     hdrs = {k.lower(): v for k, v in (headers or {}).items()}
     if cookies:
-        hdrs["set-cookie"] = cookies[-1]          # folded, as in a dict of headers
-    return ScanResponse(requested_url=url, final_url=url, method=method, status_code=status,
-                        headers=hdrs, body=body, content_type=content_type,
-                        set_cookie_headers=list(cookies or []),
-                        request_headers=dict(request_headers or {}))
+        hdrs["set-cookie"] = cookies[-1]  # folded, as in a dict of headers
+    return ScanResponse(
+        requested_url=url,
+        final_url=url,
+        method=method,
+        status_code=status,
+        headers=hdrs,
+        body=body,
+        content_type=content_type,
+        set_cookie_headers=list(cookies or []),
+        request_headers=dict(request_headers or {}),
+    )
 
 
 def endpoint(url: str = URL) -> EndpointInfo:
@@ -55,8 +70,9 @@ def _run(check_id: str, resp: ScanResponse, ep: EndpointInfo | None) -> list[Raw
     return registry.CHECKS[check_id](resp, ep or endpoint(resp.requested_url))
 
 
-def assert_fires(check_id: str, resp: ScanResponse,
-                 ep: EndpointInfo | None = None) -> list[RawFinding]:
+def assert_fires(
+    check_id: str, resp: ScanResponse, ep: EndpointInfo | None = None
+) -> list[RawFinding]:
     """The check fires on this (vulnerable) response, with well-formed findings."""
     found = _run(check_id, resp, ep)
     assert found, f"{check_id} did not fire"
@@ -77,15 +93,24 @@ def assert_no_fire(check_id: str, resp: ScanResponse, ep: EndpointInfo | None = 
 # Legacy ``@rule`` checks read a CheckContext instead; same pattern:
 #     assert_rule_fires("HDR-009", context(headers={}))
 
-def context(url: str = URL, *, status: int = 200, headers: dict[str, str] | None = None,
-            body: str = "", content_type: str = "text/html",
-            cookies: list[str] | None = None, **signals: Any) -> CheckContext:
+
+def context(
+    url: str = URL,
+    *,
+    status: int = 200,
+    headers: dict[str, str] | None = None,
+    body: str = "",
+    content_type: str = "text/html",
+    cookies: list[str] | None = None,
+    **signals: Any,
+) -> CheckContext:
     """What the pipeline hands a legacy rule; ``signals`` are the probe fields
     (``allowed_methods``, ``cors_acao``, ``tls``, ``context_class``, ...)."""
     from urllib.parse import urlparse
 
-    resp = response(url, status=status, headers=headers, body=body,
-                    content_type=content_type, cookies=cookies)
+    resp = response(
+        url, status=status, headers=headers, body=body, content_type=content_type, cookies=cookies
+    )
     return CheckContext(url=url, path=urlparse(url).path or "/", result=resp, **signals)
 
 

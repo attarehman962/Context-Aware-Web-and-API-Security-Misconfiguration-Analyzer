@@ -11,6 +11,7 @@ retried: scan_runner records its failure as FAILED, so a retry would scan the
 target a second time. Time limits come from celery_app (hard 1800 s, soft
 1500 s); the scan's own SCAN_TIMEOUT (1200 s) ends it cleanly before that.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -35,9 +36,15 @@ MAX_RETRIES = 3
 RETRY_ON = (OperationalError, InterfaceError, ConnectionError, TimeoutError)
 
 
-@celery_app.task(name="cawasma.run_scan", bind=True, autoretry_for=RETRY_ON,
-                 max_retries=MAX_RETRIES, retry_backoff=5, retry_backoff_max=60,
-                 retry_jitter=False)
+@celery_app.task(
+    name="cawasma.run_scan",
+    bind=True,
+    autoretry_for=RETRY_ON,
+    max_retries=MAX_RETRIES,
+    retry_backoff=5,
+    retry_backoff_max=60,
+    retry_jitter=False,
+)
 def run_scan(self, scan_id: str) -> str:
     """Run a full scan in the worker process."""
     logger.info("worker received scan %s (task %s)", scan_id, self.request.id)

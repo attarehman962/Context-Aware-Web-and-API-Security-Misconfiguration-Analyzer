@@ -4,6 +4,7 @@ Serves a few routes that exercise the engine and crawler: an HTML page with
 links/forms/scripts, an inline-JS API reference, a JSON API endpoint, a
 redirect, and a large body for the truncation test.
 """
+
 from __future__ import annotations
 
 import threading

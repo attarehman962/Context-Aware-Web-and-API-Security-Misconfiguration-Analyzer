@@ -9,6 +9,7 @@ feed the context-aware score of the endpoint's findings.
     {"credentials": bool, "pii": bool, "financial": bool, "internal_ip": bool,
      "bonus": float, "reasons": [str, ...]}
 """
+
 from __future__ import annotations
 
 import uuid
@@ -39,9 +40,7 @@ if TYPE_CHECKING:
 class Endpoint(Base, TimestampMixin):
     __tablename__ = "endpoints"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     scan_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("scans.id", ondelete="CASCADE"), nullable=False, index=True
     )
@@ -62,9 +61,7 @@ class Endpoint(Base, TimestampMixin):
     context_reason: Mapped[list[str] | None] = mapped_column(JSONType, nullable=True)
 
     # --- Response-body signals (contribution 3), redacted -------------------
-    body_signals: Mapped[dict[str, Any]] = mapped_column(
-        JSONType, default=dict, nullable=False
-    )
+    body_signals: Mapped[dict[str, Any]] = mapped_column(JSONType, default=dict, nullable=False)
 
     response_time: Mapped[float | None] = mapped_column(Float, nullable=True)
     discovered_by: Mapped[DiscoveryMethod] = mapped_column(
@@ -75,9 +72,7 @@ class Endpoint(Base, TimestampMixin):
 
     # --- Relationships -----------------------------------------------------
     scan: Mapped[Scan] = relationship(back_populates="endpoints")
-    findings: Mapped[list[Finding]] = relationship(
-        back_populates="endpoint", passive_deletes=True
-    )
+    findings: Mapped[list[Finding]] = relationship(back_populates="endpoint", passive_deletes=True)
     headers: Mapped[list[Header]] = relationship(
         back_populates="endpoint", cascade="all, delete-orphan", passive_deletes=True
     )

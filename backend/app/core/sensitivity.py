@@ -13,6 +13,7 @@ The embedding model is loaded lazily and is entirely optional: if
 back to the keyword layer alone. The core scanner therefore never depends on a
 GPU or a heavy model download.
 """
+
 from __future__ import annotations
 
 import re
@@ -26,43 +27,135 @@ logger = get_logger(__name__)
 
 # Abbreviation expansion so short path tokens match keyword families.
 _ABBREVIATIONS = {
-    "usr": "user", "auth": "authentication", "priv": "privilege",
-    "iam": "identity access management", "admin": "administrator",
-    "pay": "payment", "acct": "account", "cfg": "config", "svc": "service",
-    "mfa": "multi factor authentication", "sso": "single sign on",
-    "pwd": "password", "cred": "credential", "txn": "transaction",
-    "creds": "credentials", "ms": "microservice",
+    "usr": "user",
+    "auth": "authentication",
+    "priv": "privilege",
+    "iam": "identity access management",
+    "admin": "administrator",
+    "pay": "payment",
+    "acct": "account",
+    "cfg": "config",
+    "svc": "service",
+    "mfa": "multi factor authentication",
+    "sso": "single sign on",
+    "pwd": "password",
+    "cred": "credential",
+    "txn": "transaction",
+    "creds": "credentials",
+    "ms": "microservice",
 }
 
 # Token families -> (class, human reason). Order = priority (CRITICAL first).
 # Tiers are calibrated to the spec's worked examples: identity/privilege/
 # payment/secrets => CRITICAL; auth-flow/user/session => HIGH.
 _KEYWORD_RULES: list[tuple[ContextClass, str, set[str]]] = [
-    (ContextClass.CRITICAL, "Contains identity/privilege tokens",
-     {"identity", "iam", "privilege", "escalate", "escalation", "root",
-      "sudo", "grant", "administrator", "admin"}),
-    (ContextClass.CRITICAL, "Contains payment/financial tokens",
-     {"payment", "billing", "checkout", "stripe", "card", "invoice",
-      "charge", "refund", "wallet", "bank"}),
-    (ContextClass.CRITICAL, "Contains secret/credential tokens",
-     {"secret", "credential", "credentials", "password", "apikey", "privatekey"}),
-    (ContextClass.HIGH, "Contains authentication/session tokens",
-     {"authentication", "login", "signin", "logout", "sso", "oauth",
-      "multi", "factor", "otp", "verify", "confirm", "reset", "session",
-      "token"}),
-    (ContextClass.HIGH, "Contains user/account tokens",
-     {"user", "account", "profile", "customer", "member", "email"}),
-    (ContextClass.MEDIUM, "Contains generic API/data tokens",
-     {"api", "data", "search", "query", "upload", "download", "report",
-      "config", "settings", "order", "product", "service"}),
-    (ContextClass.LOW, "Public/informational path",
-     {"about", "public", "home", "index", "static", "assets", "help",
-      "faq", "contact", "terms", "privacy", "docs", "blog", "news"}),
+    (
+        ContextClass.CRITICAL,
+        "Contains identity/privilege tokens",
+        {
+            "identity",
+            "iam",
+            "privilege",
+            "escalate",
+            "escalation",
+            "root",
+            "sudo",
+            "grant",
+            "administrator",
+            "admin",
+        },
+    ),
+    (
+        ContextClass.CRITICAL,
+        "Contains payment/financial tokens",
+        {
+            "payment",
+            "billing",
+            "checkout",
+            "stripe",
+            "card",
+            "invoice",
+            "charge",
+            "refund",
+            "wallet",
+            "bank",
+        },
+    ),
+    (
+        ContextClass.CRITICAL,
+        "Contains secret/credential tokens",
+        {"secret", "credential", "credentials", "password", "apikey", "privatekey"},
+    ),
+    (
+        ContextClass.HIGH,
+        "Contains authentication/session tokens",
+        {
+            "authentication",
+            "login",
+            "signin",
+            "logout",
+            "sso",
+            "oauth",
+            "multi",
+            "factor",
+            "otp",
+            "verify",
+            "confirm",
+            "reset",
+            "session",
+            "token",
+        },
+    ),
+    (
+        ContextClass.HIGH,
+        "Contains user/account tokens",
+        {"user", "account", "profile", "customer", "member", "email"},
+    ),
+    (
+        ContextClass.MEDIUM,
+        "Contains generic API/data tokens",
+        {
+            "api",
+            "data",
+            "search",
+            "query",
+            "upload",
+            "download",
+            "report",
+            "config",
+            "settings",
+            "order",
+            "product",
+            "service",
+        },
+    ),
+    (
+        ContextClass.LOW,
+        "Public/informational path",
+        {
+            "about",
+            "public",
+            "home",
+            "index",
+            "static",
+            "assets",
+            "help",
+            "faq",
+            "contact",
+            "terms",
+            "privacy",
+            "docs",
+            "blog",
+            "news",
+        },
+    ),
 ]
 
 _CLASS_RANK = {
-    ContextClass.LOW: 0, ContextClass.MEDIUM: 1,
-    ContextClass.HIGH: 2, ContextClass.CRITICAL: 3,
+    ContextClass.LOW: 0,
+    ContextClass.MEDIUM: 1,
+    ContextClass.HIGH: 2,
+    ContextClass.CRITICAL: 3,
 }
 
 # Anchor phrases per class for the optional embedding layer.
@@ -150,8 +243,9 @@ class SensitivityClassifier:
     def embeddings_available(self) -> bool:
         return self._embeddings_ok
 
-    def classify(self, path: str,
-                 extra_expansions: dict[str, str] | None = None) -> ClassificationResult:
+    def classify(
+        self, path: str, extra_expansions: dict[str, str] | None = None
+    ) -> ClassificationResult:
         """Return class + confidence + explainable reasons for a path.
 
         ``extra_expansions`` is an optional {token: full_form} map (e.g. from an

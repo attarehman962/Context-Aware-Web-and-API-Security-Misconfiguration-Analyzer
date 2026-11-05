@@ -13,6 +13,7 @@ Two ways to score, kept strictly apart from the official base score:
   ``min(10, base x context multiplier + response bonus)``. The pipeline still
   uses it for the legacy catalog rules until they move to checks.yaml.
 """
+
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -23,7 +24,7 @@ from typing import TYPE_CHECKING
 from app.core.contracts import BodySignal
 from app.db.models.enums import ContextClass, Severity
 
-if TYPE_CHECKING:   # imported lazily below: specs.py imports this module
+if TYPE_CHECKING:  # imported lazily below: specs.py imports this module
     from app.core.checks.registry import RawFinding
     from app.core.specs import CvssMapping
 
@@ -100,9 +101,13 @@ def compute_score(
 # CVSS v3.1 environmental scoring (Atta Prompt 6)
 # ---------------------------------------------------------------------------
 
-_REQUIREMENT_ORDER = {"L": 1, "M": 2, "H": 3}     # X (Not Defined) contributes nothing
-_V31_BUCKETS = ((9.0, Severity.CRITICAL, "Critical"), (7.0, Severity.HIGH, "High"),
-                (4.0, Severity.MEDIUM, "Medium"), (0.1, Severity.LOW, "Low"))
+_REQUIREMENT_ORDER = {"L": 1, "M": 2, "H": 3}  # X (Not Defined) contributes nothing
+_V31_BUCKETS = (
+    (9.0, Severity.CRITICAL, "Critical"),
+    (7.0, Severity.HIGH, "High"),
+    (4.0, Severity.MEDIUM, "Medium"),
+    (0.1, Severity.LOW, "Low"),
+)
 
 
 @dataclass(frozen=True)
@@ -122,7 +127,7 @@ class ContextScore:
     base_score: float
     final_score: float
     severity_bucket: Severity
-    cvss_severity: str            # "None", "Low", "Medium", "High", "Critical"
+    cvss_severity: str  # "None", "Low", "Medium", "High", "Critical"
     requirements: dict[str, str]
     score_reasons: list[str]
 
@@ -157,7 +162,8 @@ def _load_mapping_cached(path: str) -> CvssMapping:
 
 
 def security_requirements(
-    sensitivity: ContextClass, signals: Iterable[BodySignal | str],
+    sensitivity: ContextClass,
+    signals: Iterable[BodySignal | str],
     mapping: CvssMapping | None = None,
 ) -> tuple[dict[str, str], list[str]]:
     """CR/IR/AR for a context, and where each one came from.
@@ -173,8 +179,9 @@ def security_requirements(
     requirements: dict[str, str] = {}
     reasons = [source for source, _ in rows]
     for metric in ("CR", "IR", "AR"):
-        values = [(getattr(row, metric), source) for source, row in rows
-                  if getattr(row, metric) != "X"]
+        values = [
+            (getattr(row, metric), source) for source, row in rows if getattr(row, metric) != "X"
+        ]
         if not values:
             requirements[metric] = "X"
             continue
@@ -186,9 +193,12 @@ def security_requirements(
     return requirements, reasons
 
 
-def environmental_score(base_vector: str, sensitivity: ContextClass,
-                        signals: Iterable[BodySignal | str],
-                        mapping: CvssMapping | None = None) -> ContextScore:
+def environmental_score(
+    base_vector: str,
+    sensitivity: ContextClass,
+    signals: Iterable[BodySignal | str],
+    mapping: CvssMapping | None = None,
+) -> ContextScore:
     """Re-score a CVSS v3.1 *base* vector for an endpoint's context."""
     from cvss import CVSS3
 
@@ -207,16 +217,26 @@ def environmental_score(base_vector: str, sensitivity: ContextClass,
         reasons.append("no-context-change")
     reasons += [f"base:{base}", f"environmental:{final}"]
     bucket, name = severity_bucket(final)
-    return ContextScore(vector=vector, base_score=base, final_score=final,
-                        severity_bucket=bucket, cvss_severity=name,
-                        requirements=requirements, score_reasons=reasons)
+    return ContextScore(
+        vector=vector,
+        base_score=base,
+        final_score=final,
+        severity_bucket=bucket,
+        cvss_severity=name,
+        requirements=requirements,
+        score_reasons=reasons,
+    )
 
 
-def score_finding(finding: RawFinding, sensitivity: ContextClass,
-                  signals: Iterable[BodySignal | str],
-                  mapping: CvssMapping | None = None) -> ContextScore:
+def score_finding(
+    finding: RawFinding,
+    sensitivity: ContextClass,
+    signals: Iterable[BodySignal | str],
+    mapping: CvssMapping | None = None,
+) -> ContextScore:
     """Score a registry ``RawFinding`` with its check's base vector from checks.yaml."""
     from app.core.checks.registry import spec_for
 
-    return environmental_score(spec_for(finding.check_id).base_cvss_vector,
-                               sensitivity, signals, mapping)
+    return environmental_score(
+        spec_for(finding.check_id).base_cvss_vector, sensitivity, signals, mapping
+    )

@@ -5,6 +5,7 @@ via ``pydantic-settings``. Nothing in the codebase should read ``os.environ``
 directly -- import :data:`settings` from here instead. This keeps configuration
 in one place, typed and validated at startup.
 """
+
 from __future__ import annotations
 
 from functools import lru_cache
@@ -49,20 +50,20 @@ class Settings(BaseSettings):
     # --- Frontend / CORS ---------------------------------------------------
     # Comma-separated list of allowed origins. Never "*": the scanner returns
     # sensitive assessment data, so origins are explicit.
-    FRONTEND_ORIGIN: str = "http://localhost:3000"      # Neelam's Next.js app
+    FRONTEND_ORIGIN: str = "http://localhost:3000"  # Neelam's Next.js app
 
     # --- Scanner safety limits ---------------------------------------------
-    REQUEST_TIMEOUT: float = 15.0            # seconds per HTTP request
-    MAX_RESPONSE_SIZE: int = 5_000_000       # bytes; larger bodies are truncated
-    MAX_ENDPOINTS: int = 200                 # hard cap on discovered endpoints
-    MAX_CRAWL_DEPTH: int = 2                 # recursive crawl depth
+    REQUEST_TIMEOUT: float = 15.0  # seconds per HTTP request
+    MAX_RESPONSE_SIZE: int = 5_000_000  # bytes; larger bodies are truncated
+    MAX_ENDPOINTS: int = 200  # hard cap on discovered endpoints
+    MAX_CRAWL_DEPTH: int = 2  # recursive crawl depth
     MAX_REDIRECTS: int = 5
-    MAX_CONCURRENT_REQUESTS: int = 10        # httpx connection concurrency
-    MAX_CONCURRENT_ENDPOINTS: int = 8        # endpoints analysed at once (each sends ~4 probes)
-    RATE_LIMIT_PROBE_COUNT: int = 15         # burst size for rate-limit check
+    MAX_CONCURRENT_REQUESTS: int = 10  # httpx connection concurrency
+    MAX_CONCURRENT_ENDPOINTS: int = 8  # endpoints analysed at once (each sends ~4 probes)
+    RATE_LIMIT_PROBE_COUNT: int = 15  # burst size for rate-limit check
     USER_AGENT: str = "CAWASMA-Scanner/1.0 (+defensive-security-research)"
-    REQUEST_RETRIES: int = 1                 # retries for transient network errors (GET/HEAD)
-    MAX_CRAWL_PAGES: int = 50                # pages the crawler fetches and parses
+    REQUEST_RETRIES: int = 1  # retries for transient network errors (GET/HEAD)
+    MAX_CRAWL_PAGES: int = 50  # pages the crawler fetches and parses
 
     # Hostnames allowed to resolve to PRIVATE ranges (comma-separated). Empty by
     # default; set only in the evaluation environment (docker-compose.eval-scan.yml)
@@ -87,7 +88,7 @@ class Settings(BaseSettings):
     SCAN_RATE_LIMIT: str = "5/minute"
     # How often GET /api/scan/{id}/events re-reads the scan (seconds).
     SSE_POLL_SECONDS: float = 1.0
-    SSE_MAX_STREAMS_PER_CLIENT: int = 10    # open live-status streams per client IP
+    SSE_MAX_STREAMS_PER_CLIENT: int = 10  # open live-status streams per client IP
     # Contract v1 routes answer with example data (app/api/mock.py): no DB or
     # scanner needed. For frontend development only.
     MOCK_API: bool = False
@@ -103,13 +104,16 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str | None = None
     LLM_ENABLED: bool = False
     LLM_PROVIDER: Literal["openai", "anthropic"] = "anthropic"
-    LLM_MODEL: str = ""   # blank -> provider default
+    LLM_MODEL: str = ""  # blank -> provider default
 
     # --- Derived helpers ---------------------------------------------------
     @property
     def allowed_internal_hosts(self) -> frozenset[str]:
-        return frozenset(h.strip().rstrip(".").lower()
-                         for h in self.ALLOWED_INTERNAL_HOSTS.split(",") if h.strip())
+        return frozenset(
+            h.strip().rstrip(".").lower()
+            for h in self.ALLOWED_INTERNAL_HOSTS.split(",")
+            if h.strip()
+        )
 
     @property
     def frontend_origins(self) -> list[str]:

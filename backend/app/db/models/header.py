@@ -3,6 +3,7 @@
 Values are stored already redacted where sensitive (e.g. Authorization). Only
 headers relevant to the checks are persisted, not every header.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -20,9 +21,7 @@ if TYPE_CHECKING:
 class Header(Base, TimestampMixin):
     __tablename__ = "headers"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     endpoint_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("endpoints.id", ondelete="CASCADE"), nullable=False, index=True
     )

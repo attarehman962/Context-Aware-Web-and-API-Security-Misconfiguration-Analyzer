@@ -7,6 +7,7 @@ same HTML through WeasyPrint. Evidence is redacted when stored and again here. P
 uses WeasyPrint, whose native libraries are installed in the Docker image; if
 they are unavailable the API returns a clear 501 rather than crashing.
 """
+
 from __future__ import annotations
 
 from functools import lru_cache
@@ -36,8 +37,11 @@ SEVERITIES = ("CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO")
 TEMPLATE = "report.html.j2"
 _TEMPLATES = Path(__file__).resolve().parents[1] / "templates"
 
-_METRIC_NAMES = {"CR": "Confidentiality requirement", "IR": "Integrity requirement",
-                 "AR": "Availability requirement"}
+_METRIC_NAMES = {
+    "CR": "Confidentiality requirement",
+    "IR": "Integrity requirement",
+    "AR": "Availability requirement",
+}
 _LEVELS = {"H": "High", "M": "Medium", "L": "Low", "X": "Not defined"}
 
 
@@ -62,36 +66,47 @@ def score_story(f: dict[str, Any]) -> list[str]:
     reasons = list(f.get("score_reasons") or [])
     lines: list[str] = []
     if f.get("final_vector") or reasons:
-        lines.append("Scored with CVSS v3.1 environmental metrics: the base vector plus the "
-                     "security requirements this endpoint's context sets.")
+        lines.append(
+            "Scored with CVSS v3.1 environmental metrics: the base vector plus the "
+            "security requirements this endpoint's context sets."
+        )
         for r in reasons:
             if "<-" in r:
                 metric, sources = r.split("<-", 1)
                 name, _, level = metric.partition(":")
                 why = ", ".join(_reason_source(x) for x in sources.split("+"))
-                lines.append(f"{_METRIC_NAMES.get(name, name)} {_LEVELS.get(level, level)}"
-                             f" because {why}.")
+                lines.append(
+                    f"{_METRIC_NAMES.get(name, name)} {_LEVELS.get(level, level)}"
+                    f" because {why}."
+                )
             elif r == "no-context-change":
-                lines.append("Nothing in the context raises a requirement, so the final "
-                             "score equals the base score.")
+                lines.append(
+                    "Nothing in the context raises a requirement, so the final "
+                    "score equals the base score."
+                )
             elif r.startswith(("base:", "environmental:", "sensitivity:", "signal:")):
-                continue                     # shown elsewhere (scores, context line)
+                continue  # shown elsewhere (scores, context line)
             else:
                 lines.append(r)
     else:
         mult, bonus = f.get("cawasma_context_multiplier"), f.get("response_bonus")
         ctx = f.get("context_class")
-        parts = ["Scored with the interim formula: min(10, base × context multiplier "
-                 "+ response bonus)."]
+        parts = [
+            "Scored with the interim formula: min(10, base × context multiplier "
+            "+ response bonus)."
+        ]
         if mult not in (None, ""):
-            parts.append(f"Context multiplier ×{mult}"
-                         + (f" for a {ctx} endpoint." if ctx else "."))
+            parts.append(
+                f"Context multiplier ×{mult}" + (f" for a {ctx} endpoint." if ctx else ".")
+            )
         elif ctx:
             parts.append(f"Endpoint sensitivity is {ctx}.")
         signals = ", ".join(f.get("body_signals") or [])
         if bonus:
-            parts.append(f"Response bonus +{bonus} for sensitive data in the response"
-                         + (f" ({signals})." if signals else "."))
+            parts.append(
+                f"Response bonus +{bonus} for sensitive data in the response"
+                + (f" ({signals})." if signals else ".")
+            )
         elif signals:
             parts.append(f"The response contains {signals}, which adds a response bonus.")
         lines.extend(parts)
@@ -130,8 +145,9 @@ def _environment() -> Any:
     # unescaped Server header or path would be live HTML/JS in the report.
     from jinja2 import Environment, FileSystemLoader
 
-    return Environment(loader=FileSystemLoader(_TEMPLATES), autoescape=True,
-                       trim_blocks=True, lstrip_blocks=True)
+    return Environment(
+        loader=FileSystemLoader(_TEMPLATES), autoescape=True, trim_blocks=True, lstrip_blocks=True
+    )
 
 
 def render_html(data: dict[str, Any]) -> str:
@@ -144,7 +160,6 @@ def render_pdf(data: dict) -> bytes:
         from weasyprint import HTML
     except Exception as exc:  # noqa: BLE001 - native libs may be absent
         raise ReportFormatUnavailable(
-            "PDF rendering requires WeasyPrint native libraries (available in the "
-            "Docker image)."
+            "PDF rendering requires WeasyPrint native libraries (available in the " "Docker image)."
         ) from exc
     return HTML(string=html).write_pdf()

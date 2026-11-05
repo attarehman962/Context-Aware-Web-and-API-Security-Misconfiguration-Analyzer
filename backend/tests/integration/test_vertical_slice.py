@@ -6,6 +6,7 @@ rather than loopback, because loopback stays blocked even for
 ``ALLOWED_INTERNAL_HOSTS``; the test therefore goes through the real SSRF guard,
 the pinned connection and certificate verification, with no test-only bypass.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -53,6 +54,7 @@ def hsts_target(tmp_path: Path):
 @pytest.fixture
 def live_scans(monkeypatch, sessionmaker_):
     """Run POST /api/scan's background task against the test database."""
+
     @contextlib.asynccontextmanager
     async def scope():
         async with sessionmaker_() as session:
@@ -75,15 +77,22 @@ async def _poll(client, scan_id: str) -> dict:
 
 
 async def test_scan_of_a_target_without_hsts_reports_one_recomputable_finding(
-        client, hsts_target, live_scans, monkeypatch):
+    client, hsts_target, live_scans, monkeypatch
+):
     ip, url, ca = hsts_target
     monkeypatch.setattr(settings, "ALLOWED_INTERNAL_HOSTS", ip)
     monkeypatch.setattr(settings, "SCAN_CA_BUNDLE", str(ca))
 
-    r = await client.post("/api/scan", json={
-        "url": url, "authorisation_confirmed": True,
-        "crawl_depth": 1, "use_wordlist": False, "passive_only": True,
-    })
+    r = await client.post(
+        "/api/scan",
+        json={
+            "url": url,
+            "authorisation_confirmed": True,
+            "crawl_depth": 1,
+            "use_wordlist": False,
+            "passive_only": True,
+        },
+    )
     assert r.status_code == 202, r.text
     assert r.json()["status"] == "QUEUED"
     results = await _poll(client, r.json()["scan_id"])
@@ -112,7 +121,8 @@ async def test_scan_of_a_target_without_hsts_reports_one_recomputable_finding(
 
 
 async def test_private_target_is_refused_without_allowed_internal_hosts(
-        client, hsts_target, live_scans, monkeypatch):
+    client, hsts_target, live_scans, monkeypatch
+):
     _, url, ca = hsts_target
     monkeypatch.setattr(settings, "ALLOWED_INTERNAL_HOSTS", "")
     monkeypatch.setattr(settings, "SCAN_CA_BUNDLE", str(ca))
@@ -122,8 +132,9 @@ async def test_private_target_is_refused_without_allowed_internal_hosts(
 
 
 async def test_scan_is_refused_without_authorisation(client, live_scans):
-    r = await client.post("/api/scan", json={"url": "https://a.example",
-                                             "authorisation_confirmed": False})
+    r = await client.post(
+        "/api/scan", json={"url": "https://a.example", "authorisation_confirmed": False}
+    )
     assert r.status_code == 422
     assert r.json()["error"]["code"] == "VALIDATION_ERROR"
     assert (await client.get("/api/scans")).json()["meta"]["total"] == 0

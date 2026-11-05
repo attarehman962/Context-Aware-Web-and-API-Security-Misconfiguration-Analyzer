@@ -4,6 +4,7 @@ A target must be a well-formed, HTTPS URL. HTTP-only targets are rejected. This
 module does *not* do SSRF checks -- that is ``security.py`` -- it only validates
 the shape of the URL. Keeping the two concerns separate makes both testable.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -20,7 +21,7 @@ class InvalidTargetError(ValueError):
 
 @dataclass(frozen=True)
 class ParsedTarget:
-    url: str          # normalized URL (no fragment)
+    url: str  # normalized URL (no fragment)
     scheme: str
     host: str
     port: int
@@ -47,13 +48,11 @@ def validate_target_url(raw: str, *, require_https: bool = True) -> ParsedTarget
     try:
         parsed = urlparse(raw)
         port_given = parsed.port
-    except ValueError:      # "[::1" (unclosed IPv6), port not a number or > 65535
+    except ValueError:  # "[::1" (unclosed IPv6), port not a number or > 65535
         raise InvalidTargetError("Target URL is malformed (host or port).") from None
 
     if parsed.scheme not in ("http", "https"):
-        raise InvalidTargetError(
-            f"Unsupported scheme '{parsed.scheme or 'none'}'. Use https://."
-        )
+        raise InvalidTargetError(f"Unsupported scheme '{parsed.scheme or 'none'}'. Use https://.")
     if require_https and parsed.scheme != "https":
         raise InvalidTargetError("Only HTTPS targets are allowed.")
 
@@ -70,9 +69,7 @@ def validate_target_url(raw: str, *, require_https: bool = True) -> ParsedTarget
     path = parsed.path or "/"
 
     # Rebuild without fragment; keep query.
-    normalized = urlunparse(
-        (parsed.scheme, parsed.netloc, path, parsed.params, parsed.query, "")
-    )
+    normalized = urlunparse((parsed.scheme, parsed.netloc, path, parsed.params, parsed.query, ""))
 
     return ParsedTarget(
         url=normalized,

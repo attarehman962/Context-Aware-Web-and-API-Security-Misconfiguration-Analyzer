@@ -1,4 +1,5 @@
 """Tests for secret redaction."""
+
 from __future__ import annotations
 
 from app.utils.redaction import (

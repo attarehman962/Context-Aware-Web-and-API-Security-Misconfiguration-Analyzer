@@ -1,4 +1,5 @@
 """Tests for target URL validation."""
+
 from __future__ import annotations
 
 import pytest
@@ -41,15 +42,18 @@ def test_same_origin():
     assert not same_origin("https://a.com", "http://a.com")
 
 
-@pytest.mark.parametrize("bad, reason", [
-    ("https://user:pass@example.com/", "user name or password"),     # SEC-01
-    ("https://user@example.com/", "user name or password"),
-    ("https://example.com/\r\nX: 1", "control characters"),          # SEC-04
-    ("https://example.com/\tx", "control characters"),
-    ("https://example.com:0/", "out of range"),                      # SEC-05
-    ("https://example.com:99999/", "malformed"),
-    ("https://[::1", "malformed"),
-])
+@pytest.mark.parametrize(
+    "bad, reason",
+    [
+        ("https://user:pass@example.com/", "user name or password"),  # SEC-01
+        ("https://user@example.com/", "user name or password"),
+        ("https://example.com/\r\nX: 1", "control characters"),  # SEC-04
+        ("https://example.com/\tx", "control characters"),
+        ("https://example.com:0/", "out of range"),  # SEC-05
+        ("https://example.com:99999/", "malformed"),
+        ("https://[::1", "malformed"),
+    ],
+)
 def test_unsafe_or_ambiguous_urls_rejected(bad, reason):
     with pytest.raises(InvalidTargetError, match=reason):
         validate_target_url(bad)

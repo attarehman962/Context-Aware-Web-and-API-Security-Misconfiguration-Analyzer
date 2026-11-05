@@ -5,6 +5,7 @@ NOT an external LLM call. This keeps the tool self-contained, reproducible and
 honest: the ``provider`` is recorded as ``builtin``. (A pluggable LLM provider
 could be added later; the data contract is already in place via AiInsight.)
 """
+
 from __future__ import annotations
 
 from app.core.pipeline import ScanResult
@@ -15,8 +16,11 @@ _SEV_ORDER = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]
 def generate_insight(result: ScanResult) -> str:
     by_sev = result.stats["by_severity"]
     crit, high = by_sev.get("CRITICAL", 0), by_sev.get("HIGH", 0)
-    n_find, n_ep, n_chain = (result.stats["findings"], result.stats["endpoints"],
-                             result.stats["chains"])
+    n_find, n_ep, n_chain = (
+        result.stats["findings"],
+        result.stats["endpoints"],
+        result.stats["chains"],
+    )
 
     if crit:
         posture = "high risk"
@@ -53,6 +57,8 @@ def generate_insight(result: ScanResult) -> str:
             lines.append(f"  - {c.code} {c.name} (composite {c.composite_score})")
 
     if crit:
-        lines.append("Recommendation: remediate CRITICAL items first, "
-                     "prioritizing sensitive (CRITICAL/HIGH) endpoints.")
+        lines.append(
+            "Recommendation: remediate CRITICAL items first, "
+            "prioritizing sensitive (CRITICAL/HIGH) endpoints."
+        )
     return "\n".join(lines)

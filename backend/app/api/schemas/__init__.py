@@ -4,6 +4,7 @@
 
 ``common`` holds the error envelope and pagination, ``health`` the health check.
 """
+
 from __future__ import annotations
 
 from app.api.schemas.contract import (

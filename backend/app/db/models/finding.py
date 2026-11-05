@@ -8,6 +8,7 @@ requirement of the project.
 ``evidence`` is redacted JSON: ``{"text": str, ...}`` where ``text`` is the
 human-readable summary and any other keys are check-specific detail.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -37,9 +38,7 @@ if TYPE_CHECKING:
 class Finding(Base, TimestampMixin):
     __tablename__ = "findings"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     scan_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("scans.id", ondelete="CASCADE"), nullable=False, index=True
     )
@@ -71,9 +70,7 @@ class Finding(Base, TimestampMixin):
     base_score: Mapped[float] = mapped_column(Float, nullable=False)
 
     # --- CAWASMA custom context-aware score (NOT official CVSS) -------------
-    cawasma_context_multiplier: Mapped[float | None] = mapped_column(
-        Float, nullable=True
-    )
+    cawasma_context_multiplier: Mapped[float | None] = mapped_column(Float, nullable=True)
     response_bonus: Mapped[float | None] = mapped_column(Float, nullable=True)
     final_score: Mapped[float] = mapped_column(Float, nullable=False)
     # CVSS v3.1 environmental scoring (spec-registry checks, core/cvss.py): the

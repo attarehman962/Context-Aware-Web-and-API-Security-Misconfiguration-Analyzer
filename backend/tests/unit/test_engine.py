@@ -1,4 +1,5 @@
 """Tests for the safe HTTP engine (against the local mock server)."""
+
 from __future__ import annotations
 
 import pytest

@@ -5,6 +5,7 @@ whole scan of the local mock target sends only GET/HEAD in passive mode, and
 never contacts a host other than the target's (the mock page links to
 external.example.org).
 """
+
 from __future__ import annotations
 
 from urllib.parse import urlsplit
@@ -32,10 +33,16 @@ def public_dns(monkeypatch):
 
 # ------------------------------------------------------------------ engine
 
-@pytest.mark.parametrize("url", [
-    "https://other.example/", "https://sub.site.example/", "https://site.example.evil/",
-    "ftp://site.example/",
-])
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://other.example/",
+        "https://sub.site.example/",
+        "https://site.example.evil/",
+        "ftp://site.example/",
+    ],
+)
 async def test_out_of_scope_urls_are_refused_before_any_request(public_dns, url):
     async with HttpEngine(scope_host="site.example") as eng:
         with respx.mock(assert_all_called=False) as mock:
@@ -48,7 +55,7 @@ async def test_out_of_scope_urls_are_refused_before_any_request(public_dns, url)
 async def test_scope_matches_the_host_case_insensitively(public_dns):
     async with HttpEngine(scope_host="Site.Example.") as eng:
         assert eng.in_scope("https://SITE.example/a")
-        assert eng.in_scope("http://site.example:8080/")     # TLS-005 probes port 80
+        assert eng.in_scope("http://site.example:8080/")  # TLS-005 probes port 80
         assert not eng.in_scope("https://www.site.example/")
 
 
@@ -56,7 +63,8 @@ async def test_redirect_to_another_host_is_reported_not_followed(public_dns):
     async with HttpEngine(scope_host="site.example") as eng:
         with respx.mock(assert_all_called=False) as mock:
             mock.get("https://site.example/").respond(
-                302, headers={"Location": "https://elsewhere.example/landing"})
+                302, headers={"Location": "https://elsewhere.example/landing"}
+            )
             other = mock.get("https://elsewhere.example/landing").respond(200)
             r = await eng.fetch("https://site.example/")
     assert not other.called
@@ -83,6 +91,7 @@ async def test_passive_engine_refuses_every_non_get_head_method(public_dns, meth
 
 
 # ---------------------------------------------------------------- pipeline
+
 
 @pytest.fixture
 def sent(monkeypatch):

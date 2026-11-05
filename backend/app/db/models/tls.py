@@ -3,6 +3,7 @@
 TLS is a host-level property, so it links to the scan rather than a single
 endpoint. Protocol/cipher probing is implemented in core/tls.py.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -21,9 +22,7 @@ if TYPE_CHECKING:
 class TlsInfo(Base, TimestampMixin):
     __tablename__ = "tls_info"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     scan_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("scans.id", ondelete="CASCADE"), nullable=False, index=True
     )
@@ -39,9 +38,7 @@ class TlsInfo(Base, TimestampMixin):
 
     cert_subject: Mapped[str | None] = mapped_column(String(512), nullable=True)
     cert_issuer: Mapped[str | None] = mapped_column(String(512), nullable=True)
-    cert_not_after: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    cert_not_after: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     is_self_signed: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     hostname_matches: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 

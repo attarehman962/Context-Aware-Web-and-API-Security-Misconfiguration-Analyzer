@@ -3,6 +3,7 @@
 HDR-001..HDR-008 moved to the spec registry (``checks/spec/hsts.py``,
 ``checks/spec/security_headers.py``).
 """
+
 from __future__ import annotations
 
 from app.core.checks.base import CheckContext, RawFinding, make, rule

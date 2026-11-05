@@ -15,6 +15,7 @@ implementation without a spec stops the process.
 The 58 rules in the older ``@rule`` catalog (``base.py``, ``headers.py``, ...)
 keep running unchanged until each is moved here.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -61,8 +62,10 @@ def register_check(check_id: str) -> Callable[[CheckFn], CheckFn]:
 
     def decorate(fn: CheckFn) -> CheckFn:
         if check_id in CHECKS:
-            raise RegistryError(f"{check_id} registered twice "
-                                f"({CHECKS[check_id].__module__} and {fn.__module__})")
+            raise RegistryError(
+                f"{check_id} registered twice "
+                f"({CHECKS[check_id].__module__} and {fn.__module__})"
+            )
         CHECKS[check_id] = fn
         return fn
 
@@ -70,6 +73,7 @@ def register_check(check_id: str) -> Callable[[CheckFn], CheckFn]:
 
 
 # ------------------------------------------------------------------- specs
+
 
 @lru_cache
 def _specs_from(path: str) -> Mapping[str, CheckSpec]:
@@ -100,8 +104,11 @@ def validate_registry(specs: Mapping[str, CheckSpec] | Iterable[str]) -> list[st
         raise RegistryError(f"implemented but not in checks.yaml: {', '.join(orphans)}")
     missing = sorted(spec_ids - set(CHECKS))
     if missing:
-        logger.warning("checks.yaml: %d spec(s) with no implementation yet: %s",
-                       len(missing), ", ".join(missing))
+        logger.warning(
+            "checks.yaml: %d spec(s) with no implementation yet: %s",
+            len(missing),
+            ", ".join(missing),
+        )
     return missing
 
 
@@ -112,13 +119,20 @@ def validate_registry_at_startup() -> None:
 
 # ------------------------------------------------------------------ running
 
+
 def response_info(resp: ScanResponse) -> ResponseInfo:
-    return ResponseInfo(url=resp.final_url, status_code=resp.status_code or 0,
-                        content_type=resp.content_type, headers=resp.headers, body=resp.body)
+    return ResponseInfo(
+        url=resp.final_url,
+        status_code=resp.status_code or 0,
+        content_type=resp.content_type,
+        headers=resp.headers,
+        body=resp.body,
+    )
 
 
-def condition_matches(check_id: str, resp: ScanResponse, *,
-                      headers: Mapping[str, str] | None = None) -> bool:
+def condition_matches(
+    check_id: str, resp: ScanResponse, *, headers: Mapping[str, str] | None = None
+) -> bool:
     """Whether the spec's http_condition holds for ``resp`` (method included).
 
     ``headers`` replaces the response headers, e.g. one ``Set-Cookie`` at a time:
@@ -127,13 +141,19 @@ def condition_matches(check_id: str, resp: ScanResponse, *,
     condition = spec_for(check_id).http_condition
     info = response_info(resp)
     if headers is not None:
-        info = ResponseInfo(url=info.url, status_code=info.status_code,
-                            content_type=info.content_type, headers=headers, body=info.body)
+        info = ResponseInfo(
+            url=info.url,
+            status_code=info.status_code,
+            content_type=info.content_type,
+            headers=headers,
+            body=info.body,
+        )
     return resp.method == condition.method and condition.matches(info)
 
 
-def run_spec_checks(resp: ScanResponse, endpoint: EndpointInfo, *,
-                    scope: str = "every_endpoint") -> list[RawFinding]:
+def run_spec_checks(
+    resp: ScanResponse, endpoint: EndpointInfo, *, scope: str = "every_endpoint"
+) -> list[RawFinding]:
     """Run every registered check of ``scope`` on this response. The pipeline
     calls it for each endpoint's GET and CORS preflight (``every_endpoint``),
     and once per host for the plain-HTTP probe (``target_root``). One failing

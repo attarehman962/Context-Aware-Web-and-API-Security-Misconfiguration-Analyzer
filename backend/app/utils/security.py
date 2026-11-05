@@ -15,6 +15,7 @@ never on hostname strings:
 private ranges for the evaluation environment. Loopback, link-local, cloud
 metadata, multicast, unspecified and reserved addresses are refused even then.
 """
+
 from __future__ import annotations
 
 import ipaddress
@@ -29,9 +30,15 @@ from app.utils.validators import default_port
 IPAddress = ipaddress.IPv4Address | ipaddress.IPv6Address
 
 # Cloud metadata endpoints (AWS/GCP/Azure IPv4, AWS IPv6, AWS ECS, Alibaba).
-METADATA_IPS = frozenset(ipaddress.ip_address(ip) for ip in (
-    "169.254.169.254", "fd00:ec2::254", "169.254.170.2", "100.100.100.200",
-))
+METADATA_IPS = frozenset(
+    ipaddress.ip_address(ip)
+    for ip in (
+        "169.254.169.254",
+        "fd00:ec2::254",
+        "169.254.170.2",
+        "100.100.100.200",
+    )
+)
 _NAT64 = ipaddress.ip_network("64:ff9b::/96")
 # Deprecated IPv6 site-local (RFC 3879): ``ipaddress`` doesn't count it as private,
 # but some networks still route it internally (SEC-07).
@@ -107,10 +114,15 @@ def parse_ip_literal(host: str) -> IPAddress | None:
     if not _INET_ATON.match(h):
         return None
     try:
-        parts = [int(p, 16) if p.lower().startswith("0x")
-                 else int(p, 8) if len(p) > 1 and p.startswith("0") else int(p)
-                 for p in h.split(".")]
-    except ValueError:      # e.g. "09" is not valid octal
+        parts = [
+            int(p, 16)
+            if p.lower().startswith("0x")
+            else int(p, 8)
+            if len(p) > 1 and p.startswith("0")
+            else int(p)
+            for p in h.split(".")
+        ]
+    except ValueError:  # e.g. "09" is not valid octal
         return None
     *head, last = parts
     if any(p > 255 for p in head) or last >= 256 ** (4 - len(head)):
@@ -135,8 +147,9 @@ def validate_ip(ip_str: str, *, internal_ok: bool = False) -> None:
         raise SSRFError(f"Blocked {ip_str}: {reason}.")
 
 
-def resolve_and_validate(host: str, port: int = 443, *, allow_private: bool = False
-                         ) -> ResolvedTarget:
+def resolve_and_validate(
+    host: str, port: int = 443, *, allow_private: bool = False
+) -> ResolvedTarget:
     """Resolve ``host`` and validate every resulting IP.
 
     ``allow_private`` is used ONLY by the test-suite to reach a local mock
@@ -167,7 +180,7 @@ def resolve_and_validate(host: str, port: int = 443, *, allow_private: bool = Fa
         raise SSRFError(f"No addresses resolved for {host}.")
 
     if not allow_private:
-        for ip in ips:          # every address, so the OS can't pick a bad one
+        for ip in ips:  # every address, so the OS can't pick a bad one
             literal_ip = parse_ip_literal(ip)
             if literal_ip is None:
                 raise SSRFError(f"DNS for {host} returned an invalid address.")

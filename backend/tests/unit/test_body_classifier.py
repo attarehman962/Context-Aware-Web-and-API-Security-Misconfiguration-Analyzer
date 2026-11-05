@@ -1,4 +1,5 @@
 """Tests for the response body classifier (Contribution 3)."""
+
 from __future__ import annotations
 
 from app.core.body_classifier import classify_body

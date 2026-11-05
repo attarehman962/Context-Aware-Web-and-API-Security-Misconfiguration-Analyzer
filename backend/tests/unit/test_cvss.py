@@ -1,4 +1,5 @@
 """Tests for the CVSS + CAWASMA scoring engine."""
+
 from __future__ import annotations
 
 from app.core.cvss import compute_score, severity_for
@@ -17,7 +18,7 @@ def test_formula_critical_endpoint_caps_at_10():
     # Spec example: base 6.1 on CRITICAL endpoint (x2.0) + PII/financial bonus.
     r = compute_score(6.1, ContextClass.CRITICAL, response_bonus=2.0)
     assert r.context_multiplier == 2.0
-    assert r.cawasma_final_score == 10.0        # capped
+    assert r.cawasma_final_score == 10.0  # capped
     assert r.severity == Severity.CRITICAL
 
 
@@ -31,7 +32,7 @@ def test_formula_low_endpoint():
 
 def test_base_and_final_are_distinct():
     r = compute_score(6.1, ContextClass.CRITICAL, response_bonus=0.0)
-    assert r.cvss_base_score == 6.1              # official, unchanged
+    assert r.cvss_base_score == 6.1  # official, unchanged
     assert r.cawasma_final_score != r.cvss_base_score  # custom, context-adjusted
 
 

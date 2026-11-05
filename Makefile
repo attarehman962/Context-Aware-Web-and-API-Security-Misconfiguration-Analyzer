@@ -40,8 +40,9 @@ lock: ## Regenerate backend/constraints.txt (every package, exact versions) from
 test: ## Run the test suite on the host (SQLite; set TEST_DATABASE_URL for Postgres)
 	cd $(BACKEND) && "$(PYTHON)" -m pytest -q
 
-lint: ## ruff + mypy
-	cd $(BACKEND) && "$(PYTHON)" -m ruff check . && "$(PYTHON)" -m mypy
+lint: ## ruff (lint + format check) + mypy
+	cd $(BACKEND) && "$(PYTHON)" -m ruff check . && "$(PYTHON)" -m ruff format --check . \
+		&& "$(PYTHON)" -m mypy
 
 validate-checks: ## Validate config/checks.yaml (specs + CVSS vectors)
 	cd $(BACKEND) && "$(PYTHON)" scripts/validate_specs.py checks

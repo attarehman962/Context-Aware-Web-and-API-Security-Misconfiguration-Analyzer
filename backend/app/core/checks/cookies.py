@@ -2,20 +2,34 @@
 
 CKI-001..CKI-003 moved to ``checks/spec/cookies.py``.
 """
+
 from __future__ import annotations
 
 from app.core.checks.base import CheckContext, RawFinding, make, query_names, rule
 
-_TOKEN_PARAMS = {"token", "sid", "session", "sessionid", "sessid", "jsessionid",
-                 "phpsessid", "auth", "jwt", "access_token", "id_token", "auth_token"}
+_TOKEN_PARAMS = {
+    "token",
+    "sid",
+    "session",
+    "sessionid",
+    "sessid",
+    "jsessionid",
+    "phpsessid",
+    "auth",
+    "jwt",
+    "access_token",
+    "id_token",
+    "auth_token",
+}
 
 
 def _parse_cookie(raw: str) -> dict:
     parts = [p.strip() for p in raw.split(";")]
     name = parts[0].split("=", 1)[0] if parts and "=" in parts[0] else parts[0]
     value = parts[0].split("=", 1)[1] if parts and "=" in parts[0] else ""
-    attrs = {p.split("=", 1)[0].lower(): (p.split("=", 1)[1] if "=" in p else True)
-             for p in parts[1:]}
+    attrs = {
+        p.split("=", 1)[0].lower(): (p.split("=", 1)[1] if "=" in p else True) for p in parts[1:]
+    }
     return {"name": name, "value": value, "attrs": attrs}
 
 
@@ -47,6 +61,8 @@ def cki_006_entropy(ctx: CheckContext) -> RawFinding | None:
         name = c["name"].lower()
         if any(k in name for k in ("sess", "sid", "token", "auth")):
             if len(c["value"]) < 16:  # heuristic entropy floor
-                return make("CKI-006", f"Session cookie '{c['name']}' value is short "
-                                        f"({len(c['value'])} chars).")
+                return make(
+                    "CKI-006",
+                    f"Session cookie '{c['name']}' value is short " f"({len(c['value'])} chars).",
+                )
     return None

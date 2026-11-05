@@ -1,4 +1,5 @@
 """Tests for the four-strategy crawler (against the local mock server)."""
+
 from __future__ import annotations
 
 import pytest
