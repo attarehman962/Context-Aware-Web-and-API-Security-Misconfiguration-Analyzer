@@ -30,10 +30,10 @@ therefore puts an nginx TLS front (`nginx:1.27.3-alpine`) with a CA generated pe
 run in front of each target, and CAWASMA trusts that CA (`SCAN_CA_BUNDLE`), so
 certificate verification stays on. ZAP and Nuclei scan the targets directly.
 
-Runs: CAWASMA 2026-11-04 15:14 (before tuning) and 15:22 (after tuning); ZAP and
-Nuclei 2026-10-27 13:39. ZAP and Nuclei were not re-run: their versions,
-templates and target digests are unchanged, so their raw outputs still describe
-the same targets.
+Runs: **current: all three tools, 2026-11-05 05:00 (raw run `20261105T050013Z`),
+on a clean checkout of `main` at 5f2d60e** (after #56 moved five checks to the
+spec registry and #58 aligned the catalog vectors). Earlier: CAWASMA 2026-11-04
+15:14 (before tuning) and 15:22 (after tuning); ZAP and Nuclei 2026-10-27 13:39.
 
 ## Dev and test split
 
@@ -164,7 +164,66 @@ Studied on dev only:
      change wouldn't change a scan. They are proposed in `docs/check-coverage.md`
      terms instead.
 
-## Results (summary)
+## Re-run on main (2026-11-05, current)
+
+`make eval` on `main` at 5f2d60e: every target reset, all three tools re-run.
+Tables in `eval/results/final/` (except `tuning.*`, which compares the two
+2026-11-04 runs and is kept as published).
+
+- **Detection, all four targets:**
+
+  | Tool | Precision | Recall | FPR | Mean scan time |
+  |------|-----------|--------|-----|----------------|
+  | CAWASMA | 1.0 | 0.758 | 0 | 10.5 s |
+  | ZAP | 1.0 | 0.333 | 0 | 104 s |
+  | Nuclei | 1.0 | 0.765 | 0 | 126 s |
+
+  CAWASMA's 4 false positives of the 2026-11-04 run (API-001/API-003 on VAmPI's
+  `/`, `/books/v1`, `/openapi.json`) are gone: those checks are now judged only
+  where their specs apply (auth endpoints; HIGH/CRITICAL endpoints returning
+  JSON). TP 25, FN 8 (was 24 and 9).
+- **Ranking, environmental-scored findings only** (the reported experiment;
+  `ranking_environmental.md`). API-001, API-003 and INF-003/004/005 are now
+  environmental, so more priority items count:
+
+  | Target | Findings | Priority items (matched) | Critical | NDCG@10 base → env | First critical base → env |
+  |-|-|-|-|-|-|
+  | DVWA | 98 | 10 (10) | 6 | 0.147 → 0.261 | 3.7 → 1.0 |
+  | VAmPI | 50 | 8 (6) | 4 | 0.607 → 0.591 | 1.0 → 1.0 |
+  | Juice Shop | 287 | 9 (4) | 6 | 0.001 → 0.000 | 286 → 197 |
+  | crAPI | 330 | 6 (5) | 2 | 0.539 → 0.535 | 1.0 → 1.0 |
+  | Mean | | | | 0.324 → 0.347 | |
+
+  Better on DVWA, within 0.02 on VAmPI and crAPI, nothing found near the top on
+  Juice Shop either way. All findings mixed (`ranking.md`): 0.322 → 0.301.
+- **Diagnosis, re-run:** matched priority items sit at median rank 11–224
+  (base) and 18–211 (environmental), with about 1–3 of them in the top 10.
+  Most findings are copies of one issue across endpoints:
+
+  | Target | Findings | Distinct check ids | Top 5 check ids by count |
+  |-|-|-|-|
+  | Juice Shop | 603 | 21 | COR-005 (56), HDR-001 (56), HDR-002 (56), HDR-005 (56), HDR-006 (56) |
+  | DVWA | 115 | 16 | CKI-001 (10), CKI-002 (10), CKI-003 (10), HDR-001 (8), HDR-002 (8) |
+  | VAmPI | 68 | 16 | HDR-001 (6), HDR-002 (6), HDR-003 (6), HDR-004 (6), HDR-005 (6) |
+  | crAPI | 444 | 16 | HDR-001 (40), HDR-002 (40), HDR-003 (40), HDR-004 (40), HDR-005 (40) |
+
+- **Secondary, diagnostic view: findings grouped by check (added after the first
+  results, as a diagnostic, not as the headline).** Environmental-scored findings
+  grouped by `check_id` per target, each group keeping its highest-`final_score`
+  finding, relevance = the check's highest priority grade (endpoint ignored;
+  `ranking.py --group-by-check`, `ranking_grouped_environmental.md`): NDCG@10
+  0.741 (base) vs 0.733 (environmental); DVWA 0.843 / 0.834, VAmPI 0.667 / 0.653,
+  Juice Shop 0.633 / 0.635, crAPI 0.821 / 0.808. At issue level the two rankings
+  are equivalent: CVSS base scores already order the *kinds* of issue about as
+  well as the context-aware score does. Context matters for which *endpoint's*
+  copy of an issue comes first, which this view throws away on purpose and which
+  the graded pools are built to measure.
+- **Pools refreshed from this run** (`pool.py --refresh`; no grades had been
+  entered, so none were carried over): Juice Shop 38 → 37 rows (23 kept, 14
+  added, 15 removed), DVWA 26 → 27 (22, 5, 4), VAmPI 22 → 24 (22, 2, 0), crAPI
+  40 → 39 (24, 15, 16). Ready for grading.
+
+## Results of the 2026-11-04 run (superseded by the re-run above)
 
 The full numbers are in `eval/results/final/`.
 
@@ -297,7 +356,8 @@ and ranking tables would have to be re-run before they could be reported with it
   unlabelled, so precision covers labelled findings only. The dev hand-check
   found 6 clear FPs among 153 unlabelled dev findings; the rest were plausible.
   Test findings were not hand-checked (no tuning there).
-- **Stale baselines:** ZAP and Nuclei outputs are a week older than CAWASMA's.
+- **Stale baselines (2026-11-04 tables only):** ZAP and Nuclei outputs were a
+  week older than CAWASMA's there; the 2026-11-05 re-run ran all three together.
   The images, templates and targets are pinned and identical, but the runs were
   not simultaneous.
 - **TLS front:** CAWASMA sees the targets through nginx, which adds its own

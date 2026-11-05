@@ -1,0 +1,76 @@
+{
+  "view": "secondary: grouped by check_id",
+  "scoring": "environmental",
+  "seed": 13,
+  "targets": [
+    {
+      "target": "juice-shop",
+      "findings": 287,
+      "distinct_checks": 10,
+      "top5": [
+        "HDR-001 (56)",
+        "HDR-002 (56)",
+        "HDR-005 (56)",
+        "HDR-006 (56)",
+        "HDR-014 (56)"
+      ],
+      "groups": 10,
+      "graded_checks": 6,
+      "ndcg10_before": 0.633,
+      "ndcg10_after": 0.635
+    },
+    {
+      "target": "dvwa",
+      "findings": 98,
+      "distinct_checks": 13,
+      "top5": [
+        "CKI-001 (10)",
+        "CKI-002 (10)",
+        "CKI-003 (10)",
+        "HDR-001 (8)",
+        "HDR-002 (8)"
+      ],
+      "groups": 13,
+      "graded_checks": 9,
+      "ndcg10_before": 0.843,
+      "ndcg10_after": 0.834
+    },
+    {
+      "target": "vampi",
+      "findings": 50,
+      "distinct_checks": 9,
+      "top5": [
+        "HDR-001 (6)",
+        "HDR-002 (6)",
+        "HDR-003 (6)",
+        "HDR-004 (6)",
+        "HDR-005 (6)"
+      ],
+      "groups": 9,
+      "graded_checks": 6,
+      "ndcg10_before": 0.667,
+      "ndcg10_after": 0.653
+    },
+    {
+      "target": "crapi",
+      "findings": 330,
+      "distinct_checks": 10,
+      "top5": [
+        "HDR-001 (40)",
+        "HDR-002 (40)",
+        "HDR-003 (40)",
+        "HDR-004 (40)",
+        "HDR-005 (40)"
+      ],
+      "groups": 10,
+      "graded_checks": 6,
+      "ndcg10_before": 0.821,
+      "ndcg10_after": 0.808
+    }
+  ],
+  "mean": {
+    "target": "mean",
+    "ndcg10_before": 0.741,
+    "ndcg10_after": 0.733
+  }
+}

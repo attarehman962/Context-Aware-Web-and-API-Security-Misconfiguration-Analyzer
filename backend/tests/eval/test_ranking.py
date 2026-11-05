@@ -139,3 +139,42 @@ def test_pool_grades_must_be_0_to_3(tmp_path, monkeypatch):
     )
     with pytest.raises(ValueError, match="0-3"):
         pool.load_pool("vampi")
+
+
+def test_refresh_keeps_entered_grades_adds_new_pairs_and_drops_ungraded(tmp_path, monkeypatch):
+    pool = load_eval_script("harness/pool.py")
+    monkeypatch.setattr(pool.ev, "RESULTS", tmp_path)
+    monkeypatch.setattr(pool, "POOL", tmp_path / "priority_pool_{target}.csv")
+    (tmp_path / "priority_pool_vampi.csv").write_text(
+        "target,check_id,endpoint,evidence_summary,grade\n"
+        "vampi,HDR-002,/,old,1\n"  # still pooled: grade kept
+        "vampi,HDR-005,/old,old,3\n"  # no longer pooled but graded: kept
+        "vampi,HDR-006,/gone,old,\n"  # no longer pooled, ungraded: removed
+    )
+    _raw_run(tmp_path, [_f("HDR-002", "/", 5.4, 5.4), _f("HDR-001", "/new", 5.9, 7.1)])
+    rows, st = pool.refresh_pool("vampi", "20261104T000000Z", k=5)
+    by_key = {(r["check_id"], r["endpoint"]): r["grade"] for r in rows}
+    assert by_key == {("HDR-002", "/"): "1", ("HDR-005", "/old"): "3", ("HDR-001", "/new"): ""}
+    assert (st["kept"], st["added"], st["removed"], st["grades_kept"]) == (1, 1, 1, 2)
+
+
+def test_grouped_view_keeps_one_finding_per_check(tmp_path, monkeypatch):
+    ranking = load_eval_script("harness/ranking.py")
+    monkeypatch.setattr(ranking.ev, "RESULTS", tmp_path)
+    monkeypatch.setattr(
+        ranking,
+        "load_priority",
+        lambda t: [
+            {"check_id": "HDR-002", "endpoint": "/", "grade": 1},
+            {"check_id": "INF-003", "endpoint": "/.env", "grade": 3},
+        ],
+    )
+    findings = [_f("HDR-002", f"/p{i}", 5.4, 6.0 + i / 10) for i in range(5)]
+    findings += [_f("INF-003", "/.env", 9.1, 9.8), _f("HDR-009", "/", 3.1, 3.1, vector=None)]
+    run = _raw_run(tmp_path, findings)
+    out = ranking.grouped_experiment(
+        "vampi", 13, run_stamp=run.name, environmental_only={"HDR-002", "INF-003"}
+    )
+    assert (out["findings"], out["distinct_checks"], out["groups"]) == (6, 2, 2)
+    assert out["top5"][0] == "HDR-002 (5)"
+    assert out["ndcg10_before"] == out["ndcg10_after"] == 1.0  # INF-003 first either way
