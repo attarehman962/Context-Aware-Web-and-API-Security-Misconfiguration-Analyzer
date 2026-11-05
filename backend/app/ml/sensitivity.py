@@ -18,6 +18,7 @@ docs/cvss-mapping-contract.md. Two rules come first, then one of two classifiers
 
 Whatever happens, ``classify`` returns a class and never raises (contract rule 1).
 """
+
 from __future__ import annotations
 
 import re
@@ -34,11 +35,30 @@ from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
-STATIC_SUFFIXES = (".css", ".js", ".mjs", ".map", ".png", ".jpg", ".jpeg", ".gif", ".svg",
-                   ".ico", ".webp", ".woff", ".woff2", ".ttf", ".eot", ".otf")
+STATIC_SUFFIXES = (
+    ".css",
+    ".js",
+    ".mjs",
+    ".map",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".svg",
+    ".ico",
+    ".webp",
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".eot",
+    ".otf",
+)
 
-_ID = re.compile(r"^(?:\d+|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
-                 r"|[0-9a-f]{24}|[0-9a-f]{32,}|v\d+|:\w+|\{\w+\})$", re.I)
+_ID = re.compile(
+    r"^(?:\d+|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+    r"|[0-9a-f]{24}|[0-9a-f]{32,}|v\d+|:\w+|\{\w+\})$",
+    re.I,
+)
 _CAMEL = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
 
 
@@ -59,8 +79,10 @@ class AnchorConfig:
 def load_config(path: Path | None = None) -> AnchorConfig:
     path = path or Path(settings.CONFIG_DIR) / "sensitivity_anchors.yaml"
     data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    anchors = {SensitivityClass(c): tuple(str(p) for p in phrases)
-               for c, phrases in (data.get("anchors") or {}).items()}
+    anchors = {
+        SensitivityClass(c): tuple(str(p) for p in phrases)
+        for c, phrases in (data.get("anchors") or {}).items()
+    }
     if set(anchors) != set(SensitivityClass) or not all(anchors.values()):
         raise ValueError(f"{path}: every class needs at least one anchor phrase")
     return AnchorConfig(
@@ -68,14 +90,14 @@ def load_config(path: Path | None = None) -> AnchorConfig:
         model=str(data.get("model", "all-MiniLM-L6-v2")),
         threshold=float(data.get("threshold", 0.30)),
         default_class=SensitivityClass(data.get("default_class", "MEDIUM")),
-        abbreviations={str(k).lower(): str(v)
-                       for k, v in (data.get("abbreviations") or {}).items()},
+        abbreviations={
+            str(k).lower(): str(v) for k, v in (data.get("abbreviations") or {}).items()
+        },
         anchors=anchors,
     )
 
 
-def path_text(path: str, method: str = "GET",
-              abbreviations: dict[str, str] | None = None) -> str:
+def path_text(path: str, method: str = "GET", abbreviations: dict[str, str] | None = None) -> str:
     """``/api/v1/userAccounts/42/pwd-reset`` -> ``GET api user accounts password reset``."""
     words = []
     for segment in path.split("?", 1)[0].split("/"):
@@ -113,7 +135,7 @@ class AnchorClassifier:
         vec = self._model.encode([text], normalize_embeddings=True)[0]
         best: dict[SensitivityClass, float] = {}
         for cls, anchor in zip(self._anchor_class, self._anchors, strict=True):
-            sim = float(sum(a * b for a, b in zip(anchor, vec, strict=True)))   # unit vectors
+            sim = float(sum(a * b for a, b in zip(anchor, vec, strict=True)))  # unit vectors
             best[cls] = max(best.get(cls, -1.0), sim)
         return best
 
@@ -121,9 +143,14 @@ class AnchorClassifier:
         scores = self.scores(path, method)
         cls, score = max(scores.items(), key=lambda kv: kv[1])
         if score < self.config.threshold:
-            logger.info("sensitivity: %s %s below threshold (%.2f < %.2f): %s",
-                        method, path, score, self.config.threshold,
-                        self.config.default_class.value)
+            logger.info(
+                "sensitivity: %s %s below threshold (%.2f < %.2f): %s",
+                method,
+                path,
+                score,
+                self.config.threshold,
+                self.config.default_class.value,
+            )
             return self.config.default_class
         return cls
 
