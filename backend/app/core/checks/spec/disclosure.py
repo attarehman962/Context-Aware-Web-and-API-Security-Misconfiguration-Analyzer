@@ -35,7 +35,7 @@ _EXCERPT = 160
 def excerpt(check_id: str, body: str) -> str | None:
     """Redacted text around the first match of the spec's body regex."""
     for rule in spec_for(check_id).http_condition.rules:
-        if isinstance(rule, BodyRule) and rule.body == "matches":
+        if isinstance(rule, BodyRule) and rule.body == "matches" and rule.value:
             m = re.search(rule.value, body)
             if m:
                 start = max(0, m.start() - 40)

@@ -12,6 +12,7 @@ ignored. Load with :func:`load_checks`, :func:`load_cvss_mapping`,
 
 from __future__ import annotations
 
+import json
 import re
 from collections.abc import Iterable, Mapping
 from pathlib import Path
@@ -69,8 +70,12 @@ HeaderOp = Literal[
     "missing", "present", "equals", "not_equals", "contains", "not_contains", "matches"
 ]
 StatusOp = Literal["in", "not_in"]
-BodyOp = Literal["contains", "not_contains", "matches"]
+BodyOp = Literal["contains", "not_contains", "matches", "not_empty", "json"]
+HeaderNamesOp = Literal["none_match", "any_match"]
+UrlOp = Literal["matches", "not_matches"]
 _NO_VALUE_OPS = {"missing", "present"}
+_NO_VALUE_BODY_OPS = {"not_empty", "json"}
+_RULE_KINDS = ("header", "header_names", "status", "body", "url")
 
 
 class HeaderRule(_Strict):
@@ -127,21 +132,72 @@ class StatusRule(_Strict):
 
 
 class BodyRule(_Strict):
-    """Condition on the (truncated) response body."""
+    """Condition on the (truncated) response body. ``not_empty``: some
+    non-whitespace text; ``json``: parses as a non-empty JSON object or array
+    (both take no value; since 2026-11-05)."""
 
     body: BodyOp
-    value: str = Field(min_length=1)
+    value: str | None = Field(None, min_length=1)
 
     @model_validator(mode="after")
     def _regex_compiles(self) -> BodyRule:
+        if self.body in _NO_VALUE_BODY_OPS:
+            if self.value is not None:
+                raise ValueError(f"body op {self.body!r} takes no value")
+            return self
+        if not self.value:
+            raise ValueError(f"body op {self.body!r} needs a value")
         if self.body == "matches":
             _compile(self.value)
         return self
 
     def matches(self, response: ResponseInfo) -> bool:
+        if self.body == "not_empty":
+            return bool(response.body.strip())
+        if self.body == "json":
+            try:
+                parsed = json.loads(response.body)
+            except ValueError:
+                return False
+            return isinstance(parsed, dict | list) and bool(parsed)
+        value = self.value or ""
         if self.body == "matches":
-            return re.search(self.value, response.body) is not None
-        return (self.value in response.body) == (self.body == "contains")
+            return re.search(value, response.body) is not None
+        return (value in response.body) == (self.body == "contains")
+
+
+class HeaderNamesRule(_Strict):
+    """Condition on the set of response header names (since 2026-11-05):
+    ``none_match`` fires when no header name matches the regex, e.g. no
+    ``RateLimit-*``, ``X-RateLimit-*`` or ``Retry-After`` at all."""
+
+    header_names: HeaderNamesOp
+    value: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _regex_compiles(self) -> HeaderNamesRule:
+        _compile(self.value)
+        return self
+
+    def matches(self, response: ResponseInfo) -> bool:
+        hit = any(re.search(self.value, name, re.IGNORECASE) for name in response.headers)
+        return hit == (self.header_names == "any_match")
+
+
+class UrlRule(_Strict):
+    """Condition on the final URL, after redirects (since 2026-11-05), e.g. "not
+    redirected to a login page"."""
+
+    url: UrlOp
+    value: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _regex_compiles(self) -> UrlRule:
+        _compile(self.value)
+        return self
+
+    def matches(self, response: ResponseInfo) -> bool:
+        return (re.search(self.value, response.url) is not None) == (self.url == "matches")
 
 
 def _compile(pattern: str) -> None:
@@ -153,16 +209,18 @@ def _compile(pattern: str) -> None:
 
 def _rule_kind(rule: Any) -> str | None:
     if isinstance(rule, dict):
-        keys = [k for k in ("header", "status", "body") if k in rule]
+        keys = [k for k in _RULE_KINDS if k in rule]
     else:
-        keys = [k for k in ("header", "status", "body") if hasattr(rule, k)]
+        keys = [k for k in _RULE_KINDS if hasattr(rule, k)]
     return keys[0] if len(keys) == 1 else None
 
 
 Rule = Annotated[
     Annotated[HeaderRule, Tag("header")]
+    | Annotated[HeaderNamesRule, Tag("header_names")]
     | Annotated[StatusRule, Tag("status")]
-    | Annotated[BodyRule, Tag("body")],
+    | Annotated[BodyRule, Tag("body")]
+    | Annotated[UrlRule, Tag("url")],
     Discriminator(_rule_kind),
 ]
 
@@ -182,10 +240,10 @@ class HttpCondition(_Strict):
     def _one_target_per_rule(cls, rules: Any) -> Any:
         for i, rule in enumerate(rules if isinstance(rules, list) else []):
             if isinstance(rule, dict):
-                targets = [k for k in ("header", "status", "body") if k in rule]
+                targets = [k for k in _RULE_KINDS if k in rule]
                 if len(targets) != 1:
                     raise ValueError(
-                        f"rule {i}: needs exactly one of header/status/body, "
+                        f"rule {i}: needs exactly one of {'/'.join(_RULE_KINDS)}, "
                         f"got {targets or 'none'}"
                     )
         return rules
@@ -194,6 +252,74 @@ class HttpCondition(_Strict):
         """True when the check fires for ``response`` (all/any of the rules)."""
         results = (rule.matches(response) for rule in self.rules)
         return all(results) if self.match == "all" else any(results)
+
+
+class AppliesToRule(_Strict):
+    """One condition on the endpoint a check judges (exactly one key, except that
+    ``methods`` narrows ``path``)."""
+
+    # The endpoint's sensitivity class.
+    sensitivity: list[SensitivityClass] | None = Field(None, min_length=1)
+    # A keyword family the built-in path classifier matched (app/core/sensitivity.py).
+    sensitivity_family: (
+        Literal["identity", "payment", "secrets", "authentication", "account", "api", "public"]
+        | None
+    ) = None
+    # A regex on the endpoint path, optionally only for these endpoint methods (a
+    # POST form is judged on its GET response: the scanner never sends POST).
+    path: str | None = None
+    methods: list[Literal["GET", "POST", "PUT", "PATCH", "DELETE"]] | None = Field(
+        None, min_length=1
+    )
+    # The request carried no Authorization header and no cookie.
+    credentials: Literal["absent"] | None = None
+
+    @model_validator(mode="after")
+    def _one_condition(self) -> AppliesToRule:
+        set_ = [
+            k
+            for k in ("sensitivity", "sensitivity_family", "path", "credentials")
+            if getattr(self, k) is not None
+        ]
+        if len(set_) != 1:
+            raise ValueError(
+                "needs exactly one of sensitivity/sensitivity_family/path/credentials, "
+                f"got {set_ or 'none'}"
+            )
+        if self.methods is not None and self.path is None:
+            raise ValueError("'methods' only narrows a 'path' condition")
+        if self.path is not None:
+            _compile(self.path)
+        return self
+
+
+class AppliesTo(_Strict):
+    """Which endpoints the check judges (since 2026-11-05; default: every one)."""
+
+    match: Literal["all", "any"] = "all"
+    rules: list[AppliesToRule] = Field(min_length=1)
+
+
+class Artifact(_Strict):
+    """The check is about a file at a path (since 2026-11-05). Such checks probe
+    the target, so they never run in passive mode."""
+
+    # Regex on the endpoint path: only matching endpoints are judged.
+    path: str
+    # Extra fixed paths requested from the target root (with the wordlist).
+    probe: list[Annotated[str, Field(pattern=r"^/")]] = Field(default_factory=list)
+    # An HTML body is the site's page, not the file.
+    not_html: bool = True
+    # Never fire on a response like the host's soft-404 baseline (a random path).
+    not_soft_404: bool = True
+    # The response must carry content (text or bytes; a .zip body decodes to "").
+    require_body: bool = False
+
+    @field_validator("path")
+    @classmethod
+    def _regex_compiles(cls, value: str) -> str:
+        _compile(value)
+        return value
 
 
 class CheckSpec(_Strict):
@@ -211,6 +337,8 @@ class CheckSpec(_Strict):
     # How context should move the severity (Contract 1 "severity notes"),
     # e.g. "raise with endpoint sensitivity". Guidance for the CVSS mapping.
     severity_notes: str | None = None
+    applies_to: AppliesTo | None = None
+    artifact: Artifact | None = None
 
     @field_validator("base_cvss_vector")
     @classmethod

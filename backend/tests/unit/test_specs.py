@@ -86,7 +86,7 @@ def test_shipped_spec_files_are_valid():
         ({"http_condition": {"rules": [{"status": "in", "value": [42]}]}}, "status"),
         (
             {"http_condition": {"rules": [{"header": "X", "body": "contains", "value": "a"}]}},
-            "exactly one of header/status/body",
+            "exactly one of header/header_names/status/body/url",
         ),
     ],
 )
