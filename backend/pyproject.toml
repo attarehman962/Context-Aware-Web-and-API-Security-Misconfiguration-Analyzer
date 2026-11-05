@@ -78,11 +78,6 @@ target-version = "py312"
 line-length = 100
 extend-exclude = ["migrations/versions"]
 
-[tool.ruff.format]
-# Asim's files are formatted once his open branches (catalog vectors, sensitivity,
-# fake secrets) are merged, so the formatting doesn't conflict with them.
-exclude = ["app/ml/*", "app/core/checks/catalog.py"]
-
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "ASYNC", "S", "BLE"]
 ignore = [
