@@ -8,13 +8,16 @@ a ground-truth entry (eval/ground_truth/<target>.yaml, known_issues or
 must_not_fire), and whether scans score it with CVSS environmental metrics (a
 spec-registry check) or the interim legacy formula (a legacy @rule). With the
 latest CAWASMA run per target in eval/results/raw/ (if any), also how many
-stored findings carry each scoring method.
+stored findings carry each scoring method. The output names the branch and
+commit it ran on: the report figure is taken once, on main, after every merge.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -58,6 +61,29 @@ def latest_findings(raw: Path = RAW) -> dict[str, list[dict[str, Any]]]:
     return out
 
 
+def git_revision(root: Path = ROOT) -> dict[str, str]:
+    """Branch and short commit of the checkout ("unknown" outside a git clone)."""
+
+    exe = shutil.which("git")
+
+    def git(*args: str) -> str:
+        if exe is None:
+            return "unknown"
+        try:
+            done = subprocess.run(  # noqa: S603 - fixed git arguments
+                [exe, "-C", str(root), *args], capture_output=True, text=True, check=True
+            )
+        except (OSError, subprocess.CalledProcessError):
+            return "unknown"
+        return done.stdout.strip() or "unknown"
+
+    dirty = git("status", "--porcelain", "--untracked-files=no") not in ("", "unknown")
+    return {
+        "branch": git("rev-parse", "--abbrev-ref", "HEAD"),
+        "commit": git("rev-parse", "--short", "HEAD") + (" (uncommitted changes)" if dirty else ""),
+    }
+
+
 def stats(raw: Path = RAW, ground_truth: Path = GROUND_TRUTH) -> dict[str, Any]:
     spec_registry.load_implementations()
     specs = set(spec_registry.load_specs())
@@ -69,6 +95,7 @@ def stats(raw: Path = RAW, ground_truth: Path = GROUND_TRUTH) -> dict[str, Any]:
     findings = [f for fs in runs.values() for f in fs]
     env_findings = sum(1 for f in findings if f.get("final_vector"))
     return {
+        **git_revision(),
         "check_ids": len(all_ids),
         "with_spec": len(specs & all_ids),
         "with_ground_truth": len(truth),
@@ -85,6 +112,7 @@ def stats(raw: Path = RAW, ground_truth: Path = GROUND_TRUTH) -> dict[str, Any]:
 def report(s: dict[str, Any]) -> str:
     n = s["check_ids"]
     lines = [
+        f"on {s['branch']} @ {s['commit']}",
         f"{n} check ids",
         f"  with a checks.yaml spec        {s['with_spec']:>3} of {n}",
         f"  with a ground-truth entry      {s['with_ground_truth']:>3} of {n}",

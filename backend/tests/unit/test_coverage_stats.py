@@ -33,3 +33,10 @@ def test_findings_are_split_by_scoring_method_from_the_latest_run(tmp_path):
     s = coverage_stats.stats(raw=tmp_path)
     assert (s["findings"], s["findings_environmental"], s["findings_legacy"]) == (2, 1, 1)
     assert "environmental 1 (50 %), legacy 1 (50 %)" in coverage_stats.report(s)
+
+
+def test_output_names_the_branch_and_commit(tmp_path):
+    s = coverage_stats.stats(raw=tmp_path)
+    assert s["branch"] and s["commit"]
+    assert coverage_stats.report(s).splitlines()[0] == f"on {s['branch']} @ {s['commit']}"
+    assert coverage_stats.git_revision(tmp_path) == {"branch": "unknown", "commit": "unknown"}
