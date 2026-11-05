@@ -547,6 +547,10 @@ checks:
     owasp: [A01:2021]
     cwe: [CWE-862]
     # Unauthenticated access to sensitive resources directly threatens confidentiality and integrity.
+    # FOR ASIM (Atta, 2026-11-05; not changed): 9.1 implies Integrity: High, but
+    # the check only sees data being *read* without auth (GET), which is mainly a
+    # confidentiality issue. AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N (7.5) may be
+    # easier to defend in the viva. Your call.
     base_cvss_vector: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N
     recommendation: "Require and verify authorization before returning sensitive resource data."
     limitation: >-
