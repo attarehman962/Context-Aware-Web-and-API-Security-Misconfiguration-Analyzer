@@ -77,7 +77,7 @@ def test_ml_modules_conform():
 
 `backend/app/ml/sensitivity.py` and `backend/app/ml/body_classifier.py` already
 exist as stubs with these signatures. They delegate to the built-in
-classifiers and pass this check (`backend/tests/unit/test_ml_stubs.py`), so
+classifiers and pass this check (`backend/tests/unit/test_ml_contract.py`), so
 replace their bodies and keep the signatures.
 
 ## 2. `config/cvss_mapping.yaml`

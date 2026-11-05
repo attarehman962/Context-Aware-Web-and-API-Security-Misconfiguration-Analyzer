@@ -1,8 +1,5 @@
-"""app/ml stubs honour the ML contract (docs/cvss-mapping-contract.md).
-
-Asim replaces these modules (his Prompts 6 and 7); this test keeps whatever
-lives there conforming.
-"""
+"""app/ml honours the ML contract (docs/cvss-mapping-contract.md): whatever
+classifiers live there, they keep the signatures and never raise."""
 from __future__ import annotations
 
 from app.core.contracts import (
