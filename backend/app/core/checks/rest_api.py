@@ -4,8 +4,10 @@ Several of these cannot be confirmed in unauthenticated black-box mode (BOLA,
 mass assignment, JWT internals). Those fire only on a genuine surface signal and
 always carry a ``limitation`` note (spec section 47).
 
-API-004 moved to ``checks/spec/disclosure.py``.
+API-004 moved to ``checks/spec/disclosure.py``; API-001 and API-003 to
+``checks/spec/exposure.py``.
 """
+
 from __future__ import annotations
 
 import re
@@ -26,17 +28,6 @@ def _is_api(ctx: CheckContext) -> bool:
 
 
 @rule
-def api_001_rate_limit(ctx: CheckContext) -> RawFinding | None:
-    # The pipeline records whether a bounded burst ever saw a 429/Retry-After.
-    # Here we only flag API endpoints lacking any rate-limit headers.
-    if _is_api(ctx) and ctx.result.status_code == 200:
-        if not (ctx.has_header("RateLimit-Limit") or ctx.has_header("X-RateLimit-Limit")
-                or ctx.has_header("Retry-After")):
-            return make("API-001", "No rate-limit headers observed on API endpoint.")
-    return None
-
-
-@rule
 def api_002_trace(ctx: CheckContext) -> RawFinding | None:
     if "TRACE" in {m.upper() for m in ctx.allowed_methods}:
         return make("API-002", "TRACE method is enabled (from Allow/OPTIONS).")
@@ -44,20 +35,16 @@ def api_002_trace(ctx: CheckContext) -> RawFinding | None:
 
 
 @rule
-def api_003_unauth_data(ctx: CheckContext) -> RawFinding | None:
-    if _is_api(ctx) and ctx.result.status_code == 200:
-        body = ctx.result.body
-        if re.search(r'"\w+"\s*:\s*\[', body) or '"data"' in body or '"users"' in body:
-            return make("API-003", "API returned a data collection without authentication.")
-    return None
-
-
-@rule
 def api_005_mass_assignment(ctx: CheckContext) -> RawFinding | None:
     # Surface signal only: a writable object endpoint exposing many fields.
-    if _is_api(ctx) and ctx.result.status_code == 200 and (
-        '"role"' in ctx.result.body or '"is_admin"' in ctx.result.body
-        or '"isAdmin"' in ctx.result.body
+    if (
+        _is_api(ctx)
+        and ctx.result.status_code == 200
+        and (
+            '"role"' in ctx.result.body
+            or '"is_admin"' in ctx.result.body
+            or '"isAdmin"' in ctx.result.body
+        )
     ):
         return make("API-005", "Object exposes privilege fields (role/is_admin).")
     return None

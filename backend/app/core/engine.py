@@ -16,6 +16,7 @@ while enforcing the safety rules:
 
 A bad target never raises: every outcome is a :class:`ScanResponse`.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -85,7 +86,7 @@ class ScanResponse:
         return self.status_code
 
 
-HttpResult = ScanResponse   # original name, still used across the checks
+HttpResult = ScanResponse  # original name, still used across the checks
 
 
 class PinnedNetworkBackend(httpcore.AsyncNetworkBackend):
@@ -103,25 +104,37 @@ class PinnedNetworkBackend(httpcore.AsyncNetworkBackend):
         self._inner = inner if inner is not None else httpcore.AnyIOBackend()
         self._allow_private = allow_private
 
-    async def connect_tcp(self, host: str, port: int,
-                          timeout: float | None = None,  # noqa: ASYNC109 - httpcore API
-                          local_address: str | None = None,
-                          socket_options: Iterable[Any] | None = None) -> Any:
+    async def connect_tcp(
+        self,
+        host: str,
+        port: int,
+        timeout: float | None = None,  # noqa: ASYNC109 - httpcore API
+        local_address: str | None = None,
+        socket_options: Iterable[Any] | None = None,
+    ) -> Any:
         target = await asyncio.to_thread(
-            resolve_and_validate, host, port, allow_private=self._allow_private)
+            resolve_and_validate, host, port, allow_private=self._allow_private
+        )
         last_error: Exception | None = None
-        for ip in target.ips:                  # all validated; try in resolver order
+        for ip in target.ips:  # all validated; try in resolver order
             try:
                 return await self._inner.connect_tcp(
-                    ip, port, timeout=timeout, local_address=local_address,
-                    socket_options=socket_options)
+                    ip,
+                    port,
+                    timeout=timeout,
+                    local_address=local_address,
+                    socket_options=socket_options,
+                )
             except (httpcore.ConnectError, httpcore.ConnectTimeout, OSError) as exc:
                 last_error = exc
         raise last_error or httpcore.ConnectError(f"could not connect to {host}")
 
-    async def connect_unix_socket(self, path: str,
-                                  timeout: float | None = None,  # noqa: ASYNC109 - httpcore API
-                                  socket_options: Iterable[Any] | None = None) -> Any:
+    async def connect_unix_socket(
+        self,
+        path: str,
+        timeout: float | None = None,  # noqa: ASYNC109 - httpcore API
+        socket_options: Iterable[Any] | None = None,
+    ) -> Any:
         raise SSRFError("unix sockets are not allowed")
 
     async def sleep(self, seconds: float) -> None:
@@ -140,11 +153,19 @@ def _tls_context() -> ssl.SSLContext:
 class HttpEngine:
     """Reusable async HTTP engine backed by one HTTP/2-capable httpx client."""
 
-    def __init__(self, *, allow_private: bool = False, passive_only: bool = False,
-                 max_concurrency: int | None = None, timeout: float | None = None,
-                 retries: int | None = None, user_agent: str | None = None,
-                 max_response_size: int | None = None, scope_host: str | None = None,
-                 cache: bool = True) -> None:
+    def __init__(
+        self,
+        *,
+        allow_private: bool = False,
+        passive_only: bool = False,
+        max_concurrency: int | None = None,
+        timeout: float | None = None,
+        retries: int | None = None,
+        user_agent: str | None = None,
+        max_response_size: int | None = None,
+        scope_host: str | None = None,
+        cache: bool = True,
+    ) -> None:
         # allow_private is for the test-suite only (reach a local mock server).
         self._allow_private = allow_private
         self.passive_only = passive_only
@@ -156,31 +177,30 @@ class HttpEngine:
         self._max_response_size = max_response_size or settings.MAX_RESPONSE_SIZE
         concurrency = max_concurrency or settings.MAX_CONCURRENT_REQUESTS
         self._semaphore = asyncio.Semaphore(concurrency)
-        self.requests_sent = 0                # requests put on the wire (profiling)
+        self.requests_sent = 0  # requests put on the wire (profiling)
         # Per-scan response cache for plain GET/HEAD: the seed, every crawled page
         # and the endpoint analysis ask for the same URLs. Concurrent callers share
         # the one in-flight request.
         self._cache: dict[tuple[str, str, bool, bool], asyncio.Future[ScanResponse]] | None = (
-            {} if cache else None)
+            {} if cache else None
+        )
         self.cache_hits = 0
 
         self._transport = httpx.AsyncHTTPTransport(
             http2=True,
             verify=_tls_context(),
-            limits=httpx.Limits(max_connections=concurrency,
-                                max_keepalive_connections=concurrency),
+            limits=httpx.Limits(max_connections=concurrency, max_keepalive_connections=concurrency),
         )
         # httpx doesn't expose the network backend; httpcore's pool reads it from
         # this attribute (tested in test_engine_safety.py so an upgrade can't
         # silently drop the pinning).
-        self._transport._pool._network_backend = PinnedNetworkBackend(
-            allow_private=allow_private)
+        self._transport._pool._network_backend = PinnedNetworkBackend(allow_private=allow_private)
         self._client = httpx.AsyncClient(
             transport=self._transport,
-            follow_redirects=False,           # we follow manually + re-check SSRF
+            follow_redirects=False,  # we follow manually + re-check SSRF
             timeout=timeout or settings.REQUEST_TIMEOUT,
             headers={"User-Agent": user_agent or settings.USER_AGENT},
-            trust_env=False,                  # env proxies would bypass the pinning
+            trust_env=False,  # env proxies would bypass the pinning
             # Every request is a first visit: a shared jar would send a session
             # cookie back, so the target never sets it again and the cookie checks
             # miss it (eval CKI-001..003 on DVWA).
@@ -197,8 +217,10 @@ class HttpEngine:
             parsed = httpx.URL(url)
         except httpx.InvalidURL:
             return False
-        return (parsed.scheme in ("http", "https")
-                and (parsed.host or "").rstrip(".").lower() == self.scope_host)
+        return (
+            parsed.scheme in ("http", "https")
+            and (parsed.host or "").rstrip(".").lower() == self.scope_host
+        )
 
     async def __aenter__(self) -> HttpEngine:
         return self
@@ -209,31 +231,52 @@ class HttpEngine:
     async def aclose(self) -> None:
         await self._client.aclose()
 
-    async def fetch(self, url: str, method: str = "GET",
-                    extra_headers: dict[str, str] | None = None, *,
-                    same_origin_only: bool = False,
-                    follow_redirects: bool = True) -> ScanResponse:
+    async def fetch(
+        self,
+        url: str,
+        method: str = "GET",
+        extra_headers: dict[str, str] | None = None,
+        *,
+        same_origin_only: bool = False,
+        follow_redirects: bool = True,
+    ) -> ScanResponse:
         """Fetch ``url`` (see :meth:`_fetch`). A plain GET/HEAD (no extra headers)
         is sent once per scan; later calls get a copy of that response."""
         method = method.upper()
         if self._cache is None or extra_headers or method not in PASSIVE_METHODS:
-            return await self._fetch(url, method, extra_headers,
-                                     same_origin_only=same_origin_only,
-                                     follow_redirects=follow_redirects)
+            return await self._fetch(
+                url,
+                method,
+                extra_headers,
+                same_origin_only=same_origin_only,
+                follow_redirects=follow_redirects,
+            )
         key = (method, url, same_origin_only, follow_redirects)
         pending = self._cache.get(key)
         if pending is None:
-            pending = self._cache[key] = asyncio.ensure_future(self._fetch(
-                url, method, None, same_origin_only=same_origin_only,
-                follow_redirects=follow_redirects))
+            pending = self._cache[key] = asyncio.ensure_future(
+                self._fetch(
+                    url,
+                    method,
+                    None,
+                    same_origin_only=same_origin_only,
+                    follow_redirects=follow_redirects,
+                )
+            )
         else:
             self.cache_hits += 1
         # shield: a caller being cancelled must not cancel the shared request.
         return copy.deepcopy(await asyncio.shield(pending))
 
-    async def _fetch(self, url: str, method: str,
-                     extra_headers: dict[str, str] | None, *,
-                     same_origin_only: bool, follow_redirects: bool) -> ScanResponse:
+    async def _fetch(
+        self,
+        url: str,
+        method: str,
+        extra_headers: dict[str, str] | None,
+        *,
+        same_origin_only: bool,
+        follow_redirects: bool,
+    ) -> ScanResponse:
         """Fetch ``url`` safely, following redirects with SSRF re-checks.
 
         ``same_origin_only`` stops at a redirect that leaves the URL's origin and
@@ -242,8 +285,12 @@ class HttpEngine:
         ``follow_redirects=False`` returns the first response as is (TLS-005
         judges the HTTP probe itself, not where it leads).
         """
-        result = ScanResponse(requested_url=url, final_url=url, method=method,
-                              request_headers=dict(extra_headers or {}))
+        result = ScanResponse(
+            requested_url=url,
+            final_url=url,
+            method=method,
+            request_headers=dict(extra_headers or {}),
+        )
         start = time.perf_counter()
         if self.passive_only and method not in PASSIVE_METHODS:
             result.error = f"Blocked by passive mode: {method} not allowed (GET/HEAD only)."
@@ -258,8 +305,9 @@ class HttpEngine:
         try:
             for _hop in range(settings.MAX_REDIRECTS + 1):
                 # SSRF gate on every hop (initial + each redirect target).
-                await asyncio.to_thread(validate_url_ssrf, current,
-                                        allow_private=self._allow_private)
+                await asyncio.to_thread(
+                    validate_url_ssrf, current, allow_private=self._allow_private
+                )
                 resp = await self._send_with_retries(current, method, extra_headers)
                 result.status_code = resp.status_code
                 result.final_url = current
@@ -267,14 +315,18 @@ class HttpEngine:
                 if resp.status_code in _REDIRECTS:
                     location = resp.headers.get("location")
                     nxt = str(httpx.URL(current).join(location)) if location else None
-                    if (nxt is None or not follow_redirects or not self.in_scope(nxt)
-                            or (same_origin_only and not same_origin(url, nxt))):
-                        self._capture(result, resp)     # report the redirect itself
+                    if (
+                        nxt is None
+                        or not follow_redirects
+                        or not self.in_scope(nxt)
+                        or (same_origin_only and not same_origin(url, nxt))
+                    ):
+                        self._capture(result, resp)  # report the redirect itself
                         break
-                    self._keep_cookies(result, resp)   # Set-Cookie on a redirect hop
+                    self._keep_cookies(result, resp)  # Set-Cookie on a redirect hop
                     current = nxt
                     chain.append(current)
-                    if resp.status_code == 303:   # 303 -> next request is a GET
+                    if resp.status_code == 303:  # 303 -> next request is a GET
                         method = "GET"
                     continue
 
@@ -291,7 +343,7 @@ class HttpEngine:
             result.error = f"Connection error: {exc}"
         except httpx.HTTPError as exc:
             result.error = f"HTTP error: {exc}"
-        except Exception as exc:  # noqa: BLE001 - engine must never propagate
+        except Exception as exc:
             result.error = f"Unexpected error: {exc}"
             logger.exception("engine unexpected error for %s", url)
 
@@ -299,8 +351,9 @@ class HttpEngine:
         result.response_time = time.perf_counter() - start
         return result
 
-    async def _send_with_retries(self, url: str, method: str,
-                                 extra_headers: dict[str, str] | None) -> httpx.Response:
+    async def _send_with_retries(
+        self, url: str, method: str, extra_headers: dict[str, str] | None
+    ) -> httpx.Response:
         attempts = 1 + (self._retries if method in _IDEMPOTENT else 0)
         for attempt in range(attempts):
             try:
@@ -313,8 +366,9 @@ class HttpEngine:
                 await asyncio.sleep(self._retry_backoff * (attempt + 1))
         raise AssertionError("unreachable")
 
-    async def _request_capped(self, url: str, method: str,
-                              extra_headers: dict[str, str] | None = None) -> httpx.Response:
+    async def _request_capped(
+        self, url: str, method: str, extra_headers: dict[str, str] | None = None
+    ) -> httpx.Response:
         """Issue a streamed request and read at most the size cap."""
         req = self._client.build_request(method, url, headers=extra_headers)
         resp = await self._client.send(req, stream=True)
@@ -331,7 +385,7 @@ class HttpEngine:
                 chunks.append(chunk)
                 total += len(chunk)
             resp._cawasma_body = b"".join(chunks)  # type: ignore[attr-defined]
-            resp._cawasma_truncated = truncated      # type: ignore[attr-defined]
+            resp._cawasma_truncated = truncated  # type: ignore[attr-defined]
         finally:
             await resp.aclose()
         return resp

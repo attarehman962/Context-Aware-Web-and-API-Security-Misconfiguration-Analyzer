@@ -1,4 +1,5 @@
 """End-to-end pipeline + persistence tests against the mock server."""
+
 from __future__ import annotations
 
 import pytest
@@ -55,33 +56,41 @@ async def test_pipeline_persists_full_graph(engine):
         await persist_result(session, scan, result)
         await session.commit()
 
-        n_ep = (await session.execute(
-            select(func.count()).select_from(Endpoint).where(Endpoint.scan_id == scan.id)
-        )).scalar_one()
-        n_find = (await session.execute(
-            select(func.count()).select_from(Finding).where(Finding.scan_id == scan.id)
-        )).scalar_one()
-        n_ins = (await session.execute(
-            select(func.count()).select_from(AiInsight).where(AiInsight.scan_id == scan.id)
-        )).scalar_one()
+        n_ep = (
+            await session.execute(
+                select(func.count()).select_from(Endpoint).where(Endpoint.scan_id == scan.id)
+            )
+        ).scalar_one()
+        n_find = (
+            await session.execute(
+                select(func.count()).select_from(Finding).where(Finding.scan_id == scan.id)
+            )
+        ).scalar_one()
+        n_ins = (
+            await session.execute(
+                select(func.count()).select_from(AiInsight).where(AiInsight.scan_id == scan.id)
+            )
+        ).scalar_one()
 
         assert n_ep == len(result.endpoints)
         assert n_find == len(result.findings)
         assert n_ins == 1  # one built-in insight
 
         # Findings carry both the official base and the custom final score.
-        f = (await session.execute(
-            select(Finding).where(Finding.scan_id == scan.id).limit(1)
-        )).scalar_one()
+        f = (
+            await session.execute(select(Finding).where(Finding.scan_id == scan.id).limit(1))
+        ).scalar_one()
         assert f.base_score > 0
         assert f.final_score is not None
         assert f.cvss_vector.startswith("CVSS:3.1/")
         assert isinstance(f.evidence, dict)
 
         # Body signals are persisted per endpoint.
-        ep_rows = (await session.execute(
-            select(Endpoint).where(Endpoint.scan_id == scan.id)
-        )).scalars().all()
+        ep_rows = (
+            (await session.execute(select(Endpoint).where(Endpoint.scan_id == scan.id)))
+            .scalars()
+            .all()
+        )
         assert any(e.body_signals.get("credentials") for e in ep_rows)
 
     await async_session().close()

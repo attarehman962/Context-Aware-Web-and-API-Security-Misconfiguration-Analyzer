@@ -4,6 +4,7 @@ Importing this package imports every category module, which registers all 58
 detection functions on ``REGISTRY``. ``run_checks`` executes them against a
 context and returns the findings that fired.
 """
+
 from __future__ import annotations
 
 from app.core.checks import (  # noqa: F401  (import side-effect: registration)
@@ -38,5 +39,11 @@ def run_checks(ctx: CheckContext) -> list[RawFinding]:
 # RawFinding is a different, score-free type (check_id, endpoint, evidence).
 from app.core.checks.registry import register_check, run_spec_checks  # noqa: E402
 
-__all__ = ["CheckContext", "RawFinding", "REGISTRY", "register_check", "run_checks",
-           "run_spec_checks"]
+__all__ = [
+    "CheckContext",
+    "RawFinding",
+    "REGISTRY",
+    "register_check",
+    "run_checks",
+    "run_spec_checks",
+]

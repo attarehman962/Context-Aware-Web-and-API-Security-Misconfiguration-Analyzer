@@ -1,4 +1,5 @@
 """Contract v1 schema rules (docs/api-contract.md)."""
+
 from __future__ import annotations
 
 import uuid
@@ -24,14 +25,17 @@ def test_scan_request_defaults():
     assert (req.crawl_depth, req.use_wordlist, req.passive_only) == (2, True, False)
 
 
-@pytest.mark.parametrize("body", [
-    {"url": URL},                                            # authorisation missing
-    {"url": URL, "authorisation_confirmed": False},          # must be true
-    {"url": URL, "authorisation_confirmed": True, "crawl_depth": 0},
-    {"url": URL, "authorisation_confirmed": True, "crawl_depth": 3},
-    {"url": URL, "authorisation_confirmed": True, "depth": 1},   # unknown field
-    {"url": "", "authorisation_confirmed": True},
-])
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"url": URL},  # authorisation missing
+        {"url": URL, "authorisation_confirmed": False},  # must be true
+        {"url": URL, "authorisation_confirmed": True, "crawl_depth": 0},
+        {"url": URL, "authorisation_confirmed": True, "crawl_depth": 3},
+        {"url": URL, "authorisation_confirmed": True, "depth": 1},  # unknown field
+        {"url": "", "authorisation_confirmed": True},
+    ],
+)
 def test_scan_request_rejects(body):
     with pytest.raises(ValidationError):
         ScanRequest.model_validate(body)
@@ -39,19 +43,57 @@ def test_scan_request_rejects(body):
 
 def _finding(score: float, check_id: str) -> Finding:
     return Finding(
-        id=uuid.uuid4(), check_id=check_id, title=check_id, category="HEADERS",
-        owasp_map=[], cwe_map=[], cvss_vector="CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N",
-        base_score=5.9, final_score=score, severity_bucket="MEDIUM", evidence={"text": "x"},
+        id=uuid.uuid4(),
+        check_id=check_id,
+        title=check_id,
+        category="HEADERS",
+        owasp_map=[],
+        cwe_map=[],
+        cvss_vector="CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N",
+        base_score=5.9,
+        final_score=score,
+        severity_bucket="MEDIUM",
+        evidence={"text": "x"},
     )
 
 
 def test_results_rank_findings_by_final_score_desc():
-    status = ScanStatus(scan_id=uuid.uuid4(), url=URL, status=ScanState.DONE, progress=100,
-                        options=ScanOptions(), created_at=datetime.now(UTC))
-    results = ScanResults(scan=status, findings=[
-        _finding(3.7, "HDR-003"), _finding(10.0, "INF-003"), _finding(3.7, "HDR-001"),
-    ])
+    status = ScanStatus(
+        scan_id=uuid.uuid4(),
+        url=URL,
+        status=ScanState.DONE,
+        progress=100,
+        options=ScanOptions(),
+        created_at=datetime.now(UTC),
+    )
+    results = ScanResults(
+        scan=status,
+        findings=[
+            _finding(3.7, "HDR-003"),
+            _finding(10.0, "INF-003"),
+            _finding(3.7, "HDR-001"),
+        ],
+    )
     assert [(f.final_score, f.check_id) for f in results.findings] == [
-        (10.0, "INF-003"), (3.7, "HDR-001"), (3.7, "HDR-003"),
+        (10.0, "INF-003"),
+        (3.7, "HDR-001"),
+        (3.7, "HDR-003"),
     ]
-    assert results.contract_version == "1.3.0"
+    assert results.contract_version == "1.4.0"
+
+
+def test_every_finding_says_how_it_was_scored():
+    """Since 1.4: environmental and legacy scores are never mixed silently."""
+    legacy = _finding(6.2, "HDR-009")
+    assert legacy.scoring_method == "legacy"
+    env = legacy.model_copy(update={}).model_validate(
+        {
+            **legacy.model_dump(exclude={"scoring_method"}),
+            "final_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N/CR:H/IR:X/AR:X",
+        }
+    )
+    assert env.scoring_method == "environmental"
+    # Exported JSON reads back (the field is part of the shape, not extra).
+    assert Finding.model_validate_json(env.model_dump_json()).scoring_method == "environmental"
+    with pytest.raises(ValidationError, match="scoring_method"):
+        Finding.model_validate({**legacy.model_dump(), "scoring_method": "environmental"})

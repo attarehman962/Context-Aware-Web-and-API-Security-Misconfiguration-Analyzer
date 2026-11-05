@@ -1,4 +1,5 @@
 """Tests for LLM-backed URL token expansion (provider call is mocked)."""
+
 from __future__ import annotations
 
 import pytest

@@ -1,4 +1,5 @@
 """Tests for the endpoint sensitivity classifier (keyword layer, no model)."""
+
 from __future__ import annotations
 
 from app.core.sensitivity import SensitivityClassifier

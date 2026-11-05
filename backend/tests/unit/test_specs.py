@@ -1,4 +1,5 @@
 """Spec files in config/ and the validator that guards them."""
+
 from __future__ import annotations
 
 import copy
@@ -37,7 +38,8 @@ def _mutated(**changes: object) -> dict:
     return data
 
 
-# ------------------------------------------------------------ shipped files
+# Shipped files
+
 
 def test_shipped_spec_files_are_valid():
     # The content is Asim's and changes over time: assert validity, not values.
@@ -46,35 +48,48 @@ def test_shipped_spec_files_are_valid():
     assert all(0.0 <= c.base_score <= 10.0 for c in checks.checks)
     mapping = load_cvss_mapping(CONFIG / "cvss_mapping.yaml")
     assert set(mapping.sensitivity_classes) == set(SensitivityClass)
-    load_chains(CONFIG / "chains.yaml",
-                known_check_ids=set(CATALOG) | {c.check_id for c in checks.checks})
+    load_chains(
+        CONFIG / "chains.yaml", known_check_ids=set(CATALOG) | {c.check_id for c in checks.checks}
+    )
 
 
-# --------------------------------------------------------- invalid checks
+# Invalid checks
 
-@pytest.mark.parametrize("changes, message", [
-    ({"base_cvss_vector": "CVSS:3.0/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N"}, "must start with"),
-    ({"base_cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N"}, "missing base metric"),
-    ({"base_cvss_vector": "CVSS:3.1/AV:Q/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N"}, "invalid value"),
-    ({"check_id": "hsts-1"}, "check_id"),
-    ({"category": "NETWORK"}, "category"),
-    ({"owasp": ["API11:2023"]}, "owasp"),
-    ({"owasp": []}, "owasp"),
-    ({"cwe": ["319"]}, "cwe"),
-    ({"description": "short"}, "description"),
-    ({"severity": "HIGH"}, "Extra inputs are not permitted"),
-    ({"http_condition": {"method": "POST", "rules": [{"header": "X", "op": "missing"}]}},
-     "method"),
-    ({"http_condition": {"rules": []}}, "rules"),
-    ({"http_condition": {"rules": [{"header": "X", "op": "equals"}]}}, "needs a value"),
-    ({"http_condition": {"rules": [{"header": "X", "op": "missing", "value": "y"}]}},
-     "takes no value"),
-    ({"http_condition": {"rules": [{"header": "X", "op": "matches", "value": "(["}]}},
-     "invalid regex"),
-    ({"http_condition": {"rules": [{"status": "in", "value": [42]}]}}, "status"),
-    ({"http_condition": {"rules": [{"header": "X", "body": "contains", "value": "a"}]}},
-     "exactly one of header/status/body"),
-])
+
+@pytest.mark.parametrize(
+    "changes, message",
+    [
+        ({"base_cvss_vector": "CVSS:3.0/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N"}, "must start with"),
+        ({"base_cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N"}, "missing base metric"),
+        ({"base_cvss_vector": "CVSS:3.1/AV:Q/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N"}, "invalid value"),
+        ({"check_id": "hsts-1"}, "check_id"),
+        ({"category": "NETWORK"}, "category"),
+        ({"owasp": ["API11:2023"]}, "owasp"),
+        ({"owasp": []}, "owasp"),
+        ({"cwe": ["319"]}, "cwe"),
+        ({"description": "short"}, "description"),
+        ({"severity": "HIGH"}, "Extra inputs are not permitted"),
+        (
+            {"http_condition": {"method": "POST", "rules": [{"header": "X", "op": "missing"}]}},
+            "method",
+        ),
+        ({"http_condition": {"rules": []}}, "rules"),
+        ({"http_condition": {"rules": [{"header": "X", "op": "equals"}]}}, "needs a value"),
+        (
+            {"http_condition": {"rules": [{"header": "X", "op": "missing", "value": "y"}]}},
+            "takes no value",
+        ),
+        (
+            {"http_condition": {"rules": [{"header": "X", "op": "matches", "value": "(["}]}},
+            "invalid regex",
+        ),
+        ({"http_condition": {"rules": [{"status": "in", "value": [42]}]}}, "status"),
+        (
+            {"http_condition": {"rules": [{"header": "X", "body": "contains", "value": "a"}]}},
+            "exactly one of header/header_names/status/body/url",
+        ),
+    ],
+)
 def test_invalid_check_specs_are_rejected(tmp_path, changes, message):
     with pytest.raises(SpecError) as err:
         load_checks(_write(tmp_path, _mutated(**changes)))
@@ -94,7 +109,8 @@ def test_duplicate_check_ids_and_bad_files_are_rejected(tmp_path):
         load_checks(_write(tmp_path, {**VALID, "spec_version": 2}))
 
 
-# ------------------------------------------------- mapping and chains rules
+# Mapping and chains rules
+
 
 def test_mapping_must_cover_every_class_and_signal(tmp_path):
     data = yaml.safe_load((CONFIG / "cvss_mapping.yaml").read_text())
@@ -109,19 +125,26 @@ def test_mapping_must_cover_every_class_and_signal(tmp_path):
 
 # The original requires/mandatory/min_matches style (format 1.0) stays valid.
 LEGACY_CHAIN = {
-    "chain_id": "C005", "name": ".env Exposure -> Version Leak -> Full Compromise",
+    "chain_id": "C005",
+    "name": ".env Exposure -> Version Leak -> Full Compromise",
     "description": "An exposed .env combined with version disclosure.",
-    "requires": ["INF-003", "HDR-007", "INF-004"], "mandatory": ["INF-003"],
-    "min_matches": 2, "composite_score": 9.8, "severity": "CRITICAL",
+    "requires": ["INF-003", "HDR-007", "INF-004"],
+    "mandatory": ["INF-003"],
+    "min_matches": 2,
+    "composite_score": 9.8,
+    "severity": "CRITICAL",
 }
 
 
-@pytest.mark.parametrize("changes, message", [
-    ({"mandatory": ["INF-005"]}, "must also be in requires"),
-    ({"min_matches": 5}, "min_matches"),
-    ({"severity": "HIGH"}, "does not match the chain score"),
-    ({"requires": ["INF-003", "XYZ-999"], "min_matches": 2}, "unknown check XYZ-999"),
-])
+@pytest.mark.parametrize(
+    "changes, message",
+    [
+        ({"mandatory": ["INF-005"]}, "must also be in requires"),
+        ({"min_matches": 5}, "min_matches"),
+        ({"severity": "HIGH"}, "does not match the chain score"),
+        ({"requires": ["INF-003", "XYZ-999"], "min_matches": 2}, "unknown check XYZ-999"),
+    ],
+)
 def test_invalid_chains_are_rejected(tmp_path, changes, message):
     data = {"chains_version": 1, "chains": [{**LEGACY_CHAIN, **changes}]}
     with pytest.raises(SpecError) as err:
@@ -129,14 +152,25 @@ def test_invalid_chains_are_rejected(tmp_path, changes, message):
     assert any(message in p for p in err.value.problems), err.value.problems
 
 
-# --------------------------------------------------------- ML contract
+# ML contract
+
 
 def test_builtin_classifiers_conform_to_the_ml_contract():
     assert check_conformance(builtin_classify, builtin_analyze) == []
-    assert builtin_classify(EndpointInfo("https://x.example.com/api/payment/checkout",
-                                         "/api/payment/checkout")) is SensitivityClass.CRITICAL
-    signals = builtin_analyze(ResponseInfo("https://x.example.com/u", 200, "application/json",
-                                           body='{"email": "a.khan@example.com"}'))
+    assert (
+        builtin_classify(
+            EndpointInfo("https://x.example.com/api/payment/checkout", "/api/payment/checkout")
+        )
+        is SensitivityClass.CRITICAL
+    )
+    signals = builtin_analyze(
+        ResponseInfo(
+            "https://x.example.com/u",
+            200,
+            "application/json",
+            body='{"email": "a.khan@example.com"}',
+        )
+    )
     assert signals == {BodySignal.PII}
 
 
@@ -152,7 +186,8 @@ def test_conformance_catches_contract_violations():
     assert any("raised" in p for p in problems)
 
 
-# ---------------------------------------------------------------- CLI
+# CLI
+
 
 def test_validator_cli_exit_codes(tmp_path, capsys):
     assert validate_specs.main(["checks", "--config-dir", str(CONFIG)]) == 0
@@ -161,7 +196,8 @@ def test_validator_cli_exit_codes(tmp_path, capsys):
     assert "FAIL" in capsys.readouterr().out
 
 
-# ------------------------------------- per-person plan, Contract 1 (gaps)
+# Per-person plan, Contract 1 (gaps)
+
 
 def test_owasp_top10_2025_ids_are_accepted(tmp_path):
     # The plan's example uses A02:2025, and the SRS cites OWASP Top 10 (2025).

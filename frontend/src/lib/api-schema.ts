@@ -183,135 +183,6 @@ export interface paths {
     /** Scan history, newest first */
     get: operations["list_scans_api_scans_get"];
     put?: never;
-    /**
-     * Create Scan
-     * @deprecated
-     * @description Create a scan job. Returns immediately with a queued scan id.
-     */
-    post: operations["create_scan_api_scans_post"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/scans/{scan_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * Get Scan
-     * @deprecated
-     */
-    get: operations["get_scan_api_scans__scan_id__get"];
-    put?: never;
-    post?: never;
-    /**
-     * Delete Scan
-     * @deprecated
-     */
-    delete: operations["delete_scan_api_scans__scan_id__delete"];
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/scans/{scan_id}/status": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * Get Scan Status
-     * @deprecated
-     */
-    get: operations["get_scan_status_api_scans__scan_id__status_get"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/scans/{scan_id}/findings": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * List Findings
-     * @deprecated
-     */
-    get: operations["list_findings_api_scans__scan_id__findings_get"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/scans/{scan_id}/endpoints": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * List Endpoints
-     * @deprecated
-     */
-    get: operations["list_endpoints_api_scans__scan_id__endpoints_get"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/scans/{scan_id}/chains": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * List Chains
-     * @deprecated
-     */
-    get: operations["list_chains_api_scans__scan_id__chains_get"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/scans/{scan_id}/report": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * Get Report
-     * @deprecated
-     */
-    get: operations["get_report_api_scans__scan_id__report_get"];
-    put?: never;
     post?: never;
     delete?: never;
     options?: never;
@@ -365,40 +236,12 @@ export interface components {
        */
       evidence?: Record<string, unknown> | null;
     };
-    /** ChainResponse */
-    ChainResponse: {
-      /**
-       * Id
-       * Format: uuid
-       */
-      id: string;
-      /** Chain Code */
-      chain_code: string;
-      /** Name */
-      name: string;
-      /** Description */
-      description: string | null;
-      /** Template Composite Score */
-      template_composite_score: number;
-      severity: components["schemas"]["Severity"];
-      /**
-       * Created At
-       * Format: date-time
-       */
-      created_at: string;
-    };
     /**
      * ContextClass
      * @description Endpoint sensitivity classes from the NLP classifier (contribution 1).
      * @enum {string}
      */
     ContextClass: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
-    /**
-     * DiscoveryMethod
-     * @description How an endpoint was discovered by the crawler (spec section 18).
-     * @enum {string}
-     */
-    DiscoveryMethod: "SEED" | "HTML" | "JAVASCRIPT" | "WORDLIST" | "RECURSIVE";
     /**
      * EndpointDetail
      * @description Since 1.2: the endpoint of a finding, for the drill-down.
@@ -438,39 +281,6 @@ export interface components {
        * @description Cookie metadata: name, flags, scope. Never values.
        */
       cookies?: Record<string, unknown>[];
-    };
-    /** EndpointResponse */
-    EndpointResponse: {
-      /**
-       * Id
-       * Format: uuid
-       */
-      id: string;
-      /** Url */
-      url: string;
-      /** Path */
-      path: string;
-      /** Method */
-      method: string;
-      /** Status Code */
-      status_code: number | null;
-      /** Content Type */
-      content_type: string | null;
-      context_class: components["schemas"]["ContextClass"] | null;
-      /** Context Confidence */
-      context_confidence: number | null;
-      /** Context Reason */
-      context_reason: string[] | null;
-      /** Body Signals */
-      body_signals: Record<string, unknown>;
-      /** Response Time */
-      response_time: number | null;
-      discovered_by: components["schemas"]["DiscoveryMethod"];
-      /**
-       * Created At
-       * Format: date-time
-       */
-      created_at: string;
     };
     /** ErrorDetail */
     ErrorDetail: {
@@ -565,6 +375,13 @@ export interface components {
        *     ]
        */
       score_reasons?: string[];
+      /**
+       * Scoring Method
+       * @description Since 1.4. 'environmental': final_score is the CVSS v3.1 environmental score of final_vector. 'legacy': the interim formula (base x context multiplier + body bonus) and final_vector is null. The two are different scales: label them, don't compare them as one.
+       * @default legacy
+       * @enum {string}
+       */
+      scoring_method: "environmental" | "legacy";
       severity_bucket: components["schemas"]["Severity"];
       /**
        * Evidence
@@ -675,6 +492,13 @@ export interface components {
        *     ]
        */
       score_reasons?: string[];
+      /**
+       * Scoring Method
+       * @description Since 1.4. 'environmental': final_score is the CVSS v3.1 environmental score of final_vector. 'legacy': the interim formula (base x context multiplier + body bonus) and final_vector is null. The two are different scales: label them, don't compare them as one.
+       * @default legacy
+       * @enum {string}
+       */
+      scoring_method: "environmental" | "legacy";
       severity_bucket: components["schemas"]["Severity"];
       /**
        * Evidence
@@ -715,65 +539,6 @@ export interface components {
       chains?: components["schemas"]["Chain"][];
     };
     /**
-     * FindingResponse
-     * @description Public finding shape.
-     *
-     *     JSON names predate the DB column renames and are kept so the frontend keeps
-     *     working (docs/db-decisions.md, D2): ``rule_id`` <- ``check_id``,
-     *     ``cvss_base_score`` <- ``base_score``, ``cawasma_final_score`` <-
-     *     ``final_score``, ``severity`` <- ``severity_bucket``, ``evidence`` <-
-     *     ``evidence["text"]`` (full JSON in ``evidence_details``).
-     */
-    FindingResponse: {
-      /**
-       * Id
-       * Format: uuid
-       */
-      id: string;
-      /** Rule Id */
-      rule_id: string;
-      /** Title */
-      title: string;
-      category: components["schemas"]["FindingCategory"];
-      /** Endpoint Id */
-      endpoint_id: string | null;
-      context_class: components["schemas"]["ContextClass"] | null;
-      /** Context Confidence */
-      context_confidence: number | null;
-      /** Owasp Map */
-      owasp_map: string[];
-      /** Cwe Map */
-      cwe_map: string[];
-      /** Cvss Vector */
-      cvss_vector: string;
-      /** Cvss Base Score */
-      cvss_base_score: number;
-      /** Cawasma Context Multiplier */
-      cawasma_context_multiplier: number | null;
-      /** Response Bonus */
-      response_bonus: number | null;
-      /** Cawasma Final Score */
-      cawasma_final_score: number;
-      severity: components["schemas"]["Severity"];
-      /** Evidence */
-      evidence: string | null;
-      /** Evidence Details */
-      evidence_details: Record<string, unknown>;
-      /** Impact */
-      impact: string | null;
-      /** Recommendation */
-      recommendation: string | null;
-      /** References */
-      references: unknown[] | null;
-      /** Limitation */
-      limitation: string | null;
-      /**
-       * Created At
-       * Format: date-time
-       */
-      created_at: string;
-    };
-    /**
      * FindingsMeta
      * @description Since 1.2: what the findings list holds after filters and pagination.
      */
@@ -797,11 +562,6 @@ export interface components {
        * @description The filters applied, as given.
        */
       filters?: Record<string, unknown>;
-    };
-    /** HTTPValidationError */
-    HTTPValidationError: {
-      /** Detail */
-      detail?: components["schemas"]["ValidationError"][];
     };
     /** HealthResponse */
     HealthResponse: {
@@ -837,18 +597,6 @@ export interface components {
         [key: string]: string;
       };
     };
-    /** Page[EndpointResponse] */
-    Page_EndpointResponse_: {
-      /** Items */
-      items: components["schemas"]["EndpointResponse"][];
-      meta: components["schemas"]["PaginationMeta"];
-    };
-    /** Page[FindingResponse] */
-    Page_FindingResponse_: {
-      /** Items */
-      items: components["schemas"]["FindingResponse"][];
-      meta: components["schemas"]["PaginationMeta"];
-    };
     /** Page[ScanStatus] */
     Page_ScanStatus_: {
       /** Items */
@@ -877,78 +625,6 @@ export interface components {
        * @example 5
        */
       pages: number;
-    };
-    /** ScanCreate */
-    ScanCreate: {
-      /**
-       * Target Url
-       * @description HTTPS target URL.
-       * @example https://example.com
-       */
-      target_url: string;
-      /**
-       * Authorization Confirmed
-       * @description Operator confirms they are authorised to test the target.
-       * @default false
-       */
-      authorization_confirmed: boolean;
-    };
-    /**
-     * ScanCreated
-     * @description Returned immediately after POST /api/scans (spec section 23).
-     */
-    ScanCreated: {
-      /**
-       * Scan Id
-       * Format: uuid
-       */
-      scan_id: string;
-      /** Status */
-      status: string;
-    };
-    /**
-     * ScanDetail
-     * @description Scan response enriched with a summary of counts.
-     */
-    ScanDetail: {
-      /**
-       * Id
-       * Format: uuid
-       */
-      id: string;
-      /** Target Url */
-      target_url: string;
-      /** Status */
-      status: string;
-      /** Progress */
-      progress: number;
-      /** Current Stage */
-      current_stage: string | null;
-      /** Options */
-      options: Record<string, unknown>;
-      /** Authorization Confirmed */
-      authorization_confirmed: boolean;
-      /** Authorization Confirmed At */
-      authorization_confirmed_at: string | null;
-      /** Started At */
-      started_at: string | null;
-      /** Completed At */
-      completed_at: string | null;
-      /** Duration Seconds */
-      duration_seconds: number | null;
-      /** Error Message */
-      error_message: string | null;
-      /**
-       * Created At
-       * Format: date-time
-       */
-      created_at: string;
-      /**
-       * Updated At
-       * Format: date-time
-       */
-      updated_at: string;
-      summary: components["schemas"]["ScanSummary"];
     };
     /**
      * ScanOptions
@@ -1017,7 +693,7 @@ export interface components {
     ScanResults: {
       /**
        * Contract Version
-       * @default 1.3.0
+       * @default 1.4.0
        */
       contract_version: string;
       scan: components["schemas"]["app__api__schemas__contract__ScanStatus"];
@@ -1030,58 +706,6 @@ export interface components {
       chains?: components["schemas"]["Chain"][];
       /** @description Since 1.2. Set when the request filters or paginates: the filtered total and the page. Null otherwise and in exports. */
       findings_meta?: components["schemas"]["FindingsMeta"] | null;
-    };
-    /** ScanStatusResponse */
-    ScanStatusResponse: {
-      /**
-       * Scan Id
-       * Format: uuid
-       */
-      scan_id: string;
-      /** Status */
-      status: string;
-      /** Progress */
-      progress: number;
-      /** Current Stage */
-      current_stage?: string | null;
-    };
-    /** ScanSummary */
-    ScanSummary: {
-      /**
-       * Endpoints
-       * @default 0
-       */
-      endpoints: number;
-      /**
-       * Findings
-       * @default 0
-       */
-      findings: number;
-      /**
-       * Critical
-       * @default 0
-       */
-      critical: number;
-      /**
-       * High
-       * @default 0
-       */
-      high: number;
-      /**
-       * Medium
-       * @default 0
-       */
-      medium: number;
-      /**
-       * Low
-       * @default 0
-       */
-      low: number;
-      /**
-       * Info
-       * @default 0
-       */
-      info: number;
     };
     /**
      * Severity
@@ -1116,15 +740,6 @@ export interface components {
        * @default 0
        */
       info: number;
-    };
-    /** ValidationError */
-    ValidationError: {
-      /** Location */
-      loc: (string | number)[];
-      /** Message */
-      msg: string;
-      /** Error Type */
-      type: string;
     };
     /**
      * ScanStatus
@@ -1401,6 +1016,15 @@ export interface operations {
           "application/json": components["schemas"]["ErrorResponse"];
         };
       };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
     };
   };
   get_results_api_results__scan_id__get: {
@@ -1435,7 +1059,7 @@ export interface operations {
         content: {
           /**
            * @example {
-           *       "contract_version": "1.3.0",
+           *       "contract_version": "1.4.0",
            *       "scan": {
            *         "scan_id": "11111111-1111-4111-8111-111111111111",
            *         "url": "https://shop.example.com",
@@ -1483,6 +1107,7 @@ export interface operations {
            *           "base_score": 7.5,
            *           "final_score": 10,
            *           "score_reasons": [],
+           *           "scoring_method": "legacy",
            *           "severity_bucket": "CRITICAL",
            *           "evidence": {
            *             "text": "Unauthenticated data exposure on /api/v1/users/42",
@@ -1513,6 +1138,7 @@ export interface operations {
            *           "base_score": 7.5,
            *           "final_score": 10,
            *           "score_reasons": [],
+           *           "scoring_method": "legacy",
            *           "severity_bucket": "CRITICAL",
            *           "evidence": {
            *             "text": ".env file exposed on /.env",
@@ -1560,6 +1186,7 @@ export interface operations {
            *             "base:7.1",
            *             "environmental:8.6"
            *           ],
+           *           "scoring_method": "environmental",
            *           "severity_bucket": "HIGH",
            *           "evidence": {
            *             "text": "Cookie missing SameSite attribute on /admin/login",
@@ -1585,6 +1212,7 @@ export interface operations {
            *           "base_score": 7.4,
            *           "final_score": 7.4,
            *           "score_reasons": [],
+           *           "scoring_method": "legacy",
            *           "severity_bucket": "HIGH",
            *           "evidence": {
            *             "text": "Legacy TLS 1.0/1.1 offered",
@@ -1624,6 +1252,7 @@ export interface operations {
            *             "base:5.4",
            *             "environmental:6.4"
            *           ],
+           *           "scoring_method": "environmental",
            *           "severity_bucket": "MEDIUM",
            *           "evidence": {
            *             "text": "Missing Content-Security-Policy on /api/payment/checkout",
@@ -1661,6 +1290,7 @@ export interface operations {
            *             "base:5.3",
            *             "environmental:5.3"
            *           ],
+           *           "scoring_method": "environmental",
            *           "severity_bucket": "MEDIUM",
            *           "evidence": {
            *             "text": "Missing HSTS on /",
@@ -1695,6 +1325,7 @@ export interface operations {
            *             "base:5.3",
            *             "environmental:5.3"
            *           ],
+           *           "scoring_method": "environmental",
            *           "severity_bucket": "MEDIUM",
            *           "evidence": {
            *             "text": "Server version disclosure on /",
@@ -1799,6 +1430,7 @@ export interface operations {
            *       "base_score": 7.5,
            *       "final_score": 10,
            *       "score_reasons": [],
+           *       "scoring_method": "legacy",
            *       "severity_bucket": "CRITICAL",
            *       "evidence": {
            *         "text": ".env file exposed on /.env",
@@ -2106,267 +1738,6 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse"];
-        };
-      };
-    };
-  };
-  create_scan_api_scans_post: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["ScanCreate"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ScanCreated"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  get_scan_api_scans__scan_id__get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        scan_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ScanDetail"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  delete_scan_api_scans__scan_id__delete: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        scan_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  get_scan_status_api_scans__scan_id__status_get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        scan_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ScanStatusResponse"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  list_findings_api_scans__scan_id__findings_get: {
-    parameters: {
-      query?: {
-        /** @description 1-based page number */
-        page?: number;
-        /** @description Items per page (max 100) */
-        limit?: number;
-      };
-      header?: never;
-      path: {
-        scan_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["Page_FindingResponse_"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  list_endpoints_api_scans__scan_id__endpoints_get: {
-    parameters: {
-      query?: {
-        /** @description 1-based page number */
-        page?: number;
-        /** @description Items per page (max 100) */
-        limit?: number;
-      };
-      header?: never;
-      path: {
-        scan_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["Page_EndpointResponse_"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  list_chains_api_scans__scan_id__chains_get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        scan_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ChainResponse"][];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  get_report_api_scans__scan_id__report_get: {
-    parameters: {
-      query?: {
-        format?: "json" | "csv" | "html" | "pdf";
-        download?: boolean;
-      };
-      header?: never;
-      path: {
-        scan_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": unknown;
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };

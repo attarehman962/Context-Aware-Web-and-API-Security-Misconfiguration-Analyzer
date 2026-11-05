@@ -24,10 +24,10 @@ are the data and scoring references.
 
 > **Current state vs goal:** (4) is implemented in `core/cvss.py`
 > (`environmental_score` / `score_finding`, using the `cvss` library and
-> `config/cvss_mapping.yaml`). The pipeline scores the 20 spec-registry checks
-> (`core/checks/spec/`, every `checks.yaml` spec except the 5 blocked on
-> questions for Asim, see `docs/check-coverage.md`) that way and stores
-> `final_vector` + `score_reasons`; the 42 legacy `@rule` checks still use the
+> `config/cvss_mapping.yaml`). The pipeline scores the 25 spec-registry checks
+> (`core/checks/spec/`, every `checks.yaml` spec) that way and stores
+> `final_vector` + `score_reasons`; findings say which (`scoring_method`). The 37
+> legacy `@rule` checks still use the
 > interim formula `min(10, base × context_multiplier + response_bonus)`
 > (docs/06) until each moves to the registry. Keep the official base score and
 > the context-aware score in separate columns, as the `findings` table does.
@@ -48,15 +48,17 @@ also declared in `.github/CODEOWNERS`, so the owner is requested as reviewer.
 Adding a check spans two owners: Asim adds the catalog entry (spec + vector),
 Atta adds the detection function and its unit test.
 
-The current `frontend/` is a React + Vite SPA. Neelam's Next.js app replaces it
-in the same compose slot.
+`frontend/` is Neelam's Next.js app (it replaced the first React + Vite SPA in
+the same compose slot).
 
 ## Branches and pull requests
 
 - Branch names: `<name>/pNN-topic`, e.g. `atta/p01-repo-setup`,
   `neelam/p03-scan-dashboard`, `asim/p02-cvss-mapping`. `<name>` is one of
   `atta`, `neelam`, `asim`; `NN` is the two-digit phase number; `topic` is
-  lowercase kebab-case. CI fails PRs from branches that don't match.
+  lowercase kebab-case. A review fix in a partner's files goes on
+  `<name>/fix-<partner>-pNN-topic`, e.g. `atta/fix-asim-p11-check-specs`, for the
+  owner to review. CI fails PRs from branches that match neither.
 - No direct pushes to `main`; open a PR using `.github/pull_request_template.md`.
 - One topic per PR. CI must be green before merging.
 
@@ -76,9 +78,12 @@ Owned files:
 
 Notes:
 
-- Next up: implement API-001, API-003, INF-003/004/005 once Asim answers the
-  questions in `docs/check-coverage.md`; move the other legacy rules as specs
-  arrive. `make check-coverage` regenerates the coverage table.
+- Next up: the 37 legacy-only checks, once Asim and Atta confirm
+  `docs/check-triage.md` (SPEC / MERGE / DROP). Specs may use `applies_to` and
+  `artifact` (docs/check-spec-format.md); the registry applies them, with a
+  `SpecContext` (sensitivity, classifier families, passive mode, soft-404
+  baseline) from the pipeline. `make check-coverage` regenerates the coverage
+  table; `make coverage-stats` prints the counts for the report.
 - Chains come from `config/chains.yaml` (`core/chains.py`, docs/chain-templates.md):
   one per template per scope unit, scored with its composite vector; members'
   evidence names the chain. TLS uses SSLyze once per host (fallback: `ssl`).
@@ -87,9 +92,11 @@ Notes:
   built-in classifiers as fallback.
 - `POST /api/scan` queues the scan on Celery (`services/scan_dispatch.py`, task id =
   scan id; 503 `QUEUE_UNAVAILABLE` if the broker is down) and is rate-limited
-  (`SCAN_RATE_LIMIT`, Redis fixed window, 429). `RUN_SCANS_INLINE=true` runs it as a
+  (`SCAN_RATE_LIMIT`, Redis fixed window, 429; `api/limits.py`, shared with the
+  deprecated `POST /api/scans`). `RUN_SCANS_INLINE=true` runs it as a
   FastAPI background task instead. Progress per stage goes to `Scan.progress_detail`;
-  live status is SSE (`GET /api/scan/{id}/events`, reads the DB); cancel sets
+  live status is SSE (`GET /api/scan/{id}/events`, reads the DB, at most
+  `SSE_MAX_STREAMS_PER_CLIENT` open per client); cancel sets
   `Scan.cancel_requested`, checked at every progress step. `SCAN_TIMEOUT` bounds a scan.
 - The engine enforces the scan's scope (`HttpEngine(scope_host=...)`): no request to
   another host, and no redirect followed off it; passive mode sends only GET/HEAD.
@@ -182,14 +189,15 @@ Env vars (read only through `src/lib/env.ts`):
 - `NEXT_PUBLIC_USE_MOCK`: `true` serves every API call from the MSW fixtures
   (browser and server), so no backend is needed. Build-time like the URL.
 
-The api's CORS allow-list (`FRONTEND_ORIGIN`, default `http://localhost:5173`)
-must include `http://localhost:3000` for browser calls from this app.
+The api's CORS allow-list (`FRONTEND_ORIGIN`) defaults to `http://localhost:3000`,
+this app's origin; change both together if the app is served elsewhere.
 
 Conventions:
 
 - Server Components by default; add `"use client"` only where interactivity needs it.
-- Consume the REST/report JSON with the field names in `docs/04-api-reference.md`
-  (`rule_id`, `cvss_base_score`, `cawasma_final_score`, ...); don't rename on the client.
+- Consume the REST/report JSON with the contract field names in
+  `docs/api-contract.md` (`check_id`, `base_score`, `final_score`, ...); don't
+  rename on the client.
 - Unit tests sit next to the code (`*.test.tsx`); e2e specs go in `e2e/`.
 - Lockfile: if you install with npm 11, re-run `npx npm@10 install` before
   committing, or `npm ci` fails in Docker/CI (Node 22 ships npm 10).
@@ -214,10 +222,10 @@ backend/app/
   api/       routes/ + schemas/ (Pydantic). Never return ORM objects.
   db/        base (JSONType), session (engine, SessionDep), models/
   workers/   celery_app.py, tasks.py (cawasma.run_scan)
-  ml/        sensitivity.classify + body_classifier.analyze (Asim; stubs for now)
+  ml/        sensitivity.classify + body_classifier.analyze (Asim)
   services/  orchestration + persistence (scan_runner, result_service, ...)
   utils/     validators, security (SSRF), redaction, logging
-backend/migrations/   Alembic (async env; one initial migration 0001)
+backend/migrations/   Alembic (async env; migrations 0001-0005)
 backend/scripts/      seed.py (sample data), reset.py (drop + migrate)
 backend/tests/        unit/ integration/ api/ fixtures/
 config/               shared service config (e.g. postgres init scripts)
@@ -232,7 +240,9 @@ frontend/             web UI (Neelam)
 - **`core/` stays database-free.** A check is a pure function
   `detect(ctx: CheckContext) -> RawFinding | None` registered with `@rule`. It
   reads only from `CheckContext`. Adding a check means a catalog entry, the
-  function, and a unit test. Keep the catalog count check (58) in sync.
+  function, and a fire/no-fire test (`tests/checks/`; the guard test fails
+  without one). Keep the catalog count check (58) in sync; checks.yaml adds 4
+  spec-only ids, 62 in all (`make check-coverage`).
 - Configuration comes only from `app.config.settings`; never read `os.environ` elsewhere.
 - Safety rules are not negotiable: HTTPS-only targets; SSRF guard on the
   *resolved IP* for every hop (`utils/security.py`); bounded requests. Only
@@ -244,9 +254,9 @@ frontend/             web UI (Neelam)
   create tables by hand, never edit a migration that has been merged. Models must
   stay portable (SQLite tests, Postgres prod): JSON columns use `JSONType` (JSONB
   on Postgres), and cascades rely on DB `ON DELETE` rules (FKs are enforced on SQLite too).
-- The REST/report JSON keeps its pre-rename field names (`rule_id`,
-  `cvss_base_score`, `cawasma_final_score`, `severity`, status `COMPLETED`) for
-  the frontend; map in `api/schemas/` rather than renaming (docs/db-decisions.md D2-D3).
+- The API uses the contract field names (`check_id`, `base_score`, `final_score`,
+  status `DONE`; docs/api-contract.md). Map in `api/schemas/` rather than renaming
+  DB columns (docs/db-decisions.md D2-D3).
 - ML code plugs in through `app/ml/sensitivity.py` and `app/ml/body_classifier.py`
   with the types in `app/core/contracts.py`; the engine must keep working with the
   built-in classifiers when ML deps are absent.
@@ -288,6 +298,7 @@ make openapi   # regenerate docs/openapi.json after any API change (CI checks it
   then scan `https://demo-target:8443/` (README "Demo the vertical slice").
 
 CI (`.github/workflows/ci.yml`) has independent jobs: branch-name check (PRs),
-backend lint (ruff + mypy), and backend tests (Alembic upgrade/downgrade + pytest
-against a Postgres 16 service container). A commented `frontend` job is ready
-for Neelam to enable.
+backend lint (ruff + mypy), backend tests (Alembic upgrade/downgrade + pytest
+against a Postgres 16 service container), and Neelam's `frontend` job (lint,
+format, typecheck, unit tests, build, Playwright) plus `frontend-e2e-eval` (the
+full flow against the real stack).

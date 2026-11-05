@@ -19,10 +19,8 @@ spacy==3.8.2
 # preshed 3.0.10+ breaks spaCy 3.8.2's tokenizer: spacy.load("en_core_web_sm")
 # raises "OverflowError: Python int too large to convert to C ssize_t".
 preshed==3.0.9
-# Evaluation-only packages (pandas, matplotlib, cvss; scikit-learn for the
-# eval scripts) live in the "ml" extra of pyproject.toml, not here: this file is
-# what the api/worker image installs. scikit-learn still ends up in the image
-# as a dependency of sentence-transformers.
+# Evaluation-only packages (matplotlib for eval/ figures) live in the "ml" extra
+# of pyproject.toml, not here: this file is what the api/worker image installs.
 # spaCy's English model, pinned by URL and hash (not `spacy download`, which
 # picks whatever version is current).
 en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl#sha256=1932429db727d4bff3deed6b34cfc05df17794f4a52eeb26cf8928f7c1a0fb85

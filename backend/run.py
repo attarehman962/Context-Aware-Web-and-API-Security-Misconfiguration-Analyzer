@@ -3,6 +3,7 @@
 Run with ``python run.py`` to start the API on :8000. In Docker/production the
 app is served by ``uvicorn app.main:app`` directly.
 """
+
 from __future__ import annotations
 
 import uvicorn

@@ -5,6 +5,7 @@ API keys, JWTs, session cookies, and authorization headers are masked here
 before persistence or logging. Detection is deliberately conservative -- when
 in doubt, mask.
 """
+
 from __future__ import annotations
 
 import re
@@ -30,10 +31,13 @@ _SECRET_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("aws_key", re.compile(r"AKIA[0-9A-Z]{16}")),
     # KEY=value, key: value and JSON "key": "value", whatever the value's
     # characters or length (SECRET_KEY=abc123, DB_PASSWORD=pw, "pwd": "P@ss!").
-    ("api_key_assign", re.compile(
-        r"(?i)(api[_-]?key|secret|token|password|passwd|pwd|access[_-]?key)"
-        r"[\w-]*['\"]?\s*[=:]\s*(?:\"[^\"\n]*\"|'[^'\n]*'|[^\s'\",;&<>]+)"
-    )),
+    (
+        "api_key_assign",
+        re.compile(
+            r"(?i)(api[_-]?key|secret|token|password|passwd|pwd|access[_-]?key)"
+            r"[\w-]*['\"]?\s*[=:]\s*(?:\"[^\"\n]*\"|'[^'\n]*'|[^\s'\",;&<>]+)"
+        ),
+    ),
     ("private_key", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
 ]
 

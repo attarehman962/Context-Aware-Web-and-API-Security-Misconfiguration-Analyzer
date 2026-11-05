@@ -75,4 +75,29 @@ describe("ScoreDisplay", () => {
     render(<ScoreDisplay base={4.3} final={8.6} />);
     expect(screen.getByText("8.6").closest("[aria-hidden]")).not.toBeNull();
   });
+
+  it("marks a legacy score, which is not a CVSS environmental score", () => {
+    const { container } = render(
+      <ScoreDisplay
+        base={7.5}
+        final={10}
+        severity="CRITICAL"
+        method="legacy"
+      />,
+    );
+    expect(
+      container.querySelector('[data-scoring-method="legacy"]'),
+    ).toHaveTextContent("Legacy");
+    expect(
+      screen.getByText(/Legacy score: CAWASMA's interim formula/),
+    ).toBeInTheDocument();
+  });
+
+  it("adds no badge to an environmental score", () => {
+    const { container } = render(
+      <ScoreDisplay base={5.9} final={7.1} method="environmental" />,
+    );
+    expect(container.querySelector("[data-scoring-method]")).toBeNull();
+    expect(screen.queryByText(/Legacy score/)).not.toBeInTheDocument();
+  });
 });

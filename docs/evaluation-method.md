@@ -121,7 +121,11 @@ Implemented in `eval/harness/evaluate.py`, unit-tested in
   the confusion matrix, and *off by two or more* (e.g. LOW predicted for a HIGH
   path), the costly kind of error (`eval/harness/classifier_eval.py`).
 - **NDCG@10:** findings ranked by `base_score` (before) or by `final_score`
-  (after). Gain is (2^grade − 1) for the first finding matching each priority
+  (after). **The reported experiment uses environmental-scored findings only**
+  (`final_vector` set, `scoring_method: environmental`) and the priority items
+  whose check is scored that way (`ranking.py --scoring environmental`): a
+  legacy finding's `final_score` comes from the interim formula, a different
+  scale, so mixing the two would not test the CVSS environmental method. Gain is (2^grade − 1) for the first finding matching each priority
   item; duplicates and unmatched findings get 0. The result is normalised by the
   ideal order of the priority items.
 - **rank of the first critical finding:** the position of the first finding
@@ -185,18 +189,37 @@ The full numbers are in `eval/results/final/`.
     MEDIUM and HIGH paths are often over-predicted as CRITICAL (22 and 13 of 40
     and 24 on test).
   - proposed families: test 0.487 / 0.454 (dev 0.569 / 0.577).
-- **Ranking:** the context-aware score ranked better than the base score on
-  every target where CAWASMA found a critical item:
+- **Ranking, environmental-scored findings only** (the reported experiment;
+  raw run 2026-11-04 15:22, `eval/results/final/ranking_environmental.md`):
 
-  | | Base score | Context-aware |
-  |-|-----------|---------------|
-  | Mean NDCG@10 | 0.260 | 0.304 |
-  | Mean rank of the first critical finding | 2.7 | 1.27 |
+  | Target | Findings kept | Priority items kept (critical) | NDCG@10 base → context | First critical base → context |
+  |-|-|-|-|-|
+  | DVWA | 96 | 9 (5) | 0.163 → 0.285 | 3.6 → 1.0 |
+  | VAmPI | 48 | 4 (0) | 0.207 → 0.000 | – |
+  | Juice Shop | 283 | 5 (2) | 0.003 → 0.000 | not found |
+  | crAPI | 320 | 4 (0) | 0.029 → 0.000 | – |
+  | Mean | | | 0.101 → 0.071 | 3.6 → 1.0 (DVWA only) |
 
-  On Juice Shop both are 0: none of its 6 critical priority items was found
-  (recall), so ranking can't help there.
+  The environmental score ranked better on DVWA and worse on the other three.
+  The cause is visible in the VAmPI ranking: the kept priority items are header
+  issues graded at `/` (a LOW page), and the environmental score does what it is
+  designed to do: it raises the same header issue on sensitive endpoints
+  (`/users/v1`, `/users/v1/_debug`) above the `/` copy. The priority ground truth
+  credits only the `/` finding, so the metric counts that as a miss. With one
+  priority entry per issue at a fixed endpoint, NDCG@10 penalises exactly the
+  behaviour being tested; a priority list graded per (issue, endpoint) over the
+  sensitive endpoints would measure it fairly (see Threats to validity).
+- **Ranking, all findings** (the earlier table, `ranking.md`; it mixes
+  environmental and legacy final scores, so it does not isolate the method):
+  mean NDCG@10 0.260 → 0.304, first critical 2.7 → 1.27.
 
 ## Threats to validity
+
+- **Priority ground truth vs context:** priority items are one per issue at a
+  fixed endpoint (mostly `/`). A method that moves the same issue up on a more
+  sensitive endpoint is scored as a miss. This is why the environmental-only
+  ranking result is negative on three targets; it is a limit of the reference,
+  and it applies to every number in the ranking experiment.
 
 - **Sample size:**
   - The ranking experiment rests on 4 targets with 6–10 priority items each,

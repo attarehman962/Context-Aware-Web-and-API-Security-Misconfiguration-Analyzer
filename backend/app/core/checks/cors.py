@@ -5,6 +5,7 @@ the pipeline performs that probe and populates ``ctx.cors_*``.
 
 COR-002 and COR-003 moved to ``checks/spec/cors.py``.
 """
+
 from __future__ import annotations
 
 from app.core.checks.base import CheckContext, RawFinding, make, rule

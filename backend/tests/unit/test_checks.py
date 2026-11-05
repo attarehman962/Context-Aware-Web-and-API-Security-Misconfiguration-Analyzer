@@ -1,4 +1,5 @@
 """Tests for the 58-check catalog/registry and representative detections."""
+
 from __future__ import annotations
 
 from app.core.body_classifier import classify_body
@@ -7,8 +8,9 @@ from app.core.checks.catalog import CATALOG
 from app.core.engine import HttpResult
 
 
-def _ctx(headers=None, body="", status=200, path="/", url=None, ctype="text/html",
-         **kw) -> CheckContext:
+def _ctx(
+    headers=None, body="", status=200, path="/", url=None, ctype="text/html", **kw
+) -> CheckContext:
     res = HttpResult(
         requested_url=url or f"https://t.example{path}",
         final_url=url or f"https://t.example{path}",
@@ -39,8 +41,9 @@ def test_every_catalog_rule_has_exactly_one_implementation():
     load_implementations()
     moved = set(CATALOG) & set(CHECKS)
     assert "HDR-001" in moved
-    legacy_ids = {fn.__name__.split("_")[0].upper() + "-" + fn.__name__.split("_")[1]
-                  for fn in REGISTRY}
+    legacy_ids = {
+        fn.__name__.split("_")[0].upper() + "-" + fn.__name__.split("_")[1] for fn in REGISTRY
+    }
     assert not legacy_ids & moved
     assert len(REGISTRY) + len(moved) == 58
 
@@ -54,16 +57,18 @@ def test_missing_headers_fire():
 
 
 def test_full_headers_suppress_findings():
-    ctx = _ctx(headers={
-        "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
-        "Content-Security-Policy": "default-src 'self'; frame-ancestors 'none'",
-        "X-Frame-Options": "DENY",
-        "X-Content-Type-Options": "nosniff",
-        "Referrer-Policy": "no-referrer",
-        "Permissions-Policy": "geolocation=()",
-        "Cross-Origin-Opener-Policy": "same-origin",
-        "Cross-Origin-Resource-Policy": "same-origin",
-    })
+    ctx = _ctx(
+        headers={
+            "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+            "Content-Security-Policy": "default-src 'self'; frame-ancestors 'none'",
+            "X-Frame-Options": "DENY",
+            "X-Content-Type-Options": "nosniff",
+            "Referrer-Policy": "no-referrer",
+            "Permissions-Policy": "geolocation=()",
+            "Cross-Origin-Opener-Policy": "same-origin",
+            "Cross-Origin-Resource-Policy": "same-origin",
+        }
+    )
     ids = {f.rule_id for f in run_checks(ctx)}
     for rid in ("HDR-009", "HDR-010"):
         assert rid not in ids
@@ -89,15 +94,26 @@ def test_env_exposure_and_secrets():
     ctx = _ctx(body=body, path="/.env", ctype="text/plain")
     ctx.body_class = classify_body(body)
     ids = {f.rule_id for f in run_checks(ctx)}
-    assert "INF-003" in ids   # .env exposed
-    assert "API-013" in ids   # secrets in response
+    assert "API-013" in ids  # secrets in response (INF-003 is a spec check now)
 
 
 def test_moved_rules_no_longer_run_as_legacy():
     ctx = _ctx(headers={}, body="Traceback (most recent call last): ...")
     ctx.result.set_cookie_headers = ["sessionid=abc; Path=/"]
     ids = {f.rule_id for f in run_checks(ctx)}
-    assert not ids & {"HDR-002", "CKI-001", "COR-002", "API-004", "INF-002", "TLS-005"}
+    assert not ids & {
+        "HDR-002",
+        "CKI-001",
+        "COR-002",
+        "API-004",
+        "INF-002",
+        "TLS-005",
+        "API-001",
+        "API-003",
+        "INF-003",
+        "INF-004",
+        "INF-005",
+    }
 
 
 def test_limitation_marked_on_blackbox_checks():

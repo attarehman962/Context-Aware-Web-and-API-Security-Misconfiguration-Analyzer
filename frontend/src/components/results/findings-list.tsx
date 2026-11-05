@@ -280,6 +280,7 @@ function FindingRow({
               base={f.base_score}
               final={f.final_score}
               severity={f.severity_bucket}
+              method={f.scoring_method}
               compact
             />
           </div>

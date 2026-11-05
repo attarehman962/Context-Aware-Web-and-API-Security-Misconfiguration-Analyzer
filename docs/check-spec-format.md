@@ -38,6 +38,8 @@ checks:                # at least one
 | `references` | no | list of URLs | |
 | `limitation` | no | set when black-box testing cannot confirm the issue; shown to users | |
 | `severity_notes` | no | how context should move the severity (the plan's Contract 1 "severity notes"); guidance for the CVSS mapping, not used in scoring | `raise with endpoint sensitivity` |
+| `applies_to` | no | which endpoints the check judges (below); default: every endpoint | |
+| `artifact` | no | the check is about a file at a path: which paths, what to probe, what not to fire on (below) | |
 
 Any other key is an error, so typos (`descripton`) are caught.
 
@@ -63,7 +65,7 @@ Evaluated against each in-scope response. The check fires when the rules match.
 | `method` | `GET` | `GET`, `HEAD`, `OPTIONS` only. The scanner never sends state-changing requests |
 | `scope` | `every_endpoint` | `every_endpoint` (each crawled endpoint) or `target_root` (the scan URL only) |
 | `match` | `all` | `all`: every rule must hold; `any`: one is enough |
-| `rules` | | list, at least one; each rule has exactly one of `header`, `status`, `body` |
+| `rules` | | list, at least one; each rule has exactly one of `header`, `header_names`, `status`, `body`, `url` |
 
 ### Rule types
 
@@ -99,8 +101,65 @@ whole value.
 case-sensitive, so use `(?i)` in a `matches` pattern when needed):
 
 ```yaml
-- body: matches         # contains | not_contains | matches
+- body: matches         # contains | not_contains | matches | not_empty | json
   value: "(?i)index of /"
+```
+
+`not_empty` (some non-whitespace text) and `json` (the body parses as a
+non-empty JSON object or array) take no `value`.
+
+**Header names** (regex, case-insensitive, over every response header name):
+
+```yaml
+- header_names: none_match      # or any_match
+  value: "^(?:ratelimit-.+|x-ratelimit-.+|retry-after)$"
+```
+
+**Final URL** (after redirects):
+
+```yaml
+- url: not_matches              # or matches
+  value: "(?i)/(?:login|signin)(?:[/?.#]|$)"
+```
+
+## `applies_to` (optional)
+
+Which endpoints the check judges at all; `http_condition` then decides whether it
+fires. Same `match: all | any` as `http_condition`. Each rule has exactly one of:
+
+| Key | Holds when |
+|-----|-----------|
+| `sensitivity: [HIGH, CRITICAL]` | the endpoint's sensitivity class is in the list |
+| `sensitivity_family: authentication` | the built-in path classifier matched that keyword family (`identity`, `payment`, `secrets`, `authentication`, `account`, `api`, `public`; `app/core/sensitivity.py`) |
+| `path: <regex>` (+ optional `methods: [POST]`) | the endpoint path matches, and its method is listed (a POST form is judged on its GET response; the scanner never sends POST) |
+| `credentials: absent` | the request carried no `Authorization` header and no cookie |
+
+```yaml
+applies_to:
+  match: any
+  rules:
+    - sensitivity_family: authentication
+    - path: "(?i)(?:login|token|password)"
+      methods: [POST]
+```
+
+## `artifact` (optional)
+
+For a check about a file at a path (`.env`, `.git/HEAD`, a backup). Such a check
+**never runs in passive mode**, because it is about probed paths.
+
+| Key | Default | Meaning |
+|-----|---------|---------|
+| `path` | required | regex on the endpoint path: only matching endpoints are judged |
+| `probe` | `[]` | fixed paths (from `/`) requested with the wordlist, active mode only |
+| `not_html` | `true` | an HTML body is the site's page, not the file: never fires |
+| `not_soft_404` | `true` | never fires on a response like the host's soft-404 baseline (the crawler requests one random path per scan; a page that echoes the requested path still counts) |
+| `require_body` | `false` | the response must have content (text, or bytes for binary files) |
+
+```yaml
+artifact:
+  path: "(?:^|/)\\.git/(?:HEAD|config)$"
+  probe: [/.git/HEAD, /.git/config]
 ```
 
 ## The two sample checks
@@ -163,12 +222,11 @@ invalid YAML, and a missing or different `spec_version`.
 
 ## Status and migration
 
-- `checks.yaml` holds 2 sample checks. The 58 live checks are still defined in
-  `backend/app/core/checks/catalog.py` (spec + vector) and
-  `backend/app/core/checks/*.py` (detection code). Moving them into
-  `checks.yaml` is the next step. The engine will read `http_condition` for
-  checks that can be expressed declaratively and keep Python detectors for the
-  rest.
+- `checks.yaml` holds 25 specs, each implemented in the spec registry
+  (`backend/app/core/checks/spec/`) and scored with environmental metrics. The
+  37 other checks are still legacy rules defined in `catalog.py` and
+  `backend/app/core/checks/*.py`; `docs/check-triage.md` proposes which to
+  specify, merge or drop.
 - **Known issue in the catalog (for Asim): 31 of the 58 rules have a
   `base_score` that disagrees with their own vector.** For example, `INF-003`
   records 9.1 but its vector scores 7.5, and `AUT-006` records 7.5 but its
@@ -179,6 +237,10 @@ invalid YAML, and a missing or different `spec_version`.
 
 ## Changes
 
+- **spec_version 1, 2026-11-05 (proposed):** optional `applies_to` and `artifact`
+  blocks; rule kinds `header_names` and `url`; body ops `not_empty` and `json`.
+  Backward compatible: all 25 existing specs stay valid unchanged. Used by
+  API-001, API-003, INF-003, INF-004, INF-005.
 - **spec_version 1, 2026-10-25:** accept OWASP Top 10 2025 ids; add optional
   `severity_notes` (both from the per-person plan's Contract 1). Backward
   compatible: every existing file stays valid.

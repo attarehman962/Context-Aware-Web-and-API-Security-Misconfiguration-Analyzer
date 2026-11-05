@@ -82,7 +82,7 @@ reporting a finding.
 ## ID changes (2026-10-25)
 
 The first draft numbered checks independently, so 20 ids clashed with catalog
-checks of a different meaning (review `reviews/asim-p04.md`, row 1). Each check
+checks of a different meaning (review `docs/reviews/asim-p04.md`, row 1). Each check
 now uses the catalog id of the same check (and its category); genuinely new
 checks got new ids (`TLS-009`, `HDR-013`, `HDR-014`, `INF-007`). The combined
 config/backup check was split into the catalog's `INF-003` (.env), `INF-004`
