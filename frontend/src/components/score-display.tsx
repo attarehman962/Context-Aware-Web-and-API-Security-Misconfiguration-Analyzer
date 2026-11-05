@@ -81,7 +81,7 @@ export function ScoreDisplay({
           aria-hidden
           data-scoring-method="legacy"
           title="Scored with CAWASMA's interim formula (base × context multiplier + body bonus), not with CVSS environmental metrics"
-          className="mt-0.5 rounded border border-amber-700/50 px-1 text-[0.65rem] leading-4 text-amber-800 dark:text-amber-300"
+          className="mt-0.5 rounded border border-amber-700/50 px-1 text-[0.7rem] leading-4 text-amber-800 dark:text-amber-300"
         >
           Legacy
         </span>

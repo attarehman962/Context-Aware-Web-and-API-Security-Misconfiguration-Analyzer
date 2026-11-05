@@ -204,6 +204,15 @@ describe("ranking", () => {
     expect(rankingTakeaway(data)).toBe(
       "Ranked by the context-aware score, the first critical issue appears at position 1.0 on average instead of 3.0, and NDCG@10 rises from 0.35 to 0.45.",
     );
+    const lower = {
+      ...data,
+      ranking: data.ranking.map((r) =>
+        r.target === "mean" ? { ...r, ndcg10_context: 0.3 } : r,
+      ),
+    };
+    expect(rankingTakeaway(lower)).toMatch(
+      /NDCG@10 falls from 0\.35 to 0\.30\.$/,
+    );
     expect(ndcgTakeaway(data)).toBe(
       "NDCG@10 is higher with context on 1 of 2 targets and lower on none.",
     );

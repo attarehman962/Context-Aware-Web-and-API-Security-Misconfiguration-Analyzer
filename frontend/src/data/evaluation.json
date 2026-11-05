@@ -5,38 +5,38 @@
     {
       "tool": "cawasma",
       "target": "juice-shop",
-      "tp": 3,
+      "tp": 4,
       "fp": 0,
-      "fn": 6,
+      "fn": 5,
       "tn": 14,
       "precision": 1,
-      "recall": 0.333,
+      "recall": 0.444,
       "fpr": 0,
-      "scan_seconds": 11.1
+      "scan_seconds": 23.4
     },
     {
       "tool": "cawasma",
       "target": "dvwa",
-      "tp": 9,
+      "tp": 10,
       "fp": 0,
-      "fn": 1,
+      "fn": 0,
       "tn": 7,
       "precision": 1,
-      "recall": 0.9,
+      "recall": 1,
       "fpr": 0,
-      "scan_seconds": 3.1
+      "scan_seconds": 4.3
     },
     {
       "tool": "cawasma",
       "target": "vampi",
-      "tp": 7,
-      "fp": 4,
-      "fn": 1,
-      "tn": 10,
-      "precision": 0.636,
-      "recall": 0.875,
-      "fpr": 0.286,
-      "scan_seconds": 3.1
+      "tp": 6,
+      "fp": 0,
+      "fn": 2,
+      "tn": 14,
+      "precision": 1,
+      "recall": 0.75,
+      "fpr": 0,
+      "scan_seconds": 6.8
     },
     {
       "tool": "cawasma",
@@ -48,19 +48,19 @@
       "precision": 1,
       "recall": 0.833,
       "fpr": 0,
-      "scan_seconds": 3.1
+      "scan_seconds": 7.5
     },
     {
       "tool": "cawasma",
       "target": "all (micro)",
-      "tp": 24,
-      "fp": 4,
-      "fn": 9,
-      "tn": 43,
-      "precision": 0.857,
-      "recall": 0.727,
-      "fpr": 0.085,
-      "scan_seconds": 5.1
+      "tp": 25,
+      "fp": 0,
+      "fn": 8,
+      "tn": 47,
+      "precision": 1,
+      "recall": 0.758,
+      "fpr": 0,
+      "scan_seconds": 10.5
     },
     {
       "tool": "zap",
@@ -72,7 +72,7 @@
       "precision": 1,
       "recall": 0.25,
       "fpr": 0,
-      "scan_seconds": 36.5
+      "scan_seconds": 324.4
     },
     {
       "tool": "zap",
@@ -84,19 +84,19 @@
       "precision": null,
       "recall": 0,
       "fpr": 0,
-      "scan_seconds": 14.7
+      "scan_seconds": 36.5
     },
     {
       "tool": "zap",
       "target": "vampi",
-      "tp": 1,
+      "tp": 2,
       "fp": 0,
-      "fn": 3,
+      "fn": 2,
       "tn": 5,
       "precision": 1,
-      "recall": 0.25,
+      "recall": 0.5,
       "fpr": 0,
-      "scan_seconds": 16.4
+      "scan_seconds": 24.4
     },
     {
       "tool": "zap",
@@ -108,19 +108,19 @@
       "precision": 1,
       "recall": 1,
       "fpr": 0,
-      "scan_seconds": 14.3
+      "scan_seconds": 32.5
     },
     {
       "tool": "zap",
       "target": "all (micro)",
-      "tp": 6,
+      "tp": 7,
       "fp": 0,
-      "fn": 15,
+      "fn": 14,
       "tn": 19,
       "precision": 1,
-      "recall": 0.286,
+      "recall": 0.333,
       "fpr": 0,
-      "scan_seconds": 20.5
+      "scan_seconds": 104.4
     },
     {
       "tool": "nuclei",
@@ -132,7 +132,7 @@
       "precision": 1,
       "recall": 0.6,
       "fpr": 0,
-      "scan_seconds": 100.6
+      "scan_seconds": 198.8
     },
     {
       "tool": "nuclei",
@@ -144,7 +144,7 @@
       "precision": 1,
       "recall": 0.6,
       "fpr": 0,
-      "scan_seconds": 102
+      "scan_seconds": 102.3
     },
     {
       "tool": "nuclei",
@@ -156,7 +156,7 @@
       "precision": 1,
       "recall": 1,
       "fpr": 0,
-      "scan_seconds": 100.6
+      "scan_seconds": 102.6
     },
     {
       "tool": "nuclei",
@@ -168,7 +168,7 @@
       "precision": 1,
       "recall": 1,
       "fpr": 0,
-      "scan_seconds": 100.6
+      "scan_seconds": 101.3
     },
     {
       "tool": "nuclei",
@@ -180,7 +180,7 @@
       "precision": 1,
       "recall": 0.765,
       "fpr": 0,
-      "scan_seconds": 100.9
+      "scan_seconds": 126.2
     }
   ],
   "ranking": [
@@ -190,44 +190,44 @@
       "critical_items": 6,
       "ndcg10_base": 0,
       "ndcg10_context": 0,
-      "first_critical_base": null,
-      "first_critical_context": null
+      "first_critical_base": 448.3,
+      "first_critical_context": 312
     },
     {
       "target": "dvwa",
       "priority_items": 10,
       "critical_items": 6,
-      "ndcg10_base": 0.149,
+      "ndcg10_base": 0.146,
       "ndcg10_context": 0.261,
-      "first_critical_base": 3.6,
+      "first_critical_base": 3.7,
       "first_critical_context": 1
     },
     {
       "target": "vampi",
       "priority_items": 8,
       "critical_items": 4,
-      "ndcg10_base": 0.51,
-      "ndcg10_context": 0.519,
-      "first_critical_base": 2.5,
-      "first_critical_context": 1.3
+      "ndcg10_base": 0.602,
+      "ndcg10_context": 0.41,
+      "first_critical_base": 1,
+      "first_critical_context": 2
     },
     {
       "target": "crapi",
       "priority_items": 6,
       "critical_items": 2,
-      "ndcg10_base": 0.382,
-      "ndcg10_context": 0.436,
-      "first_critical_base": 2,
-      "first_critical_context": 1.5
+      "ndcg10_base": 0.538,
+      "ndcg10_context": 0.535,
+      "first_critical_base": 1,
+      "first_critical_context": 1
     },
     {
       "target": "mean",
       "priority_items": null,
       "critical_items": null,
-      "ndcg10_base": 0.26,
-      "ndcg10_context": 0.304,
-      "first_critical_base": 2.7,
-      "first_critical_context": 1.267
+      "ndcg10_base": 0.322,
+      "ndcg10_context": 0.301,
+      "first_critical_base": 113.5,
+      "first_critical_context": 79
     }
   ],
   "mapping": [

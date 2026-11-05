@@ -37,7 +37,7 @@ export function ChartCard({
       {note ? <p className="text-xs text-muted-foreground">{note}</p> : null}
       {table ? (
         <details className="text-sm">
-          <summary className="w-fit cursor-pointer rounded text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50">
+          <summary className="w-fit cursor-pointer rounded py-1 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50">
             Show the numbers
           </summary>
           <div className="relative mt-3 w-full min-w-0 overflow-x-auto">

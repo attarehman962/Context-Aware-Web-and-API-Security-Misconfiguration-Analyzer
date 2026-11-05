@@ -59,13 +59,15 @@ export function GroupedBars({
                         aria-hidden
                         className="h-3 rounded-r-[4px]"
                         style={{
-                          width: `${Math.max((v / max) * 85, v > 0 ? 0.75 : 0)}%`,
+                          // Up to 85 % of the row, but always leaving 4.5rem for the
+                          // value label, which would otherwise wrap into the next row.
+                          width: `calc(min(85%, 100% - 4.5rem) * ${Math.max(v / max, v > 0 ? 0.0088 : 0)})`,
                           background: s.color,
                         }}
                         data-value={v}
                       />
                     )}
-                    <span className="text-xs text-muted-foreground tabular-nums">
+                    <span className="shrink-0 text-xs whitespace-nowrap text-muted-foreground tabular-nums">
                       {text}
                     </span>
                   </div>
