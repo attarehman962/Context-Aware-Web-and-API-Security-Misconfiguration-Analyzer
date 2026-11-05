@@ -128,9 +128,11 @@ def test_catalog_and_checks_yaml_agree_on_every_shared_vector():
     from app.core.checks.registry import load_specs
 
     specs = load_specs()
-    differ = {cid: (CATALOG[cid].cvss_vector, specs[cid].base_cvss_vector)
-              for cid in set(CATALOG) & set(specs)
-              if CATALOG[cid].cvss_vector != specs[cid].base_cvss_vector}
+    differ = {
+        cid: (CATALOG[cid].cvss_vector, specs[cid].base_cvss_vector)
+        for cid in set(CATALOG) & set(specs)
+        if CATALOG[cid].cvss_vector != specs[cid].base_cvss_vector
+    }
     assert not differ, differ
 
 

@@ -1,5 +1,6 @@
 """Anchor sensitivity classifier (Asim Prompt 6): contract, preprocessing, fallback,
 determinism and speed. Tests that need the real model skip without the ML extras."""
+
 from __future__ import annotations
 
 import math
@@ -29,6 +30,7 @@ def no_cache():
 
 # ------------------------------------------------------------------ config
 
+
 def test_the_committed_anchor_file_is_valid_and_off():
     config = load_config(ANCHORS)
     assert set(config.anchors) == set(SensitivityClass)
@@ -46,19 +48,24 @@ def test_an_anchor_file_missing_a_class_is_refused(tmp_path):
 
 # ----------------------------------------------------------- preprocessing
 
-@pytest.mark.parametrize("path, method, text", [
-    ("/api/v1/userAccounts/42/pwd-reset", "GET", "GET api user accounts password reset"),
-    ("/users/3f2b9c1e-8d4a-4b6e-9f1a-2c3d4e5f6a7b/orders", "post", "POST users orders"),
-    ("/admin_panel/cfg.json", "GET", "GET administrator panel configuration json"),
-    ("/users/:id", "DELETE", "DELETE users"),
-    ("/", "GET", "GET home page"),
-])
+
+@pytest.mark.parametrize(
+    "path, method, text",
+    [
+        ("/api/v1/userAccounts/42/pwd-reset", "GET", "GET api user accounts password reset"),
+        ("/users/3f2b9c1e-8d4a-4b6e-9f1a-2c3d4e5f6a7b/orders", "post", "POST users orders"),
+        ("/admin_panel/cfg.json", "GET", "GET administrator panel configuration json"),
+        ("/users/:id", "DELETE", "DELETE users"),
+        ("/", "GET", "GET home page"),
+    ],
+)
 def test_paths_become_text(path, method, text):
     abbreviations = load_config(ANCHORS).abbreviations
     assert path_text(path, method, abbreviations) == text
 
 
 # -------------------------------------------------- classifier, fake model
+
 
 class FakeModel:
     """Embeds by keyword, so the scoring logic is tested without torch."""
@@ -76,19 +83,30 @@ class FakeModel:
 
 def _fake(threshold: float = 0.3) -> AnchorClassifier:
     config = load_config(ANCHORS)
-    config = type(config)(**{**config.__dict__, "threshold": threshold, "anchors": {
-        SensitivityClass.LOW: ("public home page",),
-        SensitivityClass.MEDIUM: ("user profile",),
-        SensitivityClass.HIGH: ("user login",),
-        SensitivityClass.CRITICAL: ("administrator panel",),
-    }})
+    config = type(config)(
+        **{
+            **config.__dict__,
+            "threshold": threshold,
+            "anchors": {
+                SensitivityClass.LOW: ("public home page",),
+                SensitivityClass.MEDIUM: ("user profile",),
+                SensitivityClass.HIGH: ("user login",),
+                SensitivityClass.CRITICAL: ("administrator panel",),
+            },
+        }
+    )
     return AnchorClassifier(config, model=FakeModel())
 
 
-@pytest.mark.parametrize("path, cls", [
-    ("/", SensitivityClass.LOW), ("/me/profile", SensitivityClass.MEDIUM),
-    ("/auth/login", SensitivityClass.HIGH), ("/admin/users", SensitivityClass.CRITICAL),
-])
+@pytest.mark.parametrize(
+    "path, cls",
+    [
+        ("/", SensitivityClass.LOW),
+        ("/me/profile", SensitivityClass.MEDIUM),
+        ("/auth/login", SensitivityClass.HIGH),
+        ("/admin/users", SensitivityClass.CRITICAL),
+    ],
+)
 def test_best_anchor_wins(path, cls):
     assert _fake().classify(path) is cls
 
@@ -99,8 +117,9 @@ def test_below_the_threshold_the_default_class_is_used():
 
 def test_classify_uses_the_keyword_classifier_while_anchors_are_off(no_cache, monkeypatch):
     called = []
-    monkeypatch.setattr(sensitivity, "builtin_classify",
-                        lambda ep: called.append(ep.path) or SensitivityClass.HIGH)
+    monkeypatch.setattr(
+        sensitivity, "builtin_classify", lambda ep: called.append(ep.path) or SensitivityClass.HIGH
+    )
     assert sensitivity.classify(_ep("/auth/login")) is SensitivityClass.HIGH
     assert called == ["/auth/login"]
 
@@ -116,6 +135,7 @@ def test_classify_never_raises(no_cache, monkeypatch):
 
 
 # ------------------------------------------------------- real model (ML)
+
 
 @pytest.fixture(scope="module")
 def real():

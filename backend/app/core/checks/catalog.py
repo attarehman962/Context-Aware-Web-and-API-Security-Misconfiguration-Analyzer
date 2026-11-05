@@ -213,7 +213,7 @@ CATALOG: dict[str, RuleMeta] = {
 
     # ---- REST API (14) ----
     "API-001": RuleMeta("API-001", "Rate limiting absent", A,
-        _V+"AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+        _V+"AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N",
         "Lack of rate limiting enables abuse/brute force.",
         "Enforce per-client rate limits and return 429.",
         ("https://owasp.org/API-Security/",),
