@@ -150,11 +150,17 @@ export function rankingRows(data = evaluation) {
 export function rankingTakeaway(data = evaluation): string {
   const { mean } = rankingRows(data);
   if (!mean) return "";
+  const base = fmt(mean.ndcg10_base);
+  const context = fmt(mean.ndcg10_context);
+  // Say what the numbers did: the result can go either way.
+  const ndcg =
+    context === base
+      ? `NDCG@10 stays at ${base}`
+      : `NDCG@10 ${Number(context) > Number(base) ? "rises" : "falls"} from ${base} to ${context}`;
   return (
     `Ranked by the context-aware score, the first critical issue appears at ` +
     `position ${fmt(mean.first_critical_context ?? 0, 1)} on average instead of ` +
-    `${fmt(mean.first_critical_base ?? 0, 1)}, and NDCG@10 rises from ` +
-    `${fmt(mean.ndcg10_base)} to ${fmt(mean.ndcg10_context)}.`
+    `${fmt(mean.first_critical_base ?? 0, 1)}, and ${ndcg}.`
   );
 }
 
