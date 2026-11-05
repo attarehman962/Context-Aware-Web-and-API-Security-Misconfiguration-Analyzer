@@ -28,6 +28,14 @@ that way. Legacy findings' ``final_score`` comes from the interim formula, a
 different scale, so mixing them in would not test the CVSS environmental method.
 It writes ``ranking_environmental.json`` and ``.md`` instead of ``ranking.json``.
 ``--run`` picks a raw run by its stamp (default: each target's latest).
+
+**Graded pools.** When ``eval/ground_truth/priority_pool_<target>.csv`` exists
+and every row has a grade (``pool.py``, ``GRADING.md``), NDCG@10 is also computed
+against it: a finding's relevance is the grade of its (check_id, endpoint) pair,
+the first finding of a pair gets it and repeats get 0, and pairs outside the
+pool count 0 (unjudged = not relevant, as in TREC pooling). Both versions are
+reported (``ndcg10_*`` from the priority list, ``ndcg10_pool_*`` from the pool)
+until every pool is graded; ``pool`` says which state each target is in.
 """
 from __future__ import annotations
 
@@ -44,6 +52,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import evaluate as ev  # noqa: E402 - sibling script
+from pool import load_pool  # noqa: E402 - sibling script
 
 PRIORITY = ev.GROUND_TRUTH / "priority_{target}.yaml"
 LABELS = ev.ROOT / "eval" / "labels" / "endpoints_labelled.csv"
@@ -118,6 +127,16 @@ def _relevances(ranked: list[ev.Finding], items: list[dict[str, Any]]) -> list[i
     return out
 
 
+def _pool_relevances(ranked: list[ev.Finding], grades: dict[tuple[str, str], int]) -> list[int]:
+    taken: set[tuple[str, str]] = set()
+    out = []
+    for f in ranked:
+        key = (str(f.check_id), f.endpoint)
+        out.append(grades.get(key, 0) if key not in taken else 0)
+        taken.add(key)
+    return out
+
+
 def ndcg_at_k(rels: list[int], ideal: list[int], k: int = K) -> float:
     def dcg(xs: list[int]) -> float:
         return sum((2 ** r - 1) / math.log2(i + 2) for i, r in enumerate(xs[:k]))
@@ -163,7 +182,15 @@ def experiment(target: str, seed: int, *, run_stamp: str | None = None,
     ideal = [int(i["grade"]) for i in items]
     out: dict[str, Any] = {"target": target, "run": run.name, "findings": len(findings),
                            "priority_items": len(items),
-                           "critical_items": sum(1 for g in ideal if g == 3)}
+                           "critical_items": sum(1 for g in ideal if g == 3),
+                           "items_matched": sum(
+                               1 for i in items
+                               if any(ev._hits(f, i["check_id"], i["endpoint"])
+                                      for f, _ in findings))}
+    pool = load_pool(target)
+    graded = pool is not None and all(g is not None for g in pool.values())
+    out["pool"] = ("none" if pool is None else "graded" if graded
+                   else f"ungraded ({sum(g is not None for g in pool.values())}/{len(pool)})")
     for name, key in (("before", "base_score"), ("after", "final_score")):
         rng = random.Random(seed)
         ndcgs, firsts = [], []
@@ -175,12 +202,22 @@ def experiment(target: str, seed: int, *, run_stamp: str | None = None,
         out[f"ndcg10_{name}"] = round(sum(ndcgs) / len(ndcgs), 3)
         out[f"first_critical_{name}"] = (round(sum(found) / len(found), 1)
                                          if len(found) == len(firsts) else None)
+        out[f"ndcg10_pool_{name}"] = None
+        if graded and pool is not None:
+            grades = {k: int(v) for k, v in pool.items() if v is not None}
+            pool_ideal = sorted(grades.values(), reverse=True)
+            rng = random.Random(seed)
+            scores = [ndcg_at_k(_pool_relevances(
+                          rank([(f, raw_f[key]) for f, raw_f in findings], rng), grades),
+                          pool_ideal) for _ in range(TIE_SAMPLES)]
+            out[f"ndcg10_pool_{name}"] = round(sum(scores) / len(scores), 3)
     return out
 
 
 def _table(result: dict[str, Any]) -> str:
-    cols = ["target", "findings", "priority_items", "critical_items", "ndcg10_before",
-            "ndcg10_after", "first_critical_before", "first_critical_after"]
+    cols = ["target", "findings", "priority_items", "items_matched", "critical_items",
+            "ndcg10_before", "ndcg10_after", "first_critical_before", "first_critical_after",
+            "pool", "ndcg10_pool_before", "ndcg10_pool_after"]
     lines = ["| " + " | ".join(cols) + " |", "|" + "---|" * len(cols)]
     for r in [*result["targets"], result["mean"]]:
         lines.append("| " + " | ".join("–" if r.get(c) is None else str(r.get(c, "–"))
@@ -191,7 +228,9 @@ def _table(result: dict[str, Any]) -> str:
         *lines, "",
         f"before = base_score, after = final_score (CVSS v3.1 environmental). Mean over "
         f"{result['tie_samples']} random tie-breaks (seed {result['seed']}); "
-        "descriptive only, no significance claimed.", ""])
+        "descriptive only, no significance claimed. ndcg10_* uses priority_<target>.yaml; "
+        "ndcg10_pool_* the graded pool (priority_pool_<target>.csv), empty until graded.",
+        ""])
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -212,7 +251,7 @@ def main(argv: list[str] | None = None) -> int:
                                 environmental_only=env_ids)) is not None]
     mean = {"target": "mean"}
     for key in ("ndcg10_before", "ndcg10_after", "first_critical_before",
-                "first_critical_after"):
+                "first_critical_after", "ndcg10_pool_before", "ndcg10_pool_after"):
         vals = [r[key] for r in rows if r[key] is not None]
         mean[key] = round(sum(vals) / len(vals), 3) if vals else None
     result = {"k": K, "tie_samples": TIE_SAMPLES, "seed": args.seed, "scoring": args.scoring,

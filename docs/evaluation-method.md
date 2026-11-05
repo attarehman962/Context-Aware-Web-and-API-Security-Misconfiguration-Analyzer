@@ -209,6 +209,34 @@ The full numbers are in `eval/results/final/`.
   priority entry per issue at a fixed endpoint, NDCG@10 penalises exactly the
   behaviour being tested; a priority list graded per (issue, endpoint) over the
   sensitive endpoints would measure it fairly (see Threats to validity).
+- **Diagnosis: what NDCG@10 measures here** (raw run 2026-11-04 15:22). Most
+  priority items *are* found; they just sit far below the top 10, among hundreds
+  of findings the priority list doesn't grade:
+
+  | Target | Priority items matched by any finding (all / environmental-only) | Critical items matched | Environmental findings | Median rank of a matched item, base → env | Matched items in the top 10, base → env |
+  |-|-|-|-|-|-|
+  | DVWA | 9/10 / 9/9 | 5/6 | 96 | 45.9 → 25.3 | 1.0 → 1.0 |
+  | VAmPI | 7/8 / 4/4 | 3/4 | 48 | 18.4 → 22.5 | 1.2 → 0.0 |
+  | Juice Shop | 3/9 / 3/5 | 0/6 | 283 | 210.5 → 225.8 | 0.1 → 0.0 |
+  | crAPI | 5/6 / 4/4 | 1/2 | 320 | 119.4 → 154.0 | 0.12 → 0.0 |
+
+  (Ranks and top-10 counts are means over 200 random tie-breaks.) So unmatched
+  items are not the main problem, except on Juice Shop. With 4–10 graded items
+  against 48–320 findings, every other finding in the top 10 counts as
+  irrelevant, whether or not it matters. NDCG@10 then mostly measures whether one
+  of a handful of hand-picked (issue, endpoint) pairs happens to land in the top
+  10.
+- **Graded pools (next step, waiting for Asim's grades).** A per-issue,
+  per-endpoint reference built by pooling (`eval/harness/pool.py`): for each
+  target, the union of the top 20 (check_id, endpoint) pairs of the base ranking
+  and of the environmental ranking, de-duplicated and shuffled, in
+  `eval/ground_truth/priority_pool_<target>.csv` (22–40 pairs per target). The
+  files carry no score, rank or source ranking, so the grades are blind; grades
+  are 0–3 (`eval/ground_truth/GRADING.md`). Once a target's pool is fully graded,
+  `ranking.py` also reports NDCG@10 against it (`ndcg10_pool_*`); until then,
+  both columns are shown and the pool ones stay empty. Pairs outside the pool
+  count as not relevant, as in TREC pooling; because both rankings' top 20 are
+  in the pool, neither is favoured.
 - **Ranking, all findings** (the earlier table, `ranking.md`; it mixes
   environmental and legacy final scores, so it does not isolate the method):
   mean NDCG@10 0.260 → 0.304, first critical 2.7 → 1.27.
