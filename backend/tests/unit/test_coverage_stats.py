@@ -40,3 +40,12 @@ def test_output_names_the_branch_and_commit(tmp_path):
     assert s["branch"] and s["commit"]
     assert coverage_stats.report(s).splitlines()[0] == f"on {s['branch']} @ {s['commit']}"
     assert coverage_stats.git_revision(tmp_path) == {"branch": "unknown", "commit": "unknown"}
+
+
+def test_proposed_specs_are_counted_apart_and_left_out_of_the_report_figure(tmp_path):
+    s = coverage_stats.stats(raw=tmp_path)
+    assert s["with_spec"] == s["with_approved_spec"] + s["with_proposed_spec"]
+    assert s["scored_environmental_approved"] <= s["scored_environmental"]
+    figure = coverage_stats.report(s).splitlines()[-1]
+    assert figure.startswith("for the report (approved specs only)")
+    assert f"{s['with_approved_spec']} of {s['check_ids']} checks specified" in figure

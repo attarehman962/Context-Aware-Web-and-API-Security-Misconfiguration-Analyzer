@@ -38,6 +38,7 @@ checks:                # at least one
 | `references` | no | list of URLs | |
 | `limitation` | no | set when black-box testing cannot confirm the issue; shown to users | |
 | `severity_notes` | no | how context should move the severity (the plan's Contract 1 "severity notes"); guidance for the CVSS mapping, not used in scoring | `raise with endpoint sensitivity` |
+| `status` | no | `approved` (default) or `proposed`: drafted for Asim and not yet approved. Scans run a proposed spec, but the report counts approved specs only (`make coverage-stats`) | `proposed` |
 | `applies_to` | no | which endpoints the check judges (below); default: every endpoint | |
 | `artifact` | no | the check is about a file at a path: which paths, what to probe, what not to fire on (below) | |
 
@@ -240,7 +241,8 @@ invalid YAML, and a missing or different `spec_version`.
 - **spec_version 1, 2026-11-05 (proposed):** optional `applies_to` and `artifact`
   blocks; rule kinds `header_names` and `url`; body ops `not_empty` and `json`.
   Backward compatible: all 25 existing specs stay valid unchanged. Used by
-  API-001, API-003, INF-003, INF-004, INF-005.
+  API-001, API-003, INF-003, INF-004, INF-005. Optional `status`
+  (`approved` | `proposed`); those five are `proposed` until Asim approves them.
 - **spec_version 1, 2026-10-25:** accept OWASP Top 10 2025 ids; add optional
   `severity_notes` (both from the per-person plan's Contract 1). Backward
   compatible: every existing file stays valid.

@@ -337,6 +337,9 @@ class CheckSpec(_Strict):
     # How context should move the severity (Contract 1 "severity notes"),
     # e.g. "raise with endpoint sensitivity". Guidance for the CVSS mapping.
     severity_notes: str | None = None
+    # "proposed": drafted for Asim, not yet approved by him. Scans run it, but the
+    # report counts only approved specs (scripts/coverage_stats.py).
+    status: Literal["approved", "proposed"] = "approved"
     applies_to: AppliesTo | None = None
     artifact: Artifact | None = None
 

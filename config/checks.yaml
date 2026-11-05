@@ -407,6 +407,7 @@ checks:
   - check_id: INF-003
     category: INFO_DISCLOSURE
     title: .env file exposed
+    status: proposed
     description: >-
       A .env file is served: environment variables (KEY=value lines) that often
       hold database passwords, API keys and other secrets.
@@ -439,6 +440,7 @@ checks:
   - check_id: INF-004
     category: INFO_DISCLOSURE
     title: .git repository exposed
+    status: proposed
     description: >-
       The .git directory is served: its HEAD or config file is readable, so the
       repository (source code, history, sometimes credentials) can be rebuilt.
@@ -469,6 +471,7 @@ checks:
   - check_id: INF-005
     category: INFO_DISCLOSURE
     title: Backup / archive file exposed
+    status: proposed
     description: >-
       A backup, editor or archive copy of a file is served (.bak, .old, .swp, a
       .zip or .sql dump), which can disclose source code, data or credentials.
@@ -522,6 +525,7 @@ checks:
   - check_id: API-003
     category: REST_API
     title: Sensitive-Looking Endpoint Accessible Without Authentication
+    status: proposed
     description: >-
       A sensitive API endpoint (HIGH or CRITICAL) returns data, as non-empty
       JSON, to a request that carried no credentials, so access control may be
@@ -560,6 +564,7 @@ checks:
   - check_id: API-001
     category: REST_API
     title: Authentication Endpoint Missing Rate-Limit Headers
+    status: proposed
     description: >-
       An authentication endpoint sends no RateLimit-*, X-RateLimit-* or
       Retry-After header, so there is no sign that brute-force attempts are
