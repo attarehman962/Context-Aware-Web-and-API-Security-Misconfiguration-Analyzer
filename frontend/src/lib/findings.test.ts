@@ -68,8 +68,8 @@ describe("rankFindings", () => {
       rankFindings(findings).map((r) => [r.finding.check_id, r.severityShift]),
     );
     expect(shift).toEqual({
-      "API-003": 0, // CRITICAL, 9.1 -> 9.8
-      "INF-003": 0, // CRITICAL, 9.1 -> 9.8
+      "API-003": 0, // CRITICAL, 9.1 -> 10.0
+      "INF-003": 0, // CRITICAL, 9.1 -> 10.0
       "CKI-003": 0, // HIGH, 7.1 -> 8.6
       "TLS-001": 0,
       "HDR-002": 0, // MEDIUM, 5.4 -> 6.4

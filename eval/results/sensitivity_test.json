@@ -1,0 +1,131 @@
+{
+  "split": "test",
+  "anchors": {
+    "n": 113,
+    "accuracy": 0.522,
+    "macro_f1": 0.518,
+    "off_by_two_or_more": 9,
+    "per_class": {
+      "LOW": {
+        "precision": 0.444,
+        "recall": 0.308,
+        "f1": 0.364,
+        "support": 39
+      },
+      "MEDIUM": {
+        "precision": 0.439,
+        "recall": 0.625,
+        "f1": 0.515,
+        "support": 40
+      },
+      "HIGH": {
+        "precision": 0.792,
+        "recall": 0.792,
+        "f1": 0.792,
+        "support": 24
+      },
+      "CRITICAL": {
+        "precision": 0.6,
+        "recall": 0.3,
+        "f1": 0.4,
+        "support": 10
+      }
+    },
+    "confusion": {
+      "LOW": {
+        "LOW": 12,
+        "MEDIUM": 25,
+        "HIGH": 2,
+        "CRITICAL": 0
+      },
+      "MEDIUM": {
+        "LOW": 13,
+        "MEDIUM": 25,
+        "HIGH": 2,
+        "CRITICAL": 0
+      },
+      "HIGH": {
+        "LOW": 1,
+        "MEDIUM": 2,
+        "HIGH": 19,
+        "CRITICAL": 2
+      },
+      "CRITICAL": {
+        "LOW": 1,
+        "MEDIUM": 5,
+        "HIGH": 1,
+        "CRITICAL": 3
+      }
+    },
+    "predicted": {
+      "LOW": 27,
+      "MEDIUM": 57,
+      "HIGH": 24,
+      "CRITICAL": 5
+    }
+  },
+  "keywords": {
+    "n": 113,
+    "accuracy": 0.425,
+    "macro_f1": 0.362,
+    "off_by_two_or_more": 34,
+    "per_class": {
+      "LOW": {
+        "precision": 0.69,
+        "recall": 0.744,
+        "f1": 0.716,
+        "support": 39
+      },
+      "MEDIUM": {
+        "precision": 0.522,
+        "recall": 0.3,
+        "f1": 0.381,
+        "support": 40
+      },
+      "HIGH": {
+        "precision": 0.429,
+        "recall": 0.125,
+        "f1": 0.194,
+        "support": 24
+      },
+      "CRITICAL": {
+        "precision": 0.098,
+        "recall": 0.4,
+        "f1": 0.157,
+        "support": 10
+      }
+    },
+    "confusion": {
+      "LOW": {
+        "LOW": 29,
+        "MEDIUM": 8,
+        "HIGH": 0,
+        "CRITICAL": 2
+      },
+      "MEDIUM": {
+        "LOW": 5,
+        "MEDIUM": 12,
+        "HIGH": 1,
+        "CRITICAL": 22
+      },
+      "HIGH": {
+        "LOW": 7,
+        "MEDIUM": 1,
+        "HIGH": 3,
+        "CRITICAL": 13
+      },
+      "CRITICAL": {
+        "LOW": 1,
+        "MEDIUM": 2,
+        "HIGH": 3,
+        "CRITICAL": 4
+      }
+    },
+    "predicted": {
+      "LOW": 42,
+      "MEDIUM": 23,
+      "CRITICAL": 41,
+      "HIGH": 7
+    }
+  }
+}

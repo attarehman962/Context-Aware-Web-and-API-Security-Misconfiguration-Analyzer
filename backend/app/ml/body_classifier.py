@@ -186,7 +186,7 @@ def _looks_binary(body: str) -> bool:
 # --------------------------------------------------------------- redaction
 
 def mask(value: str, keep: int = 4) -> str:
-    """``AKIAQ3EGRZ7X2MPLWXYZ`` -> ``AKIA****WXYZ``; short values fully masked."""
+    """``abcd1234efgh5678wxyz`` -> ``abcd****wxyz``; short values fully masked."""
     value = value.strip()
     if len(value) <= 2 * keep + 4:
         return _MASK
