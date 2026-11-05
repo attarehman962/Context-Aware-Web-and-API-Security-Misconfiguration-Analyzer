@@ -1,19 +1,20 @@
-# Owners are requested for review on PRs touching their files. Later rules win.
-# See "Team and file ownership" in CLAUDE.md. Nobody edits another person's
-# files without asking.
+# Owners are requested for review on PRs touching their files; with branch
+# protection ("require review from Code Owners") their approval is required.
+# Later rules win. See "Team and file ownership" in CLAUDE.md.
 
-# Atta: backend, engine, infra (default)
+# Atta: backend (everything not listed below), compose files, CI.
 *                                       @attarehman962
+/backend/                               @attarehman962
+/docker-compose*.yml                    @attarehman962
+/.github/                               @attarehman962
 
-# Neelam: frontend. TODO: replace with Neelam's GitHub username.
-# /frontend/                            @<neelam-github-username>
+# Neelam: frontend.
+/frontend/                              @neelamjabeen
 
-# Asim: check specs, CVSS mapping, ML, evaluation
+# Asim: check specs, CVSS mapping, ML, evaluation.
+/config/                                @Asimshakeel13
 /backend/app/ml/                        @Asimshakeel13
 /backend/app/core/checks/catalog.py     @Asimshakeel13
-/docs/05-security-checks.md             @Asimshakeel13
 /eval/                                  @Asimshakeel13
-/config/checks.yaml                     @Asimshakeel13
-/config/cvss_mapping.yaml               @Asimshakeel13
-/config/chains.yaml                     @Asimshakeel13
 /docker-compose.eval.yml                @Asimshakeel13
+/docs/05-security-checks.md             @Asimshakeel13
