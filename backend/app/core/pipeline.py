@@ -19,7 +19,8 @@ Two check systems run side by side until every rule has moved:
 
 This module is database-free: it returns dataclasses. Persistence lives in
 ``app/services/result_service.py`` and the Celery task. Progress is reported
-through an async ``on_progress`` callback so the worker can publish it to Redis.
+through an async ``on_progress`` callback; the runner stores it on the scan row,
+which the SSE route reads.
 """
 
 from __future__ import annotations

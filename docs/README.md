@@ -54,6 +54,7 @@ Each file is self-contained; start with the Overview and follow the order below.
 
 | Document | What it covers |
 |----------|----------------|
+| [Code walkthrough](walkthrough.md) | Each main module in a few lines: how it works, why, who owns it |
 | [Prompts](prompts/README.md) | The 30 Claude Code prompts we ran, one per branch |
 | [Reviews](reviews/) | Atta's reviews of partner prompts, and the [final audit](reviews/final-audit.md) before submission |
 | [Security review](security-review.md) · [Evaluation method](evaluation-method.md) · [Performance](performance.md) · [Check coverage](check-coverage.md) | The tool's own security review, how it was evaluated, scan timings, tests per check |
