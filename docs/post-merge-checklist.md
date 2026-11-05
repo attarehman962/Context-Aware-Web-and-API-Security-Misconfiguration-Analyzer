@@ -67,7 +67,7 @@ frontend's fixture copies must match, or `src/mocks/fixtures.test.ts` fails.
   `eval/ground_truth/priority_pool_<target>.csv` (`GRADING.md`), re-run
 
   ```bash
-  python eval/harness/ranking.py --scoring environmental --run 20261104T152231Z --out eval/results/final
+  python eval/harness/ranking.py --scoring environmental --run 20261105T050013Z --out eval/results/final
   ```
 
   and update the ranking section of `docs/evaluation-method.md` with the

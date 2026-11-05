@@ -40,5 +40,5 @@ When every row of a target has a grade, `ranking.py` uses the pool for that
 target instead of `priority_<target>.yaml`. Re-run:
 
 ```bash
-python eval/harness/ranking.py --scoring environmental --run 20261104T152231Z --out eval/results/final
+python eval/harness/ranking.py --scoring environmental --run 20261105T050013Z --out eval/results/final
 ```

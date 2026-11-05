@@ -36,6 +36,14 @@ the first finding of a pair gets it and repeats get 0, and pairs outside the
 pool count 0 (unjudged = not relevant, as in TREC pooling). Both versions are
 reported (``ndcg10_*`` from the priority list, ``ndcg10_pool_*`` from the pool)
 until every pool is graded; ``pool`` says which state each target is in.
+
+**Secondary, diagnostic view** (``--group-by-check``, added after the first
+results, not the headline): many findings are copies of one issue across
+endpoints. Findings are grouped by check_id per target, each group keeps its
+highest-``final_score`` finding, and the groups are ranked by base and by final
+score. A group's relevance is the highest grade of the priority items with its
+check_id (issue level: the endpoint is ignored). Writes
+``ranking_grouped_environmental.{json,md}`` with the duplication counts.
 """
 from __future__ import annotations
 
@@ -135,6 +143,71 @@ def _pool_relevances(ranked: list[ev.Finding], grades: dict[tuple[str, str], int
         out.append(grades.get(key, 0) if key not in taken else 0)
         taken.add(key)
     return out
+
+
+def _load_run(target: str, run_stamp: str | None) -> list[dict[str, Any]] | None:
+    run = (ev.RESULTS / "raw" / "cawasma" / target / run_stamp if run_stamp
+           else ev.latest("cawasma", target))
+    if run is None or not (run / "results.json").exists():
+        return None
+    return json.loads((run / "results.json").read_text())["findings"]
+
+
+def duplication(findings: list[dict[str, Any]]) -> dict[str, Any]:
+    """How many findings are copies of the same check across endpoints."""
+    counts: dict[str, int] = {}
+    for f in findings:
+        counts[f["check_id"]] = counts.get(f["check_id"], 0) + 1
+    top = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:5]
+    return {"findings": len(findings), "distinct_checks": len(counts),
+            "top5": [f"{cid} ({n})" for cid, n in top]}
+
+
+def grouped_experiment(target: str, seed: int, *, run_stamp: str | None = None,
+                       environmental_only: set[str] | None = None) -> dict[str, Any] | None:
+    """Secondary view: one finding per check_id (its highest final_score)."""
+    raw = _load_run(target, run_stamp)
+    if raw is None:
+        return None
+    kept = [f for f in raw if environmental_only is None or f.get("final_vector")]
+    best: dict[str, dict[str, Any]] = {}
+    for f in kept:
+        if f["check_id"] not in best or f["final_score"] > best[f["check_id"]]["final_score"]:
+            best[f["check_id"]] = f
+    items = load_priority(target)
+    if environmental_only is not None:
+        items = [i for i in items if i["check_id"] in environmental_only]
+    grade_of: dict[str, int] = {}
+    for i in items:
+        grade_of[i["check_id"]] = max(grade_of.get(i["check_id"], 0), int(i["grade"]))
+    ideal = sorted(grade_of.values(), reverse=True)
+    out: dict[str, Any] = {"target": target, **duplication(kept), "groups": len(best),
+                           "graded_checks": len(grade_of)}
+    for name, key in (("before", "base_score"), ("after", "final_score")):
+        rng = random.Random(seed)
+        scores = []
+        for _ in range(TIE_SAMPLES):
+            order = sorted(best.values(), key=lambda f: (-f[key], rng.random()))
+            scores.append(ndcg_at_k([grade_of.get(f["check_id"], 0) for f in order], ideal))
+        out[f"ndcg10_{name}"] = round(sum(scores) / len(scores), 3)
+    return out
+
+
+def _grouped_table(rows: list[dict[str, Any]], mean: dict[str, Any], seed: int) -> str:
+    cols = ["target", "findings", "distinct_checks", "top5", "graded_checks",
+            "ndcg10_before", "ndcg10_after"]
+    lines = ["| " + " | ".join(cols) + " |", "|" + "---|" * len(cols)]
+    for r in [*rows, mean]:
+        lines.append("| " + " | ".join(
+            ", ".join(r[c]) if isinstance(r.get(c), list)
+            else ("–" if r.get(c) is None else str(r.get(c, "–"))) for c in cols) + " |")
+    return "\n".join([
+        "SECONDARY, DIAGNOSTIC VIEW (added after the first results; not the headline). "
+        "Environmental-scored findings grouped by check_id per target, each group keeping "
+        "its highest-final_score finding; relevance = the highest priority grade of that "
+        "check (endpoint ignored).", "", *lines, "",
+        f"before = base_score, after = final_score. Mean over {TIE_SAMPLES} random "
+        f"tie-breaks (seed {seed}); descriptive only.", ""])
 
 
 def ndcg_at_k(rels: list[int], ideal: list[int], k: int = K) -> float:
@@ -240,8 +313,26 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--out", type=Path, help="write ranking.json here")
     p.add_argument("--scoring", choices=["all", "environmental"], default="all")
     p.add_argument("--run", help="raw run stamp to use for every target (default: latest)")
+    p.add_argument("--group-by-check", action="store_true",
+                   help="secondary diagnostic view: one finding per check_id")
     args = p.parse_args(argv)
     env_ids = environmental_check_ids() if args.scoring == "environmental" else None
+    if args.group_by_check:
+        grows = [r for t in ev.TARGETS
+                 if (r := grouped_experiment(t, args.seed, run_stamp=args.run,
+                                             environmental_only=env_ids)) is not None]
+        gmean: dict[str, Any] = {"target": "mean"}
+        for key in ("ndcg10_before", "ndcg10_after"):
+            gmean[key] = round(sum(r[key] for r in grows) / len(grows), 3) if grows else None
+        gresult = {"view": "secondary: grouped by check_id", "scoring": args.scoring,
+                   "seed": args.seed, "targets": grows, "mean": gmean}
+        if args.out:
+            args.out.mkdir(parents=True, exist_ok=True)
+            name = f"ranking_grouped_{args.scoring}"
+            (args.out / f"{name}.json").write_text(json.dumps(gresult, indent=2) + "\n")
+            (args.out / f"{name}.md").write_text(_grouped_table(grows, gmean, args.seed))
+        print(json.dumps(gresult, indent=2))
+        return 0
     if args.init:
         for t in ev.TARGETS:
             if (made := init_priority(t)) is not None:
