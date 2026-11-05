@@ -2,7 +2,7 @@
 
     python scripts/validate_specs.py checks   # config/checks.yaml (make validate-checks)
     python scripts/validate_specs.py all      # + cvss_mapping.yaml, chains.yaml and a
-                                              #   catalog.py score report (make validate-config)
+                                              #   catalog.py vector check (make validate-config)
 
 Exit status 0 when every file is valid, 1 otherwise. Problems are printed one
 per line as ``path: location: message``. Paths default to ``settings.CONFIG_DIR``;
@@ -21,12 +21,12 @@ from app.core.cvss31 import CvssVectorError, base_score
 from app.core.specs import SpecError, load_chains, load_checks, load_cvss_mapping
 
 
-def catalog_score_mismatches() -> list[str]:
-    """Catalog rules whose recorded base score disagrees with their own vector."""
+def catalog_vector_problems(spec_vectors: dict[str, str]) -> list[str]:
+    """Catalog vectors that don't parse, or differ from the id's checks.yaml spec."""
     out = []
     for meta in CATALOG.values():
         try:
-            computed = base_score(meta.cvss_vector)
+            base_score(meta.cvss_vector)
         except CvssVectorError as exc:
             out.append(f"{meta.rule_id}: invalid vector {meta.cvss_vector!r}: {exc}")
             continue
@@ -48,10 +48,12 @@ def main(argv: list[str] | None = None) -> int:
     ok = True
     known_ids = set(CATALOG)
     scores: dict[str, float] = {}
+    vectors: dict[str, str] = {}
     try:
         checks = load_checks(cfg / "checks.yaml")
         known_ids |= {c.check_id for c in checks.checks}
         scores = {c.check_id: c.base_score for c in checks.checks}
+        vectors = {c.check_id: c.base_cvss_vector for c in checks.checks}
         summary = ", ".join(f"{c.check_id} ({c.base_score})" for c in checks.checks)
         print(f"OK   {cfg / 'checks.yaml'}: {len(checks.checks)} checks: {summary}")
     except SpecError as exc:
@@ -79,6 +81,9 @@ def main(argv: list[str] | None = None) -> int:
             )
             for line in mismatches:
                 print(f"     {line}")
+        else:
+            print("OK   backend/app/core/checks/catalog.py: every vector parses and "
+                  "matches checks.yaml")
     return 0 if ok else 1
 
 

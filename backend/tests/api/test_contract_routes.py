@@ -96,7 +96,7 @@ async def test_results_are_ranked_with_drill_down_fields(client, seeded):
     scores = [f.final_score for f in results.findings]
     assert scores == sorted(scores, reverse=True)
     assert results.scan.status.value == "DONE"
-    assert results.scan.severity_counts.critical == 4
+    assert results.scan.severity_counts.critical == 5      # catalog vectors = checks.yaml
 
     [chain] = results.chains
     members = {f.id for f in results.findings if chain.id in f.chain_ids}
