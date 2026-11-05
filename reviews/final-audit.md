@@ -286,3 +286,28 @@ files on `atta/fix-<name>-p11-<topic>`.
 - Then the comment, docstring and naming pass: the catch-all `utils/` split
   by purpose, banner comments removed.
 - Then the docs wording pass.
+
+## Phase 2 results (2026-11-05)
+
+On `atta/p11-final-audit` (Atta's files):
+
+| Proposal | Outcome | Commit |
+|---|---|---|
+| 0 disk, one image build, failing step named | done. Freed 17 GB of build cache; `api` builds the image and `worker`/`demo-target` reuse it. The re-run found two more bugs, both fixed: the fixed network name `cawasma-backend` let the check's stack join the dev stack's network (two `postgres` hosts), and `grep -q` + `pipefail` turned a found scan id into a failure. **The clean-machine check now passes from a fresh clone of this branch.** | 5aeb12e, 82cf2ba, 70f3ca3 |
+| 1 prompts in `docs/prompts/` | done: `atta.md` (10 prompts + review, fix, final pass), README pointing to Asim's and Neelam's (they stay in `docs/project/`, which `import.sh` regenerates) | 2464655 |
+| 2 licence | **deferred** at Atta's request until after the presentation | — |
+| 3 SEC-01..07, SEC-09 | done, test first (the strict xfails). `tests/security`: 164 passed, 0 xfailed. New `api/limits.py` (shared scan rate limit, SSE cap) | 6d165bb |
+| 4 vector conflict | done in two parts: legacy findings for an id with a spec use the spec's vector (here, 6e93e62); the catalog itself is aligned on Asim's branch | 6e93e62 |
+| 5 fire/no-fire for legacy rules | done: 42 of 42 legacy rules, guard extended; `make check-coverage`: 62 of 62 checks with fire and no-fire tests, all passing | 2e61771 |
+| 6 fake secrets, `.gitleaks.toml` | done: `gitleaks git` reports no leaks; one docstring in Asim's file is on his branch | c24f7ef |
+| 7 stale CLAUDE.md lines | done (Neelam's line about `docs/04-api-reference.md` is left for Phase 3, with the deprecated routes) | b05dbb9 |
+
+For the other owners (each on its own branch, pushed to origin, for review):
+
+| Branch | Owner | What | Merge order |
+|---|---|---|---|
+| `atta/fix-asim-p11-catalog-vectors` | Asim | catalog.py takes the checks.yaml vector for the 16 conflicting ids; `base_score` computed from the vector; `validate-config` fails on disagreement | 1 |
+| `atta/fix-neelam-p11-fixtures` | Neelam | the MSW fixture copy and 5 unit tests for the new example scores (based on the branch above) | 2, with 1 |
+| `atta/fix-neelam-p11-security-headers` | Neelam | SEC-08: CSP (`frame-ancestors 'none'`, ...), nosniff, Referrer-Policy, X-Frame-Options | any |
+| `atta/fix-asim-p11-sensitivity` | Asim | Prompt 6: anchor classifier, `config/sensitivity_anchors.yaml` (`enabled: false`), `eval_sensitivity.py`; test split accuracy 0.522 vs 0.425 | any |
+| `atta/fix-asim-p11-fake-secrets` | Asim | the AWS-shaped docstring example | any |
