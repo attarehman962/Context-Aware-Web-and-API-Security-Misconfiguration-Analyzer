@@ -8,7 +8,7 @@ BACKEND := backend
 
 .DEFAULT_GOAL := help
 .PHONY: help up down lock test lint typecheck migrate seed reset logs install env \
-	validate-checks validate-config openapi ml-smoke eval-up eval-down eval-reset eval-collect
+	validate-checks validate-config coverage-stats openapi ml-smoke eval-up eval-down eval-reset eval-collect
 
 help: ## List targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-10s %s\n", $$1, $$2}'
@@ -52,6 +52,9 @@ validate-config: ## Validate checks, cvss_mapping and chains YAML; report catalo
 
 check-coverage: ## Write docs/check-coverage.md (every check id: implementation, tests, passing)
 	cd $(BACKEND) && "$(PYTHON)" scripts/check_coverage.py
+
+coverage-stats: ## Spec / ground truth / environmental vs legacy counts (for the report)
+	cd $(BACKEND) && "$(PYTHON)" scripts/coverage_stats.py
 
 openapi: ## Regenerate docs/openapi.json and docs/examples/*.json from the code (commit them)
 	cd $(BACKEND) && "$(PYTHON)" scripts/export_openapi.py

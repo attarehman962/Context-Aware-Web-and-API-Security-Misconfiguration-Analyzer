@@ -184,14 +184,15 @@ Env vars (read only through `src/lib/env.ts`):
 - `NEXT_PUBLIC_USE_MOCK`: `true` serves every API call from the MSW fixtures
   (browser and server), so no backend is needed. Build-time like the URL.
 
-The api's CORS allow-list (`FRONTEND_ORIGIN`, default `http://localhost:5173`)
-must include `http://localhost:3000` for browser calls from this app.
+The api's CORS allow-list (`FRONTEND_ORIGIN`) defaults to `http://localhost:3000`,
+this app's origin; change both together if the app is served elsewhere.
 
 Conventions:
 
 - Server Components by default; add `"use client"` only where interactivity needs it.
-- Consume the REST/report JSON with the field names in `docs/04-api-reference.md`
-  (`rule_id`, `cvss_base_score`, `cawasma_final_score`, ...); don't rename on the client.
+- Consume the REST/report JSON with the contract field names in
+  `docs/api-contract.md` (`check_id`, `base_score`, `final_score`, ...); don't
+  rename on the client.
 - Unit tests sit next to the code (`*.test.tsx`); e2e specs go in `e2e/`.
 - Lockfile: if you install with npm 11, re-run `npx npm@10 install` before
   committing, or `npm ci` fails in Docker/CI (Node 22 ships npm 10).

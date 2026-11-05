@@ -1,4 +1,4 @@
-# CAWASMA API contract v1.3.0
+# CAWASMA API contract v1.4.0
 
 The API the frontend builds against. **Frozen at the end of Sprint 1.**
 Machine-readable version: [`openapi.json`](openapi.json) (generate a typed
@@ -10,7 +10,7 @@ checked against it in CI.
 |---|---|
 | Base URL (dev) | `http://localhost:8000` |
 | Format | JSON, UTF-8. Timestamps are ISO 8601 in UTC (`2026-10-20T09:00:02Z`). Ids are UUIDs. |
-| Version header | every response carries `X-Contract-Version: 1.3.0` |
+| Version header | every response carries `X-Contract-Version: 1.4.0` |
 | Interactive docs | `http://localhost:8000/docs` (routes tagged **contract v1**) |
 | Example responses | [`examples/`](examples/): one JSON file per shape (`results-done.json`, `results-running.json`, `results-failed.json`, `scan-status-queued.json`, `scans.json`, `scan-request.json`, `error.json`), identical to what mock mode returns |
 
@@ -152,7 +152,7 @@ broken by `check_id`), so render them in the order received.
 <!-- example: ScanResults -->
 ```json
 {
-  "contract_version": "1.3.0",
+  "contract_version": "1.4.0",
   "scan": {
     "scan_id": "11111111-1111-4111-8111-111111111111",
     "url": "https://shop.example.com",
@@ -180,6 +180,7 @@ broken by `check_id`), so render them in the order received.
       "base_score": 7.5,
       "final_score": 10.0,
       "final_vector": null,
+      "scoring_method": "legacy",
       "score_reasons": [],
       "severity_bucket": "CRITICAL",
       "evidence": {
@@ -206,6 +207,7 @@ broken by `check_id`), so render them in the order received.
       "base_score": 7.4,
       "final_score": 7.4,
       "final_vector": null,
+      "scoring_method": "legacy",
       "score_reasons": [],
       "severity_bucket": "HIGH",
       "evidence": {"text": "Legacy TLS 1.0/1.1 offered", "protocols": ["TLSv1.1"]},
@@ -288,6 +290,7 @@ always describe the **whole** scan. A bad value is `422 VALIDATION_ERROR`.
 | `cvss_vector`, `base_score` | the official CVSS v3.1 base vector and score of the check |
 | `final_score` | CAWASMA's context-aware score. Label it as such: **it is not an official CVSS score** |
 | `final_vector` | *since 1.1.* `cvss_vector` plus the `CR`/`IR`/`AR` security requirements `final_score` was computed from: paste it into any CVSS v3.1 calculator and its environmental score is `final_score`. `null` for findings still scored by the interim formula |
+| `scoring_method` | *since 1.4.* `environmental` when `final_score` is the CVSS v3.1 environmental score of `final_vector`; `legacy` when it comes from the interim formula (base × context multiplier + body bonus) and `final_vector` is `null`. Always shown next to `final_score` (UI badge, CSV column, HTML/PDF report), so the two kinds of score are never mixed silently |
 | `score_reasons` | *since 1.1.* why each requirement was set, e.g. `["sensitivity:HIGH", "signal:CREDENTIALS", "CR:H<-sensitivity:HIGH+signal:CREDENTIALS", "base:5.9", "environmental:7.1"]`; `[]` when `final_vector` is `null`. Display only |
 | `severity_bucket` | `CRITICAL` ≥ 9.0, `HIGH` ≥ 7.0, `MEDIUM` ≥ 4.0, `LOW` ≥ 0.1, `INFO` (may be forced to `CRITICAL` when credentials are exposed) |
 | `evidence` | redacted JSON. `evidence.text` is always present; display other keys as key/value detail |
@@ -462,6 +465,8 @@ contract route and stays.
 
 ## Changelog
 
+- **1.4.0** (2026-11-05): additive. Findings gain `scoring_method`
+  (`environmental` | `legacy`); the CSV export gains a `scoring_method` column.
 - **1.3.0, pre-contract routes removed** (2026-11-05): the deprecated routes and
   the WebSocket are gone (section above). No contract route changed, so the
   version stays.

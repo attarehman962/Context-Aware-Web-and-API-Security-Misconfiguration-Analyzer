@@ -53,6 +53,19 @@ async def scan_id(sessionmaker_, monkeypatch):
         )
         top.evidence = {"text": RAW_EVIDENCE, "headers": {"x-debug": f"token={SECRET}"}}
         top.title = f"Leaky endpoint {XSS}"
+        # One environmental finding next to the seed's legacy ones.
+        second = (
+            (
+                await s.execute(
+                    select(Finding)
+                    .where(Finding.scan_id == sid)
+                    .order_by(Finding.final_score.desc())
+                )
+            )
+            .scalars()
+            .all()[1]
+        )
+        second.final_vector = second.cvss_vector + "/CR:L/IR:X/AR:X"
         await s.commit()
     return sid
 
@@ -196,3 +209,20 @@ def test_score_story_for_unchanged_and_legacy_scores():
 
 def test_template_is_packaged_next_to_the_code():
     assert (reports._TEMPLATES / reports.TEMPLATE).is_file()
+
+
+async def test_every_export_labels_how_each_finding_was_scored(client, scan_id):
+    live = (await client.get(f"/api/results/{scan_id}")).json()["findings"]
+    methods = {f["id"]: f["scoring_method"] for f in live}
+    assert set(methods.values()) <= {"environmental", "legacy"}
+    assert all(
+        (m == "environmental") == bool(f["final_vector"])
+        for f, m in zip(live, methods.values(), strict=True)
+    )
+    rows = list(csv.DictReader(io.StringIO((await _export(client, scan_id, "csv")).text)))
+    assert {r["id"]: r["scoring_method"] for r in rows} == methods
+    html = (await _export(client, scan_id, "html")).text
+    legacy = sum(1 for m in methods.values() if m == "legacy")
+    assert 0 < legacy < len(methods), "the fixture should hold both kinds"
+    assert html.count("legacy interim formula") == legacy
+    assert html.count("CVSS v3.1 environmental</span>") == len(methods) - legacy
