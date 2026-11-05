@@ -1,4 +1,5 @@
 """Check registry (Atta Prompt 5): registration and cross-validation with checks.yaml."""
+
 from __future__ import annotations
 
 import logging
@@ -48,7 +49,7 @@ def test_spec_without_implementation_only_warns(clean_registry, caplog):
 
 def test_shipped_registry_matches_checks_yaml():
     registry.load_implementations()
-    missing = validate_registry(registry.load_specs())     # must not raise
+    missing = validate_registry(registry.load_specs())  # must not raise
     assert {"HDR-001", "TLS-009"} <= set(registry.CHECKS)
     assert "HDR-001" not in missing
 

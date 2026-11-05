@@ -1,4 +1,5 @@
 """Contract v1 routes, against the database and in MOCK_API mode."""
+
 from __future__ import annotations
 
 import contextlib
@@ -15,8 +16,13 @@ from app.config import settings
 
 pytestmark = pytest.mark.asyncio
 
-BODY = {"url": "https://example.com", "authorisation_confirmed": True,
-        "crawl_depth": 1, "use_wordlist": False, "passive_only": True}
+BODY = {
+    "url": "https://example.com",
+    "authorisation_confirmed": True,
+    "crawl_depth": 1,
+    "use_wordlist": False,
+    "passive_only": True,
+}
 
 
 @pytest.fixture
@@ -52,7 +58,8 @@ def mock_mode(monkeypatch):
     monkeypatch.setattr(settings, "MOCK_API", True)
 
 
-# ------------------------------------------------------------- real mode
+# Real mode
+
 
 async def test_start_scan_queues_with_options(client):
     r = await client.post("/api/scan", json=BODY)
@@ -64,15 +71,18 @@ async def test_start_scan_queues_with_options(client):
     assert r.headers["X-Contract-Version"] == CONTRACT_VERSION
 
 
-@pytest.mark.parametrize("body, status, code", [
-    ({**BODY, "authorisation_confirmed": False}, 422, "VALIDATION_ERROR"),
-    ({"url": "https://example.com"}, 422, "VALIDATION_ERROR"),
-    ({**BODY, "crawl_depth": 5}, 422, "VALIDATION_ERROR"),
-    ({**BODY, "url": "http://example.com"}, 400, "INVALID_TARGET"),
-    ({**BODY, "url": "https://127.0.0.1"}, 400, "INVALID_TARGET"),
-    ({**BODY, "url": "https://localhost"}, 400, "INVALID_TARGET"),
-    ({**BODY, "url": "https://10.0.0.5:8443"}, 400, "INVALID_TARGET"),
-])
+@pytest.mark.parametrize(
+    "body, status, code",
+    [
+        ({**BODY, "authorisation_confirmed": False}, 422, "VALIDATION_ERROR"),
+        ({"url": "https://example.com"}, 422, "VALIDATION_ERROR"),
+        ({**BODY, "crawl_depth": 5}, 422, "VALIDATION_ERROR"),
+        ({**BODY, "url": "http://example.com"}, 400, "INVALID_TARGET"),
+        ({**BODY, "url": "https://127.0.0.1"}, 400, "INVALID_TARGET"),
+        ({**BODY, "url": "https://localhost"}, 400, "INVALID_TARGET"),
+        ({**BODY, "url": "https://10.0.0.5:8443"}, 400, "INVALID_TARGET"),
+    ],
+)
 async def test_start_scan_rejects(client, body, status, code):
     r = await client.post("/api/scan", json=body)
     assert r.status_code == status, r.text
@@ -86,7 +96,7 @@ async def test_results_are_ranked_with_drill_down_fields(client, seeded):
     scores = [f.final_score for f in results.findings]
     assert scores == sorted(scores, reverse=True)
     assert results.scan.status.value == "DONE"
-    assert results.scan.severity_counts.critical == 5      # catalog vectors = checks.yaml
+    assert results.scan.severity_counts.critical == 5  # catalog vectors = checks.yaml
 
     [chain] = results.chains
     members = {f.id for f in results.findings if chain.id in f.chain_ids}
@@ -105,9 +115,14 @@ async def test_unknown_and_malformed_ids(client):
     assert (await client.get("/api/results/not-a-uuid")).status_code == 422
 
 
-@pytest.mark.parametrize("fmt, media", [
-    ("json", "application/json"), ("csv", "text/csv"), ("html", "text/html"),
-])
+@pytest.mark.parametrize(
+    "fmt, media",
+    [
+        ("json", "application/json"),
+        ("csv", "text/csv"),
+        ("html", "text/html"),
+    ],
+)
 async def test_export_formats(client, seeded, fmt, media):
     r = await client.get(f"/api/results/{seeded}/export", params={"format": fmt})
     assert r.status_code == 200, r.text
@@ -136,7 +151,8 @@ async def test_scan_history_newest_first(client, seeded):
     assert body["items"][0]["scan_id"] == str(seeded)  # the rescan is newer
 
 
-# ------------------------------------------------------------- mock mode
+# Mock mode
+
 
 async def test_mock_mode_serves_every_example_state(client, mock_mode):
     for scan_id, results in mock.RESULTS.items():

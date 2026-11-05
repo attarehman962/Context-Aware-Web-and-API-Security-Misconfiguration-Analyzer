@@ -4,6 +4,7 @@ Reports service metadata plus a best-effort liveness probe for PostgreSQL and
 Redis. Dependency failures are reported per-dependency rather than crashing the
 endpoint, so the frontend can show partial-availability states.
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter

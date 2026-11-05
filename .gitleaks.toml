@@ -1,0 +1,24 @@
+# gitleaks config: the default rules, plus the fake values our tests need.
+#   gitleaks git --config .gitleaks.toml .     (history)
+#   gitleaks dir --config .gitleaks.toml backend   (working tree)
+[extend]
+useDefault = true
+
+[allowlist]
+description = "fake secrets in test fixtures and in commits before 2026-11-05"
+# Response bodies the body classifier must flag; every value is made up.
+paths = ['''backend/tests/fixtures/bodies/''']
+# Commits that added made-up, provider-shaped test values (Stripe-, JWT- and
+# AWS-shaped), since replaced by cawasma-fake-* or assembled at run time. None
+# was ever a real credential; history is kept as it is. The last one is the
+# audit report, which quoted one of them.
+commits = [
+  "333203753df8d8c3437e14bbb16022999ff9e5b1",
+  "2f73266381607dbe7e0f0bc2b2ce6a68ad715159",
+  "6f48349e3aa85f93f036d915438912969003a912",
+  "86be81d937d79c1fab261bc609203725a7a05f0f",
+  "2f1c3776bb959991679de87506a80a66d19fbbe8",
+  "39e3971e4f2fb82f7f8812d4a689c1a1dd2997ce",
+  "c1b474a34e05eefc6e5d6b6cf1b3255cf74933c2",
+  "ab976c05bf319d226b4a95c9efc5d49f5923be01",
+]

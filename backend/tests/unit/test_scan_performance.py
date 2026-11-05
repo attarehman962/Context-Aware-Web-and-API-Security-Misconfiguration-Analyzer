@@ -1,6 +1,7 @@
 """Performance work (Atta Prompt 10): request de-duplication, concurrency that
 keeps results deterministic, stage timings; plus the discovery fixes for the
 eval false negatives (API-003: /rest/ and relative JS routes, OpenAPI paths)."""
+
 from __future__ import annotations
 
 import asyncio
@@ -29,7 +30,8 @@ def public_dns(monkeypatch):
     monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
 
 
-# ------------------------------------------------------------------ cache
+# Cache
+
 
 async def test_plain_gets_are_sent_once_per_scan(public_dns):
     async with HttpEngine(scope_host="site.example") as eng:
@@ -38,7 +40,7 @@ async def test_plain_gets_are_sent_once_per_scan(public_dns):
             first = await eng.fetch("https://site.example/a")
             again = await eng.fetch("https://site.example/a")
     assert route.call_count == 1 and eng.cache_hits == 1
-    assert again.body == "hi" and again is not first            # each caller gets a copy
+    assert again.body == "hi" and again is not first  # each caller gets a copy
 
 
 async def test_concurrent_identical_gets_share_one_request(public_dns):
@@ -73,38 +75,53 @@ async def test_cache_can_be_disabled(public_dns):
     assert route.call_count == 2
 
 
-# ---------------------------------------------------------------- crawler
+# Crawler
+
 
 async def test_js_routes_beyond_api_are_discovered(public_dns):
-    js = ('const a = "/rest/user/login"; this.http.get(this.host + "/api/Products");'
-          ' const b = "rest/basket"; const c = `/v1/books`; const d = "//cdn.example/x.js";')
+    js = (
+        'const a = "/rest/user/login"; this.http.get(this.host + "/api/Products");'
+        ' const b = "rest/basket"; const c = `/v1/books`; const d = "//cdn.example/x.js";'
+    )
     page = f"<html><head><script>{js}</script></head><body></body></html>"
     async with HttpEngine(scope_host="site.example") as eng:
         with respx.mock(assert_all_called=False) as mock:
-            mock.get("https://site.example/").respond(200, text=page,
-                                                      headers={"Content-Type": "text/html"})
+            mock.get("https://site.example/").respond(
+                200, text=page, headers={"Content-Type": "text/html"}
+            )
             mock.route().respond(404)
             found = await Crawler(eng, use_wordlist=False).crawl("https://site.example/")
     urls = {e.url for e in found}
-    assert {"https://site.example/rest/user/login", "https://site.example/api/Products",
-            "https://site.example/rest/basket", "https://site.example/v1/books"} <= urls
+    assert {
+        "https://site.example/rest/user/login",
+        "https://site.example/api/Products",
+        "https://site.example/rest/basket",
+        "https://site.example/v1/books",
+    } <= urls
     assert not any("cdn.example" in u for u in urls)
 
 
 async def test_openapi_documents_add_their_concrete_get_paths(public_dns):
-    spec = {"openapi": "3.0.1", "paths": {
-        "/users/v1": {"get": {}}, "/users/v1/_debug": {"get": {}},
-        "/users/v1/{username}": {"get": {}},        # templated: needs a value
-        "/users/v1/register": {"post": {}},         # not a GET
-        "/createdb": {"get": {}},                    # GET that resets the database
-        "/users/v1/logout": {"get": {}},
-        "/books/v1": {"get": {}, "post": {}}}}
+    spec = {
+        "openapi": "3.0.1",
+        "paths": {
+            "/users/v1": {"get": {}},
+            "/users/v1/_debug": {"get": {}},
+            "/users/v1/{username}": {"get": {}},  # templated: needs a value
+            "/users/v1/register": {"post": {}},  # not a GET
+            "/createdb": {"get": {}},  # GET that resets the database
+            "/users/v1/logout": {"get": {}},
+            "/books/v1": {"get": {}, "post": {}},
+        },
+    }
     async with HttpEngine(scope_host="site.example") as eng:
         with respx.mock(assert_all_called=False) as mock:
-            mock.get("https://site.example/").respond(200, text="{}",
-                                                      headers={"Content-Type": "text/html"})
+            mock.get("https://site.example/").respond(
+                200, text="{}", headers={"Content-Type": "text/html"}
+            )
             mock.get("https://site.example/openapi.json").respond(
-                200, text=json.dumps(spec), headers={"Content-Type": "application/json"})
+                200, text=json.dumps(spec), headers={"Content-Type": "application/json"}
+            )
             mock.route().respond(404)
             found = await Crawler(eng).crawl("https://site.example/")
     paths = {e.path for e in found}
@@ -122,7 +139,8 @@ async def test_crawl_result_order_is_deterministic():
     assert first == second and first[0].rstrip("/") == base.rstrip("/")
 
 
-# --------------------------------------------------------------- pipeline
+# Pipeline
+
 
 async def test_scan_reports_stage_timings_and_request_count():
     with mock_server() as base:
@@ -178,12 +196,23 @@ async def test_progress_counts_only_go_up_under_concurrency():
     assert checked == sorted(checked) and pcts == sorted(pcts)
 
 
-@pytest.mark.parametrize("path, changes", [
-    ("/createdb", True), ("/api/reset", True), ("/rest/user/logout", True),
-    ("/api/users/delete_all", True), ("/setup.php", True), ("/install/", True),
-    ("/api/Products", False), ("/rest/user/login", False), ("/created-items", False),
-    ("/users/v1/_debug", False), ("/settings", False),
-])
+@pytest.mark.parametrize(
+    "path, changes",
+    [
+        ("/createdb", True),
+        ("/api/reset", True),
+        ("/rest/user/logout", True),
+        ("/api/users/delete_all", True),
+        ("/setup.php", True),
+        ("/install/", True),
+        ("/api/Products", False),
+        ("/rest/user/login", False),
+        ("/created-items", False),
+        ("/users/v1/_debug", False),
+        ("/settings", False),
+    ],
+)
 def test_state_changing_routes_are_recognised(path, changes):
     from app.core.crawler import _state_changing
+
     assert _state_changing("https://site.example" + path) is changes

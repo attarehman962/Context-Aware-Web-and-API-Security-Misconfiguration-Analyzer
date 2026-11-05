@@ -8,6 +8,7 @@ can never disagree with its vector.
 Environmental metrics (CR/IR/AR and modified base metrics) are not handled yet;
 see "Current state vs goal" in CLAUDE.md.
 """
+
 from __future__ import annotations
 
 import math
@@ -59,7 +60,7 @@ def parse_base_vector(vector: str) -> BaseVector:
     """
     if not isinstance(vector, str) or not vector.startswith(PREFIX):
         raise CvssVectorError(f"must start with {PREFIX!r}")
-    parts = vector[len(PREFIX):].split("/")
+    parts = vector[len(PREFIX) :].split("/")
     metrics: dict[str, str] = {}
     for part in parts:
         name, sep, value = part.partition(":")

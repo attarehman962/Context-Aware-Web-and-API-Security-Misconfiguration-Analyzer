@@ -8,6 +8,7 @@ Exit status 0 when every file is valid, 1 otherwise. Problems are printed one
 per line as ``path: location: message``. Paths default to ``settings.CONFIG_DIR``;
 override with ``--config-dir``.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -77,8 +78,10 @@ def main(argv: list[str] | None = None) -> int:
             for line in problems:
                 print(f"     {line}")
         else:
-            print("OK   backend/app/core/checks/catalog.py: every vector parses and "
-                  "matches checks.yaml")
+            print(
+                "OK   backend/app/core/checks/catalog.py: every vector parses and "
+                "matches checks.yaml"
+            )
     return 0 if ok else 1
 
 

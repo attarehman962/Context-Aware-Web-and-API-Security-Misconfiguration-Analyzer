@@ -22,6 +22,8 @@
  pre{white-space:pre-wrap;word-break:break-all;background:#fafafa;padding:.5rem;border:1px solid #eee;margin:.3rem 0}
  .finding{border:1px solid #ddd;border-radius:4px;padding:.6rem .8rem;margin:.7rem 0;page-break-inside:avoid}
  .story li{margin:.1rem 0}
+ .method{font-size:.7rem;padding:1px 5px;border:1px solid #0f766e;color:#0f766e;border-radius:3px;margin-left:.3rem}
+ .method.legacy{border-color:#92400e;color:#92400e}
  .counts td{text-align:center;font-weight:bold;font-size:1rem}
 </style></head><body>
 <h1>CAWASMA Security Report</h1>
@@ -76,6 +78,8 @@ scored with its own CVSS v3.1 vector (composite score).</p>
 <tr><th style="width:9rem">CVSS v3.1 base</th><td><strong>{{ f.cvss_base_score }}</strong>
  <span class="vec">{{ f.cvss_vector or "—" }}</span></td></tr>
 <tr><th>Context-aware final</th><td><strong>{{ f.cawasma_final_score }}</strong>
+ {% if f.scoring_method == "legacy" %}<span class="method legacy">legacy interim formula</span>
+ {%- else %}<span class="method">CVSS v3.1 environmental</span>{% endif %}
  {% if f.final_vector %}<span class="vec">{{ f.final_vector }}</span>{% endif %}</td></tr>
 <tr><th>Why it differs</th><td><ul class="story">
  {% for line in f.score_story %}<li>{{ line }}</li>{% endfor %}</ul></td></tr>

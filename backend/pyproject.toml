@@ -52,9 +52,7 @@ ml = [
     "spacy==3.8.2",
     "preshed==3.0.9",          # 3.0.10+ breaks spacy.load (see requirements-ml.txt)
     "en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
-    "scikit-learn==1.6.0",
-    "pandas==2.2.3",
-    "matplotlib==3.9.3",
+    "matplotlib==3.9.3",       # eval/ figures; scikit-learn comes with sentence-transformers
 ]
 
 [build-system]
@@ -67,18 +65,23 @@ include = ["app*", "scripts*"]
 [tool.setuptools.package-data]
 app = ["data/*.txt", "templates/*.j2"]
 
-# ---------------------------------------------------------------- pytest
+# Pytest
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 filterwarnings = ["ignore::DeprecationWarning"]
 
-# ---------------------------------------------------------------- ruff
+# Ruff
 [tool.ruff]
 target-version = "py312"
 line-length = 100
 extend-exclude = ["migrations/versions"]
+
+[tool.ruff.format]
+# Asim's files are formatted once his open branches (catalog vectors, sensitivity,
+# fake secrets) are merged, so the formatting doesn't conflict with them.
+exclude = ["app/ml/*", "app/core/checks/catalog.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "ASYNC", "S", "BLE"]
@@ -96,7 +99,7 @@ ignore = [
 [tool.ruff.lint.isort]
 known-first-party = ["app"]
 
-# ---------------------------------------------------------------- mypy
+# Mypy
 [tool.mypy]
 python_version = "3.12"
 packages = ["app", "scripts"]

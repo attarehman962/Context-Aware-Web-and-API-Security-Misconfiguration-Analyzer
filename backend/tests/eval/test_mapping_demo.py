@@ -1,4 +1,5 @@
 """eval/harness/mapping_demo.py uses the real check vectors (review asim-p04 #11)."""
+
 from __future__ import annotations
 
 from pathlib import Path

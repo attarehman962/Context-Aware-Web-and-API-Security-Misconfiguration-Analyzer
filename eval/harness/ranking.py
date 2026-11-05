@@ -1,6 +1,8 @@
 """Before/after ranking experiment (Asim Prompt 10).
 
     python eval/harness/ranking.py [--init] [--seed 13] [--out eval/results/final]
+    python eval/harness/ranking.py --scoring environmental --run 20261104T152231Z \
+        --out eval/results/final     # the reported experiment
 
 For each target, CAWASMA's findings from the latest raw run are ranked two ways:
 
@@ -19,6 +21,13 @@ two human judgements, never from CAWASMA's output: the issue type's impact tier
 (``IMPACT``) and the endpoint's hand label (``eval/labels/endpoints_labelled.csv``).
 Edit the grades and order by hand afterwards: the file is the ground truth, not
 this rule.
+
+``--scoring environmental`` runs the experiment on environmental-scored findings
+only (``final_vector`` set), against the priority items whose check is scored
+that way. Legacy findings' ``final_score`` comes from the interim formula, a
+different scale, so mixing them in would not test the CVSS environmental method.
+It writes ``ranking_environmental.json`` and ``.md`` instead of ``ranking.json``.
+``--run`` picks a raw run by its stamp (default: each target's latest).
 """
 from __future__ import annotations
 
@@ -125,15 +134,32 @@ def rank(findings: list[tuple[ev.Finding, float]], rng: random.Random) -> list[e
     return [f for _, _, f in sorted(keyed, key=lambda x: (x[0], x[1]))]
 
 
-def experiment(target: str, seed: int) -> dict[str, Any] | None:
-    run = ev.latest("cawasma", target)
-    if run is None:
+def environmental_check_ids() -> set[str]:
+    """Checks the scanner scores with CVSS environmental metrics (spec registry)."""
+    sys.path.insert(0, str(ev.ROOT / "backend"))
+    from app.core.checks import registry
+
+    registry.load_implementations()
+    return set(registry.CHECKS)
+
+
+def experiment(target: str, seed: int, *, run_stamp: str | None = None,
+               environmental_only: set[str] | None = None) -> dict[str, Any] | None:
+    """``environmental_only``: keep only findings with a final_vector, and only the
+    priority items whose check is in this set."""
+    run = (ev.RESULTS / "raw" / "cawasma" / target / run_stamp if run_stamp
+           else ev.latest("cawasma", target))
+    if run is None or not (run / "results.json").exists():
         return None
     raw = json.loads((run / "results.json").read_text())
+    kept = [f for f in raw["findings"]
+            if environmental_only is None or f.get("final_vector")]
     findings = [(ev.Finding("cawasma", target, f["check_id"],
                             ev.normalise_endpoint(f.get("endpoint_url")), f["check_id"]), f)
-                for f in raw["findings"]]
+                for f in kept]
     items = load_priority(target)
+    if environmental_only is not None:
+        items = [i for i in items if i["check_id"] in environmental_only]
     ideal = [int(i["grade"]) for i in items]
     out: dict[str, Any] = {"target": target, "run": run.name, "findings": len(findings),
                            "priority_items": len(items),
@@ -152,28 +178,52 @@ def experiment(target: str, seed: int) -> dict[str, Any] | None:
     return out
 
 
+def _table(result: dict[str, Any]) -> str:
+    cols = ["target", "findings", "priority_items", "critical_items", "ndcg10_before",
+            "ndcg10_after", "first_critical_before", "first_critical_after"]
+    lines = ["| " + " | ".join(cols) + " |", "|" + "---|" * len(cols)]
+    for r in [*result["targets"], result["mean"]]:
+        lines.append("| " + " | ".join("–" if r.get(c) is None else str(r.get(c, "–"))
+                                       for c in cols) + " |")
+    return "\n".join([
+        "Ranking experiment on environmental-scored findings only (final_vector set), "
+        "against the priority items whose check is scored that way.", "",
+        *lines, "",
+        f"before = base_score, after = final_score (CVSS v3.1 environmental). Mean over "
+        f"{result['tie_samples']} random tie-breaks (seed {result['seed']}); "
+        "descriptive only, no significance claimed.", ""])
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     p.add_argument("--init", action="store_true", help="write missing priority templates")
     p.add_argument("--seed", type=int, default=13)
     p.add_argument("--out", type=Path, help="write ranking.json here")
+    p.add_argument("--scoring", choices=["all", "environmental"], default="all")
+    p.add_argument("--run", help="raw run stamp to use for every target (default: latest)")
     args = p.parse_args(argv)
+    env_ids = environmental_check_ids() if args.scoring == "environmental" else None
     if args.init:
         for t in ev.TARGETS:
             if (made := init_priority(t)) is not None:
                 print(f"wrote {made.relative_to(ev.ROOT)}")
-    rows = [r for t in ev.TARGETS if (r := experiment(t, args.seed)) is not None]
+    rows = [r for t in ev.TARGETS
+            if (r := experiment(t, args.seed, run_stamp=args.run,
+                                environmental_only=env_ids)) is not None]
     mean = {"target": "mean"}
     for key in ("ndcg10_before", "ndcg10_after", "first_critical_before",
                 "first_critical_after"):
         vals = [r[key] for r in rows if r[key] is not None]
         mean[key] = round(sum(vals) / len(vals), 3) if vals else None
-    result = {"k": K, "tie_samples": TIE_SAMPLES, "seed": args.seed, "targets": rows,
-              "mean": mean}
+    result = {"k": K, "tie_samples": TIE_SAMPLES, "seed": args.seed, "scoring": args.scoring,
+              "targets": rows, "mean": mean}
     text = json.dumps(result, indent=2)
     if args.out:
         args.out.mkdir(parents=True, exist_ok=True)
-        (args.out / "ranking.json").write_text(text + "\n")
+        name = "ranking" if args.scoring == "all" else "ranking_environmental"
+        (args.out / f"{name}.json").write_text(text + "\n")
+        if args.scoring == "environmental":
+            (args.out / f"{name}.md").write_text(_table(result))
     print(text)
     return 0
 

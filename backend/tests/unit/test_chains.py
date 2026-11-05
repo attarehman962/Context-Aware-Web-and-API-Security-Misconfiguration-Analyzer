@@ -1,4 +1,5 @@
 """Attack chains from config/chains.yaml (core/chains.py, docs/chain-templates.md)."""
+
 from __future__ import annotations
 
 from app.core.chains import ChainEndpoint, ChainMember, correlate, load_templates
@@ -32,8 +33,8 @@ def test_no_findings_no_chains():
 
 def test_c001_needs_both_groups_on_the_same_host():
     eps = [_ep("/"), _ep("/login", HIGH)]
-    assert "C001" in _codes([_m("CKI-001", 1), _m("HDR-013", 0)], eps)   # across endpoints
-    assert "C001" not in _codes([_m("CKI-001", 1)], eps)                  # CSP group empty
+    assert "C001" in _codes([_m("CKI-001", 1), _m("HDR-013", 0)], eps)  # across endpoints
+    assert "C001" not in _codes([_m("CKI-001", 1)], eps)  # CSP group empty
 
 
 def test_c002_error_disclosure_plus_banner():
@@ -45,16 +46,16 @@ def test_c002_error_disclosure_plus_banner():
 def test_c003_needs_cors_on_a_sensitive_endpoint_itself():
     eps = [_ep("/api/account", HIGH), _ep("/", LOW)]
     assert "C003" in _codes([_m("COR-002", 0)], eps)
-    assert "C003" not in _codes([_m("COR-002", 1)], eps)   # CORS only on a LOW endpoint
+    assert "C003" not in _codes([_m("COR-002", 1)], eps)  # CORS only on a LOW endpoint
 
 
 def test_c004_uses_a_host_level_member_and_any_sensitive_endpoint_on_the_host():
     eps = [_ep("/", LOW), _ep("/login", HIGH)]
-    members = [_m("HDR-001", 0), _m("TLS-005", None)]      # TLS-005 is host-level
+    members = [_m("HDR-001", 0), _m("TLS-005", None)]  # TLS-005 is host-level
     [chain] = [c for c in correlate(members, eps) if c.code == "C004"]
     assert chain.evidence["context"]["endpoint_sensitivity"] == ["HIGH"]
     assert sorted(chain.member_indexes) == [0, 1]
-    assert "C004" not in _codes(members, [_ep("/", LOW)])   # no sensitive endpoint on host
+    assert "C004" not in _codes(members, [_ep("/", LOW)])  # no sensitive endpoint on host
 
 
 def test_c005_needs_credentials_in_the_exposed_response():
@@ -67,15 +68,17 @@ def test_a_chain_fires_once_per_unit_and_lists_only_its_members():
     eps = [_ep("/a", HIGH), _ep("/b", HIGH)]
     members = [_m("COR-002", 0), _m("COR-002", 1), _m("HDR-007", 1)]
     c003 = [c for c in correlate(members, eps) if c.code == "C003"]
-    assert [c.member_indexes for c in c003] == [[0], [1]]   # one per endpoint
+    assert [c.member_indexes for c in c003] == [[0], [1]]  # one per endpoint
     assert c003[0].evidence["scope"] == {"kind": "endpoint", "value": f"https://{HOST}/a"}
     assert c003[0].evidence["groups"] == [["COR-002"]]
 
 
 def test_chain_score_is_the_composite_vector_score():
-    [chain] = [c for c in correlate([_m("INF-003", 0)],
-                                    [_ep("/.env", LOW, BodySignal.CREDENTIALS)])
-               if c.code == "C005"]
+    [chain] = [
+        c
+        for c in correlate([_m("INF-003", 0)], [_ep("/.env", LOW, BodySignal.CREDENTIALS)])
+        if c.code == "C005"
+    ]
     template = {t.chain_id: t for t in load_templates()}["C005"]
     assert chain.composite_vector == template.composite_cvss_vector
     assert chain.composite_score == template.score

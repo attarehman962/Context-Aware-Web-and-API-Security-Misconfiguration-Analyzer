@@ -8,12 +8,13 @@ finding and kept **strictly separate**:
 
 CAWASMA never claims the final number is an official CVSS score.
 
-## Target model: CVSS v3.1 environmental scoring
+## CVSS v3.1 environmental scoring
 
 Implemented in `backend/app/core/cvss.py` (`environmental_score`,
-`score_finding`), as the SRS requires. Not yet used by the scan pipeline: the
-legacy catalog rules still use the interim formula below until they move to
-`config/checks.yaml`.
+`score_finding`), as the SRS requires. The pipeline scores the 25 spec-registry
+checks this way (`final_vector` and `score_reasons` are stored); the 37 legacy
+catalog rules still use the interim formula below until they move to
+`config/checks.yaml` (`docs/check-coverage.md`).
 
 1. Start from the check's official CVSS v3.1 **base** vector (`checks.yaml`).
 2. Look up the endpoint's sensitivity class and the response's body signals in

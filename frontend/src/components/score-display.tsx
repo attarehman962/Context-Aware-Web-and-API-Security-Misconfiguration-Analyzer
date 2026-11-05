@@ -1,7 +1,7 @@
 import { ArrowRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import type { Severity } from "@/lib/api-types";
+import type { Finding, Severity } from "@/lib/api-types";
 import { SEVERITY, severityFromScore } from "@/lib/severity";
 
 export interface ScoreDisplayProps {
@@ -11,6 +11,9 @@ export interface ScoreDisplayProps {
   final: number;
   /** The finding's `severity_bucket`; defaults to the CVSS rating of `final`. */
   severity?: Severity;
+  /** How `final` was computed (`scoring_method`). "legacy" adds a badge: the
+   * interim formula is a different scale from the CVSS environmental score. */
+  method?: Finding["scoring_method"];
   /** Hide the captions under the numbers (tables). */
   compact?: boolean;
   className?: string;
@@ -29,6 +32,7 @@ export function ScoreDisplay({
   base,
   final,
   severity,
+  method,
   compact = false,
   className,
 }: ScoreDisplayProps) {
@@ -39,13 +43,18 @@ export function ScoreDisplay({
   const summary = changed
     ? `CVSS base score ${formatScore(base)}, ${direction} by context to ${formatScore(final)} (${SEVERITY[finalSeverity].label})`
     : `Score ${formatScore(final)} (${SEVERITY[finalSeverity].label}); context did not change the CVSS base score`;
+  const legacy = method === "legacy";
 
   return (
     <span
       data-changed={changed}
       className={cn("inline-flex items-start gap-1.5 tabular-nums", className)}
     >
-      <span className="sr-only">{summary}</span>
+      <span className="sr-only">
+        {summary}
+        {legacy &&
+          ". Legacy score: CAWASMA's interim formula, not a CVSS environmental score"}
+      </span>
       {changed && (
         <>
           <Score
@@ -67,6 +76,16 @@ export function ScoreDisplay({
         caption={changed ? "Context-aware" : "Score"}
         compact={compact}
       />
+      {legacy && (
+        <span
+          aria-hidden
+          data-scoring-method="legacy"
+          title="Scored with CAWASMA's interim formula (base × context multiplier + body bonus), not with CVSS environmental metrics"
+          className="mt-0.5 rounded border border-amber-700/50 px-1 text-[0.65rem] leading-4 text-amber-800 dark:text-amber-300"
+        >
+          Legacy
+        </span>
+      )}
     </span>
   );
 }

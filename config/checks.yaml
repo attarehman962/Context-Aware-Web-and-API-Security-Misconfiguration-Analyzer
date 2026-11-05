@@ -408,70 +408,95 @@ checks:
     category: INFO_DISCLOSURE
     title: .env file exposed
     description: >-
-      The response body contains markers associated with .env, Git metadata,
-      private keys, or backup files, indicating sensitive deployment content.
-    # Split from the combined exposure check: matches three or more KEY=value lines, as in a .env file.
+      A .env file is served: environment variables (KEY=value lines) that often
+      hold database passwords, API keys and other secrets.
+    # PROPOSED 2026-11-05 (Atta, from Asim's answers; for Asim to review). Artifact
+    # path: a last path segment of exactly .env or .env.*, at the root or under any
+    # directory. Fires on 200, not HTML, not the soft-404 page, with a KEY= line.
     http_condition:
       method: GET
       scope: every_endpoint
       match: all
       rules:
+        - status: in
+          value: [200]
         - body: matches
-          value: "(?m)(?:^[A-Z][A-Z0-9_]{2,}=[^\\n]*\\n?){3,}"
+          value: "(?m)^[A-Z][A-Z0-9_]*="
+    artifact:
+      path: "(?:^|/)\\.env(?:\\.[^/]+)?$"
+      probe: [/.env, /.env.local, /.env.production, /.env.bak]
+      not_html: true
+      not_soft_404: true
     owasp: [A05:2021]
     cwe: [CWE-538]
     # Exposed configuration or keys can directly disclose credentials and enable compromise.
     base_cvss_vector: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N
     recommendation: "Remove exposed artifacts, rotate disclosed secrets, and deny access at the server."
     limitation: >-
-      The engine should apply this to responses from discovered artifact-like
-      paths and redact matched evidence before storage or reporting.
+      Probes fixed paths at the root and judges any discovered .env path; it
+      does not request .env under every directory. Evidence is redacted.
 
   - check_id: INF-004
     category: INFO_DISCLOSURE
     title: .git repository exposed
     description: >-
-      The response body contains markers associated with .env, Git metadata,
-      private keys, or backup files, indicating sensitive deployment content.
-    # Split from the combined exposure check: matches Git metadata (HEAD ref, [core] config, .git/ paths).
+      The .git directory is served: its HEAD or config file is readable, so the
+      repository (source code, history, sometimes credentials) can be rebuilt.
+    # PROPOSED 2026-11-05 (Atta, from Asim's answers; for Asim to review). Probes
+    # /.git/HEAD and /.git/config; fires on 200, not HTML, not the soft-404 page,
+    # when HEAD is a ref or a 40-hex SHA or config has [core]. A 404 page that only
+    # quotes ".git/HEAD" no longer fires.
     http_condition:
       method: GET
       scope: every_endpoint
       match: all
       rules:
+        - status: in
+          value: [200]
         - body: matches
-          value: "(?m)(?:^\\[core\\]\\s*$|^ref: refs/heads/|\\.git(?:/|\\\\)(?:HEAD|config|index))"
+          value: "(?m)\\A\\s*(?:ref: refs/heads/\\S+|[0-9a-f]{40})\\s*\\Z|^\\[core\\]\\s*$"
+    artifact:
+      path: "(?:^|/)\\.git/(?:HEAD|config)$"
+      probe: [/.git/HEAD, /.git/config]
+      not_html: true
+      not_soft_404: true
     owasp: [A05:2021]
     cwe: [CWE-538]
     # Exposed configuration or keys can directly disclose credentials and enable compromise.
     base_cvss_vector: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N
-    recommendation: "Remove exposed artifacts, rotate disclosed secrets, and deny access at the server."
-    limitation: >-
-      The engine should apply this to responses from discovered artifact-like
-      paths and redact matched evidence before storage or reporting.
+    recommendation: "Deny access to /.git at the server, and keep the repository out of the web root."
 
   - check_id: INF-005
     category: INFO_DISCLOSURE
     title: Backup / archive file exposed
     description: >-
-      The response body contains markers associated with .env, Git metadata,
-      private keys, or backup files, indicating sensitive deployment content.
-    # Split from the combined exposure check: matches backup/dump archive names or a private key block.
+      A backup, editor or archive copy of a file is served (.bak, .old, .swp, a
+      .zip or .sql dump), which can disclose source code, data or credentials.
+    # PROPOSED 2026-11-05 (Atta, from Asim's answers; for Asim to review). Judges
+    # discovered paths ending in a backup or archive suffix, and probes a small
+    # fixed list. Fires on 200 with a non-empty body that differs from the soft-404
+    # page. HTML is allowed (an .html.bak is HTML).
     http_condition:
       method: GET
       scope: every_endpoint
       match: all
       rules:
-        - body: matches
-          value: "(?im)(?:(?:backup|dump|database)\\.(?:zip|tar|gz|sql)\\b|-----BEGIN (?:RSA|OPENSSH|EC|PGP) PRIVATE KEY-----)"
+        - status: in
+          value: [200]
+    artifact:
+      path: "(?i)(?:\\.(?:bak|old|orig|backup|save|swp|tmp|zip|tgz|sql)|\\.tar\\.gz|\\.sql\\.gz|~)$"
+      probe: [/backup.zip, /db.sql, /site.tar.gz]
+      not_html: false
+      not_soft_404: true
+      require_body: true
     owasp: [A05:2021]
-    cwe: [CWE-538]
+    cwe: [CWE-530]
     # Exposed configuration or keys can directly disclose credentials and enable compromise.
     base_cvss_vector: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N
-    recommendation: "Remove exposed artifacts, rotate disclosed secrets, and deny access at the server."
+    recommendation: "Remove backups and archives from the web root, and deny those suffixes at the server."
     limitation: >-
-      The engine should apply this to responses from discovered artifact-like
-      paths and redact matched evidence before storage or reporting.
+      The suffixes are matched on discovered paths; CAWASMA does not request
+      every discovered file with every suffix (that would multiply requests).
 
   - check_id: INF-007
     category: INFO_DISCLOSURE
@@ -498,44 +523,71 @@ checks:
     category: REST_API
     title: Sensitive-Looking Endpoint Accessible Without Authentication
     description: >-
-      A sensitive-looking API endpoint returns a successful response to an
-      unauthenticated request, suggesting that access control may be missing.
+      A sensitive API endpoint (HIGH or CRITICAL) returns data, as non-empty
+      JSON, to a request that carried no credentials, so access control may be
+      missing.
+    # PROPOSED 2026-11-05 (Atta, from Asim's answers; for Asim to review).
+    # "Sensitive" = HIGH and CRITICAL. Fires on 2xx with a non-empty JSON body,
+    # no credentials sent, and not redirected to a login page.
     http_condition:
       method: GET
       scope: every_endpoint
       match: all
       rules:
         - status: in
-          value: [200, 206]
+          value: [200, 201, 202, 203, 206]
+        - body: json
+        - url: not_matches
+          value: "(?i)/(?:login|signin|sign-in|auth)(?:[/?.#]|$)"
+    applies_to:
+      match: all
+      rules:
+        - sensitivity: [HIGH, CRITICAL]
+        - credentials: absent
     owasp: [A01:2021]
     cwe: [CWE-862]
     # Unauthenticated access to sensitive resources directly threatens confidentiality and integrity.
+    # FOR ASIM (Atta, 2026-11-05; not changed): 9.1 implies Integrity: High, but
+    # the check only sees data being *read* without auth (GET), which is mainly a
+    # confidentiality issue. AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N (7.5) may be
+    # easier to defend in the viva. Your call.
     base_cvss_vector: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N
     recommendation: "Require and verify authorization before returning sensitive resource data."
     limitation: >-
-      The engine must run this only on paths classified as sensitive and with
-      authentication explicitly absent; a successful response alone is not proof.
+      An endpoint meant to be public can be classed as sensitive; check that the
+      data returned really needs a login.
 
   - check_id: API-001
     category: REST_API
     title: Authentication Endpoint Missing Rate-Limit Headers
     description: >-
-      An authentication-related response omits both standard rate-limit
-      headers, so clients have no evidence that brute-force controls are exposed.
+      An authentication endpoint sends no RateLimit-*, X-RateLimit-* or
+      Retry-After header, so there is no sign that brute-force attempts are
+      limited.
+    # PROPOSED 2026-11-05 (Atta, from Asim's answers; for Asim to review).
+    # "Authentication endpoint" = the classifier's authentication family (there is
+    # no AUTH sensitivity class; HIGH covers more than auth), or a POST route whose
+    # path names a login, token, password, reset, register or session step. An
+    # indicator: missing headers don't prove there is no rate limit, so the base
+    # vector is kept low (was C:L/I:L/AC:L, 6.5).
     http_condition:
       method: GET
       scope: every_endpoint
       match: all
       rules:
-        - header: RateLimit-Limit
-          op: missing
-        - header: X-RateLimit-Limit
-          op: missing
+        - header_names: none_match
+          value: "^(?:ratelimit-.+|x-ratelimit-.+|retry-after)$"
+    applies_to:
+      match: any
+      rules:
+        - sensitivity_family: authentication
+        - path: "(?i)(?:login|signin|sign-in|auth|token|oauth|password|reset|register|signup|otp|2fa|mfa|session)"
+          methods: [POST]
     owasp: [A07:2021]
     cwe: [CWE-770]
-    # Lack of observable throttling controls can enable repeated credential attacks.
-    base_cvss_vector: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N
+    # Indicator only: lack of advertised throttling can mean repeated credential attacks go unchecked.
+    base_cvss_vector: CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N
     recommendation: "Apply server-side throttling to authentication flows and expose consistent limits."
     limitation: >-
-      The engine must apply this only to authentication endpoints; headers are
-      evidence of policy, not proof that server-side throttling is absent.
+      Indicator only: rate-limit headers are evidence of a policy, and their
+      absence does not prove that server-side throttling is missing.

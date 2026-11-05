@@ -5,6 +5,7 @@ and are therefore not fully determinable in black-box mode; those fire only on a
 surface indicator and carry a ``limitation`` (spec sections 47-48). CAWASMA
 never submits credentials.
 """
+
 from __future__ import annotations
 
 import re
@@ -48,8 +49,10 @@ def aut_003_reset_token(ctx: CheckContext) -> RawFinding | None:
 def aut_004_logout_invalidation(ctx: CheckContext) -> RawFinding | None:
     # Only a surface indicator: logout endpoint that doesn't clear the cookie.
     if "logout" in ctx.path.lower():
-        cleared = any("max-age=0" in c.lower() or "expires=thu, 01 jan 1970" in c.lower()
-                      for c in ctx.result.set_cookie_headers)
+        cleared = any(
+            "max-age=0" in c.lower() or "expires=thu, 01 jan 1970" in c.lower()
+            for c in ctx.result.set_cookie_headers
+        )
         if not cleared:
             return make("AUT-004", "Logout endpoint does not appear to clear session cookie.")
     return None

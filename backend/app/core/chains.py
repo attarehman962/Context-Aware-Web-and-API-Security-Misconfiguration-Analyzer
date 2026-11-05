@@ -16,6 +16,7 @@ which the spec validator guarantees is above every member (SRS O4).
 
 Database-free: inputs and outputs are plain dataclasses.
 """
+
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -47,7 +48,7 @@ class ChainMember:
     """A finding as the correlator sees it: its check and where it is."""
 
     check_id: str
-    endpoint_index: int | None        # None: host-level (belongs to ``host``)
+    endpoint_index: int | None  # None: host-level (belongs to ``host``)
     host: str = ""
 
 
@@ -59,12 +60,8 @@ class DetectedChain:
     composite_score: float
     severity: Severity
     composite_vector: str | None
-    member_indexes: list[int] = field(default_factory=list)   # indexes into the findings
+    member_indexes: list[int] = field(default_factory=list)  # indexes into the findings
     evidence: dict[str, Any] = field(default_factory=dict)
-
-    @property
-    def matched_rule_ids(self) -> list[str]:          # kept for existing callers
-        return sorted({c for g in self.evidence.get("groups", []) for c in g})
 
 
 @lru_cache(maxsize=4)
@@ -76,8 +73,9 @@ def load_templates(path: Path | str | None = None) -> tuple[ChainSpec, ...]:
     return _templates(str(path or Path(settings.CONFIG_DIR) / "chains.yaml"))
 
 
-def _units(spec: ChainSpec, members: Sequence[ChainMember],
-           endpoints: Sequence[ChainEndpoint]) -> list[tuple[str, str, list[int], list[int]]]:
+def _units(
+    spec: ChainSpec, members: Sequence[ChainMember], endpoints: Sequence[ChainEndpoint]
+) -> list[tuple[str, str, list[int], list[int]]]:
     """(kind, value, member indexes in the unit, endpoint indexes of the unit)."""
     hosts = sorted({ep.host for ep in endpoints} | {m.host for m in members if m.host})
     if spec.scope == "any_endpoint":
@@ -86,33 +84,44 @@ def _units(spec: ChainSpec, members: Sequence[ChainMember],
         out = []
         for host in hosts:
             eps = [i for i, ep in enumerate(endpoints) if ep.host == host]
-            ms = [i for i, m in enumerate(members)
-                  if (m.endpoint_index in eps) or (m.endpoint_index is None and m.host == host)]
+            ms = [
+                i
+                for i, m in enumerate(members)
+                if (m.endpoint_index in eps) or (m.endpoint_index is None and m.host == host)
+            ]
             out.append(("host", host, ms, eps))
         return out
     out = []
-    for e, ep in enumerate(endpoints):                 # same_endpoint
-        ms = [i for i, m in enumerate(members)
-              if m.endpoint_index == e or (m.endpoint_index is None and m.host == ep.host)]
+    for e, ep in enumerate(endpoints):  # same_endpoint
+        ms = [
+            i
+            for i, m in enumerate(members)
+            if m.endpoint_index == e or (m.endpoint_index is None and m.host == ep.host)
+        ]
         out.append(("endpoint", ep.url, ms, [e]))
     return out
 
 
-def correlate(members: Sequence[ChainMember], endpoints: Sequence[ChainEndpoint],
-              templates: Sequence[ChainSpec] | None = None) -> list[DetectedChain]:
+def correlate(
+    members: Sequence[ChainMember],
+    endpoints: Sequence[ChainEndpoint],
+    templates: Sequence[ChainSpec] | None = None,
+) -> list[DetectedChain]:
     """Chains whose conditions hold, in template order, once per template per unit."""
     detected: list[DetectedChain] = []
     for spec in templates if templates is not None else load_templates():
         groups = spec.groups or [list(spec.requires or [])]
         for kind, value, unit_members, unit_endpoints in _units(spec, members, endpoints):
-            matched = [[i for i in unit_members if members[i].check_id in group]
-                       for group in groups]
+            matched = [
+                [i for i in unit_members if members[i].check_id in group] for group in groups
+            ]
             if any(not hits for hits in matched):
                 continue
             context: dict[str, Any] = {}
             if spec.endpoint_sensitivity:
                 classes = {endpoints[e].sensitivity for e in unit_endpoints} & set(
-                    spec.endpoint_sensitivity)
+                    spec.endpoint_sensitivity
+                )
                 if not classes:
                     continue
                 context["endpoint_sensitivity"] = sorted(c.value for c in classes if c)
@@ -127,15 +136,21 @@ def correlate(members: Sequence[ChainMember], endpoints: Sequence[ChainEndpoint]
                 if not hit:
                     continue
                 context["body_signals"] = sorted(s.value for s in hit)
-            detected.append(DetectedChain(
-                code=spec.chain_id, name=spec.name, description=spec.description,
-                composite_score=spec.score, severity=spec.severity,
-                composite_vector=spec.composite_cvss_vector, member_indexes=member_ids,
-                evidence={
-                    "scope": {"kind": kind, "value": value},
-                    "groups": [sorted({members[i].check_id for i in hits}) for hits in matched],
-                    "context": context,
-                    "composite_cvss_vector": spec.composite_cvss_vector,
-                },
-            ))
+            detected.append(
+                DetectedChain(
+                    code=spec.chain_id,
+                    name=spec.name,
+                    description=spec.description,
+                    composite_score=spec.score,
+                    severity=spec.severity,
+                    composite_vector=spec.composite_cvss_vector,
+                    member_indexes=member_ids,
+                    evidence={
+                        "scope": {"kind": kind, "value": value},
+                        "groups": [sorted({members[i].check_id for i in hits}) for hits in matched],
+                        "context": context,
+                        "composite_cvss_vector": spec.composite_cvss_vector,
+                    },
+                )
+            )
     return detected

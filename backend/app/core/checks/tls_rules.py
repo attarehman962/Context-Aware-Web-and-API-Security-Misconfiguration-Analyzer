@@ -5,6 +5,7 @@ skipped -- they never fabricate a result.
 
 TLS-005 moved to ``checks/spec/transport.py`` (judged on the HTTP probe).
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -17,8 +18,9 @@ from app.core.tls import weak_ciphers
 def tls_001_legacy(ctx: CheckContext) -> RawFinding | None:
     if not ctx.tls:
         return None
-    legacy = [p for p in ctx.tls.protocols_offered
-              if p in ("SSLv2", "SSLv3", "TLSv1", "TLSv1.1")]   # SSLv2/3: only SSLyze sees them
+    legacy = [
+        p for p in ctx.tls.protocols_offered if p in ("SSLv2", "SSLv3", "TLSv1", "TLSv1.1")
+    ]  # SSLv2/3: only SSLyze sees them
     if legacy:
         return make("TLS-001", f"Legacy protocols offered: {', '.join(legacy)}.")
     return None

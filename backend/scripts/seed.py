@@ -17,6 +17,7 @@ Idempotent: rows have fixed ids and the script skips if they already exist.
 
     python scripts/seed.py          # or: make seed
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -100,69 +101,107 @@ _SERVER = {"Server": "nginx/1.18.0 (Ubuntu)"}
 
 RESCAN: list[EndpointSpec] = [
     EndpointSpec(
-        "/", DiscoveryMethod.SEED, "text/html", headers=_SERVER,
+        "/",
+        DiscoveryMethod.SEED,
+        "text/html",
+        headers=_SERVER,
         findings=[
             ("HDR-007", {"header": "Server", "value": "nginx/1.18.0 (Ubuntu)"}),
             ("HDR-003", {"header": "X-Frame-Options", "present": False}),
         ],
     ),
     EndpointSpec(
-        "/api/v1/users/42", DiscoveryMethod.JAVASCRIPT, "application/json",
+        "/api/v1/users/42",
+        DiscoveryMethod.JAVASCRIPT,
+        "application/json",
         body='{"id": 42, "name": "Ayesha Khan", "email": "ayesha.khan@example.com", '
-             '"phone": "+92 300 1234567", "role": "customer"}',
+        '"phone": "+92 300 1234567", "role": "customer"}',
         findings=[
             ("API-003", {"auth_header_sent": False, "status": 200}),
             ("HDR-005", {"header": "Referrer-Policy", "present": False}),
         ],
     ),
     EndpointSpec(
-        "/api/payment/checkout", DiscoveryMethod.JAVASCRIPT, "application/json",
+        "/api/payment/checkout",
+        DiscoveryMethod.JAVASCRIPT,
+        "application/json",
         body='{"order": 1187, "card": "4111 1111 1111 1111", "amount": "4999.00", '
-             '"currency": "PKR"}',
+        '"currency": "PKR"}',
         findings=[("HDR-002", {"header": "Content-Security-Policy", "present": False})],
     ),
     EndpointSpec(
-        "/admin/login", DiscoveryMethod.WORDLIST, "text/html",
-        cookies=[{"name": "admin_session", "value_length": 32, "http_only": True,
-                  "secure": False, "same_site": SameSite.UNSET, "path": "/admin"}],
+        "/admin/login",
+        DiscoveryMethod.WORDLIST,
+        "text/html",
+        cookies=[
+            {
+                "name": "admin_session",
+                "value_length": 32,
+                "http_only": True,
+                "secure": False,
+                "same_site": SameSite.UNSET,
+                "path": "/admin",
+            }
+        ],
         findings=[
             ("CKI-002", {"cookie": "admin_session", "secure": False}),
             ("CKI-003", {"cookie": "admin_session", "same_site": None}),
         ],
     ),
     EndpointSpec(
-        "/.env", DiscoveryMethod.WORDLIST, "text/plain",
+        "/.env",
+        DiscoveryMethod.WORDLIST,
+        "text/plain",
         body="APP_ENV=production\nDB_HOST=10.0.3.17\n"
-             "DB_PASSWORD=Sup3rS3cret!2024\nSTRIPE_SECRET_KEY=sk_live_51Hx9aQ2eZvKYlo2C\n",
+        "DB_PASSWORD=cawasma-fake-db-password\nSTRIPE_SECRET_KEY=cawasma-fake-stripe-key\n",
         findings=[("INF-003", {"path": "/.env", "status": 200})],
     ),
     EndpointSpec(
-        "/static/js/app.3f9c1.js", DiscoveryMethod.HTML, "application/javascript",
+        "/static/js/app.3f9c1.js",
+        DiscoveryMethod.HTML,
+        "application/javascript",
         findings=[("HDR-012", {"header": "Expect-CT", "present": False})],
     ),
 ]
 
 BASELINE: list[EndpointSpec] = [
     EndpointSpec(
-        "/", DiscoveryMethod.SEED, "text/html", headers=_SERVER,
+        "/",
+        DiscoveryMethod.SEED,
+        "text/html",
+        headers=_SERVER,
         findings=[
             ("HDR-007", {"header": "Server", "value": "nginx/1.18.0 (Ubuntu)"}),
             ("HDR-003", {"header": "X-Frame-Options", "present": False}),
         ],
     ),
     EndpointSpec(
-        "/about", DiscoveryMethod.HTML, "text/html",
+        "/about",
+        DiscoveryMethod.HTML,
+        "text/html",
         findings=[("HDR-005", {"header": "Referrer-Policy", "present": False})],
     ),
     EndpointSpec(
-        "/api/v1/products", DiscoveryMethod.JAVASCRIPT, "application/json",
+        "/api/v1/products",
+        DiscoveryMethod.JAVASCRIPT,
+        "application/json",
         body='[{"sku": "TS-001", "name": "Cotton T-shirt", "price": "1299.00"}]',
         findings=[("HDR-002", {"header": "Content-Security-Policy", "present": False})],
     ),
     EndpointSpec(
-        "/login", DiscoveryMethod.HTML, "text/html",
-        cookies=[{"name": "session", "value_length": 32, "http_only": True,
-                  "secure": True, "same_site": SameSite.UNSET, "path": "/"}],
+        "/login",
+        DiscoveryMethod.HTML,
+        "text/html",
+        cookies=[
+            {
+                "name": "session",
+                "value_length": 32,
+                "http_only": True,
+                "secure": True,
+                "same_site": SameSite.UNSET,
+                "path": "/",
+            }
+        ],
         findings=[
             ("CKI-003", {"cookie": "session", "same_site": None}),
             ("HDR-005", {"header": "Referrer-Policy", "present": False}),
@@ -172,7 +211,10 @@ BASELINE: list[EndpointSpec] = [
 
 
 def _finding(
-    scan: Scan, endpoint: Endpoint | None, check_id: str, detail: dict[str, Any],
+    scan: Scan,
+    endpoint: Endpoint | None,
+    check_id: str,
+    detail: dict[str, Any],
     body: BodyClassification | None,
 ) -> Finding:
     meta = CATALOG[check_id]
@@ -211,8 +253,13 @@ def _finding(
 
 
 def _build_scan(
-    scan_id: uuid.UUID, specs: list[EndpointSpec], started: datetime, duration: float,
-    classifier: SensitivityClassifier, *, legacy_tls: bool,
+    scan_id: uuid.UUID,
+    specs: list[EndpointSpec],
+    started: datetime,
+    duration: float,
+    classifier: SensitivityClassifier,
+    *,
+    legacy_tls: bool,
 ) -> tuple[Scan, list[Finding]]:
     finished = started + timedelta(seconds=duration)
     scan = Scan(
@@ -254,29 +301,35 @@ def _build_scan(
             endpoint.cookies.append(Cookie(domain="shop.example.com", **ck))
         for check_id, detail in spec.findings:
             findings.append(_finding(scan, endpoint, check_id, detail, body))
-    scan.tls_info.append(TlsInfo(
-        host="shop.example.com",
-        protocols_offered=(["TLSv1.1", "TLSv1.2", "TLSv1.3"] if legacy_tls
-                           else ["TLSv1.2", "TLSv1.3"]),
-        negotiated_protocol="TLSv1.3",
-        negotiated_cipher="TLS_AES_256_GCM_SHA384",
-        cert_subject="CN=shop.example.com",
-        cert_issuer="CN=R11,O=Let's Encrypt,C=US",
-        cert_not_after=started + timedelta(days=64),
-        is_self_signed=False,
-        hostname_matches=True,
-        weak_ciphers=[],                            # TLS_AES_256_GCM_SHA384 is strong
-        issues=["TLS-001"] if legacy_tls else [],   # matches the finding below
-    ))
+    scan.tls_info.append(
+        TlsInfo(
+            host="shop.example.com",
+            protocols_offered=(
+                ["TLSv1.1", "TLSv1.2", "TLSv1.3"] if legacy_tls else ["TLSv1.2", "TLSv1.3"]
+            ),
+            negotiated_protocol="TLSv1.3",
+            negotiated_cipher="TLS_AES_256_GCM_SHA384",
+            cert_subject="CN=shop.example.com",
+            cert_issuer="CN=R11,O=Let's Encrypt,C=US",
+            cert_not_after=started + timedelta(days=64),
+            is_self_signed=False,
+            hostname_matches=True,
+            weak_ciphers=[],  # TLS_AES_256_GCM_SHA384 is strong
+            issues=["TLS-001"] if legacy_tls else [],  # matches the finding below
+        )
+    )
     if legacy_tls:  # host-level finding: no endpoint
-        findings.append(_finding(scan, None, "TLS-001",
-                                 {"protocols": ["TLSv1.1"]}, None))
+        findings.append(_finding(scan, None, "TLS-001", {"protocols": ["TLSv1.1"]}, None))
     return scan, findings
 
 
 # endpoints.body_signals JSON key -> contract signal (as result_service stores them)
-_SIGNALS = {"credentials": BodySignal.CREDENTIALS, "pii": BodySignal.PII,
-            "financial": BodySignal.FINANCIAL, "internal_ip": BodySignal.INTERNAL_IP}
+_SIGNALS = {
+    "credentials": BodySignal.CREDENTIALS,
+    "pii": BodySignal.PII,
+    "financial": BodySignal.FINANCIAL,
+    "internal_ip": BodySignal.INTERNAL_IP,
+}
 
 
 def _add_chains(scan: Scan, findings: list[Finding]) -> int:
@@ -285,18 +338,32 @@ def _add_chains(scan: Scan, findings: list[Finding]) -> int:
     index = {id(e): i for i, e in enumerate(endpoints)}
     host = urlparse(scan.target_url).netloc.lower()
     detected = correlate(
-        [ChainMember(f.check_id, index.get(id(f.endpoint)) if f.endpoint else None, host)
-         for f in findings],
-        [ChainEndpoint(e.url, e.context_class, frozenset(
-            sig for key, sig in _SIGNALS.items() if (e.body_signals or {}).get(key)))
-         for e in endpoints])
+        [
+            ChainMember(f.check_id, index.get(id(f.endpoint)) if f.endpoint else None, host)
+            for f in findings
+        ],
+        [
+            ChainEndpoint(
+                e.url,
+                e.context_class,
+                frozenset(sig for key, sig in _SIGNALS.items() if (e.body_signals or {}).get(key)),
+            )
+            for e in endpoints
+        ],
+    )
     for ch in detected:
-        scan.attack_chains.append(AttackChain(
-            chain_code=ch.code, name=ch.name, description=ch.description,
-            template_composite_score=ch.composite_score, severity=ch.severity,
-            composite_vector=ch.composite_vector, evidence=ch.evidence,
-            findings=[findings[i] for i in ch.member_indexes],
-        ))
+        scan.attack_chains.append(
+            AttackChain(
+                chain_code=ch.code,
+                name=ch.name,
+                description=ch.description,
+                template_composite_score=ch.composite_score,
+                severity=ch.severity,
+                composite_vector=ch.composite_vector,
+                evidence=ch.evidence,
+                findings=[findings[i] for i in ch.member_indexes],
+            )
+        )
     return len(detected)
 
 
@@ -310,37 +377,57 @@ async def seed() -> bool:
         classifier = SensitivityClassifier(use_embeddings=False)  # deterministic
         now = datetime.now(UTC).replace(microsecond=0)
         baseline, baseline_findings = _build_scan(
-            BASELINE_SCAN_ID, BASELINE, now - timedelta(days=7, hours=3), 38.4,
-            classifier, legacy_tls=False,
+            BASELINE_SCAN_ID,
+            BASELINE,
+            now - timedelta(days=7, hours=3),
+            38.4,
+            classifier,
+            legacy_tls=False,
         )
         rescan, rescan_findings = _build_scan(
-            RESCAN_SCAN_ID, RESCAN, now - timedelta(hours=1), 71.9,
-            classifier, legacy_tls=True,
+            RESCAN_SCAN_ID,
+            RESCAN,
+            now - timedelta(hours=1),
+            71.9,
+            classifier,
+            legacy_tls=True,
         )
         chains = _add_chains(baseline, baseline_findings) + _add_chains(rescan, rescan_findings)
 
         for scan, fs in ((baseline, baseline_findings), (rescan, rescan_findings)):
             worst = max(fs, key=lambda f: f.final_score)
-            scan.ai_insights.append(AiInsight(
-                provider="builtin",
-                summary=(f"{len(fs)} findings on {TARGET}. Highest priority: "
-                         f"{worst.check_id} {worst.title} (score {worst.final_score})."),
-            ))
+            scan.ai_insights.append(
+                AiInsight(
+                    provider="builtin",
+                    summary=(
+                        f"{len(fs)} findings on {TARGET}. Highest priority: "
+                        f"{worst.check_id} {worst.title} (score {worst.final_score})."
+                    ),
+                )
+            )
 
         hdr012 = next(f for f in rescan_findings if f.check_id == "HDR-012")
-        rescan.feedback.append(Feedback(
-            finding=hdr012, is_false_positive=True,
-            note="Expect-CT is deprecated; browsers enforce CT by default.",
-        ))
-        rescan.feedback.append(Feedback(
-            is_false_positive=False,
-            note=".env exposure confirmed with the site owner; rotation in progress.",
-        ))
+        rescan.feedback.append(
+            Feedback(
+                finding=hdr012,
+                is_false_positive=True,
+                note="Expect-CT is deprecated; browsers enforce CT by default.",
+            )
+        )
+        rescan.feedback.append(
+            Feedback(
+                is_false_positive=False,
+                note=".env exposure confirmed with the site owner; rotation in progress.",
+            )
+        )
 
         session.add_all([baseline, rescan])
-    logger.info("seed: inserted 2 scans, %d endpoints, %d findings, %d chain(s)",
-                len(BASELINE) + len(RESCAN),
-                len(baseline_findings) + len(rescan_findings), chains)
+    logger.info(
+        "seed: inserted 2 scans, %d endpoints, %d findings, %d chain(s)",
+        len(BASELINE) + len(RESCAN),
+        len(baseline_findings) + len(rescan_findings),
+        chains,
+    )
     return True
 
 

@@ -3,6 +3,7 @@
 Importing this package imports every model, which registers all tables on
 ``Base.metadata``. Alembic imports this so autogenerate sees the full schema.
 """
+
 from __future__ import annotations
 
 from app.db.base import Base

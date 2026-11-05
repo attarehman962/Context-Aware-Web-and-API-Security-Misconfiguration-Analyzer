@@ -14,6 +14,7 @@ Private keys never leave the process's temporary directory.
 Used by docker-compose.demo.yml (target URL ``https://demo-target:8443/``) and
 by backend/tests/integration/test_vertical_slice.py.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -64,17 +65,30 @@ def make_certificates(names: list[str], ips: list[str]) -> tuple[bytes, bytes, b
     ca_key = ec.generate_private_key(ec.SECP256R1())
     ca = (
         x509.CertificateBuilder()
-        .subject_name(_name("CAWASMA demo CA")).issuer_name(_name("CAWASMA demo CA"))
-        .public_key(ca_key.public_key()).serial_number(x509.random_serial_number())
+        .subject_name(_name("CAWASMA demo CA"))
+        .issuer_name(_name("CAWASMA demo CA"))
+        .public_key(ca_key.public_key())
+        .serial_number(x509.random_serial_number())
         .not_valid_before(now - dt.timedelta(minutes=5))
         .not_valid_after(now + valid)
         .add_extension(x509.BasicConstraints(ca=True, path_length=0), critical=True)
-        .add_extension(x509.KeyUsage(
-            digital_signature=False, content_commitment=False, key_encipherment=False,
-            data_encipherment=False, key_agreement=False, key_cert_sign=True,
-            crl_sign=True, encipher_only=False, decipher_only=False), critical=True)
-        .add_extension(x509.SubjectKeyIdentifier.from_public_key(ca_key.public_key()),
-                       critical=False)
+        .add_extension(
+            x509.KeyUsage(
+                digital_signature=False,
+                content_commitment=False,
+                key_encipherment=False,
+                data_encipherment=False,
+                key_agreement=False,
+                key_cert_sign=True,
+                crl_sign=True,
+                encipher_only=False,
+                decipher_only=False,
+            ),
+            critical=True,
+        )
+        .add_extension(
+            x509.SubjectKeyIdentifier.from_public_key(ca_key.public_key()), critical=False
+        )
         .sign(ca_key, hashes.SHA256())
     )
     key = ec.generate_private_key(ec.SECP256R1())
@@ -82,22 +96,26 @@ def make_certificates(names: list[str], ips: list[str]) -> tuple[bytes, bytes, b
     sans += [x509.IPAddress(ipaddress.ip_address(ip)) for ip in ips]
     leaf = (
         x509.CertificateBuilder()
-        .subject_name(_name((names or ips)[0])).issuer_name(ca.subject)
-        .public_key(key.public_key()).serial_number(x509.random_serial_number())
+        .subject_name(_name((names or ips)[0]))
+        .issuer_name(ca.subject)
+        .public_key(key.public_key())
+        .serial_number(x509.random_serial_number())
         .not_valid_before(now - dt.timedelta(minutes=5))
         .not_valid_after(now + valid)
         .add_extension(x509.SubjectAlternativeName(sans), critical=False)
         .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
-        .add_extension(x509.ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH]),
-                       critical=False)
-        .add_extension(x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_key.public_key()),
-                       critical=False)
+        .add_extension(x509.ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH]), critical=False)
+        .add_extension(
+            x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_key.public_key()), critical=False
+        )
         .sign(ca_key, hashes.SHA256())
     )
     pem = serialization.Encoding.PEM
-    return (ca.public_bytes(pem), leaf.public_bytes(pem),
-            key.private_bytes(pem, serialization.PrivateFormat.PKCS8,
-                              serialization.NoEncryption()))
+    return (
+        ca.public_bytes(pem),
+        leaf.public_bytes(pem),
+        key.private_bytes(pem, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()),
+    )
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -117,10 +135,10 @@ class _Handler(BaseHTTPRequestHandler):
         if self.command != "HEAD":
             self.wfile.write(body)
 
-    def do_GET(self) -> None:  # noqa: N802 - http.server API
+    def do_GET(self) -> None:
         self._send(200, PAGE) if self.path.split("?")[0] == "/" else self._send(404, b"")
 
-    def do_HEAD(self) -> None:  # noqa: N802 - http.server API
+    def do_HEAD(self) -> None:
         self.do_GET()
 
 
@@ -135,8 +153,9 @@ class _QuietServer(ThreadingHTTPServer):
             super().handle_error(request, client_address)  # type: ignore[arg-type]
 
 
-def make_server(host: str, port: int, names: list[str], ips: list[str]
-                ) -> tuple[ThreadingHTTPServer, bytes]:
+def make_server(
+    host: str, port: int, names: list[str], ips: list[str]
+) -> tuple[ThreadingHTTPServer, bytes]:
     """An HTTPS server bound to ``host:port`` (0 = any free port), and its CA PEM."""
     ca_pem, cert_pem, key_pem = make_certificates(names, ips)
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
@@ -146,17 +165,17 @@ def make_server(host: str, port: int, names: list[str], ips: list[str]
         cert, key = Path(tmp, "cert.pem"), Path(tmp, "key.pem")
         cert.write_bytes(cert_pem + ca_pem)
         key.write_bytes(key_pem)
-        ctx.load_cert_chain(cert, key)   # read now; the files are deleted on exit
+        ctx.load_cert_chain(cert, key)  # read now; the files are deleted on exit
     server = _QuietServer((host, port), _Handler)
     server.daemon_threads = True
-    server.socket = ctx.wrap_socket(server.socket, server_side=True,
-                                    do_handshake_on_connect=False)
+    server.socket = ctx.wrap_socket(server.socket, server_side=True, do_handshake_on_connect=False)
     return server, ca_pem
 
 
 @contextmanager
-def running(host: str, *, names: tuple[str, ...] = (), ips: tuple[str, ...] = ()
-            ) -> Iterator[tuple[str, bytes]]:
+def running(
+    host: str, *, names: tuple[str, ...] = (), ips: tuple[str, ...] = ()
+) -> Iterator[tuple[str, bytes]]:
     """Serve on a free port in a thread; yield ``(base_url, ca_pem)``."""
     server, ca_pem = make_server(host, 0, list(names), list(ips))
     port = server.server_address[1]
@@ -174,16 +193,20 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--host", default="0.0.0.0")  # noqa: S104 - a container service
     parser.add_argument("--port", type=int, default=8443)
-    parser.add_argument("--name", action="append", default=[],
-                        help="DNS name for the certificate (repeatable)")
+    parser.add_argument(
+        "--name", action="append", default=[], help="DNS name for the certificate (repeatable)"
+    )
     parser.add_argument("--ca-out", required=True, help="where to write the CA certificate")
     args = parser.parse_args(argv)
     server, ca_pem = make_server(args.host, args.port, args.name or ["localhost"], [])
     out = Path(args.ca_out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_bytes(ca_pem)
-    print(f"demo target on https://{(args.name or ['localhost'])[0]}:{args.port}/ "
-          f"(CA certificate: {out})", flush=True)
+    print(
+        f"demo target on https://{(args.name or ['localhost'])[0]}:{args.port}/ "
+        f"(CA certificate: {out})",
+        flush=True,
+    )
     server.serve_forever()
 
 

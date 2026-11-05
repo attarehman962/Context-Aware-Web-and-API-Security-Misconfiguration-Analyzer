@@ -1,5 +1,6 @@
 """Structured logging (Atta Prompt 10): JSON lines with the scan id, extras,
 tracebacks, and a redaction pass over the final line."""
+
 from __future__ import annotations
 
 import json
@@ -20,7 +21,8 @@ def test_json_lines_carry_scan_id_and_extras():
     token = app_logging.scan_id_var.set("11111111-1111-4111-8111-111111111111")
     try:
         line = app_logging.JsonFormatter().format(
-            _record("scan completed %s", "ok", findings=3, stage_seconds={"crawl": 1.5}))
+            _record("scan completed %s", "ok", findings=3, stage_seconds={"crawl": 1.5})
+        )
     finally:
         app_logging.scan_id_var.reset(token)
     out = json.loads(line)
@@ -40,12 +42,12 @@ def test_tracebacks_are_one_json_field():
         raise ValueError("boom")
     except ValueError:
         import sys
-        out = json.loads(app_logging.JsonFormatter().format(
-            _record("failed", exc=sys.exc_info())))
+
+        out = json.loads(app_logging.JsonFormatter().format(_record("failed", exc=sys.exc_info())))
     assert "ValueError: boom" in out["exc"]
 
 
 def test_secrets_are_redacted_in_both_formats():
     for fmt in (app_logging.JsonFormatter(), app_logging.TextFormatter()):
-        line = fmt.format(_record("got api_key=sk_live_abcdef123456 from %s", "x"))
-        assert "sk_live_abcdef123456" not in line and "REDACTED" in line
+        line = fmt.format(_record("got api_key=cawasma-fake-abcdef123456 from %s", "x"))
+        assert "cawasma-fake-abcdef123456" not in line and "REDACTED" in line

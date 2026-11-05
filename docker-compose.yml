@@ -11,11 +11,9 @@
 
 name: cawasma
 
+# One backend image, built once by `api`; worker (and demo-target in the demo
+# overlay) run the same image and never pull it.
 x-backend: &backend
-  build:
-    context: ./backend
-    args:
-      INSTALL_ML: ${INSTALL_ML:-true}
   image: cawasma-backend:${CAWASMA_IMAGE_TAG:-dev}
   env_file:
     - path: .env
@@ -66,6 +64,10 @@ services:
 
   api:
     <<: *backend
+    build:
+      context: ./backend
+      args:
+        INSTALL_ML: ${INSTALL_ML:-true}
     command: >
       sh -c "alembic upgrade head &&
              uvicorn app.main:app --host 0.0.0.0 --port 8000"
@@ -85,6 +87,7 @@ services:
 
   worker:
     <<: *backend
+    pull_policy: never
     command: celery -A app.workers.celery_app.celery_app worker --loglevel=info
     depends_on:
       # Wait for the api so migrations have been applied.
@@ -122,9 +125,10 @@ services:
     networks: [backend]
     restart: unless-stopped
 
+# No fixed network name: each compose project (e.g. the clean-machine check's
+# cawasma-clean) gets its own, so "postgres" never resolves into another stack.
 networks:
-  backend:
-    name: cawasma-backend
+  backend: {}
 
 volumes:
   pgdata:
