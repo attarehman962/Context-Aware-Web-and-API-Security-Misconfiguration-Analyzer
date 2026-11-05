@@ -1,0 +1,152 @@
+{
+  "split": "dev",
+  "anchors": {
+    "n": 51,
+    "accuracy": 0.627,
+    "macro_f1": 0.643,
+    "off_by_two_or_more": 1,
+    "per_class": {
+      "LOW": {
+        "precision": 0.923,
+        "recall": 0.923,
+        "f1": 0.923,
+        "support": 13
+      },
+      "MEDIUM": {
+        "precision": 0.533,
+        "recall": 0.5,
+        "f1": 0.516,
+        "support": 16
+      },
+      "HIGH": {
+        "precision": 0.389,
+        "recall": 0.583,
+        "f1": 0.467,
+        "support": 12
+      },
+      "CRITICAL": {
+        "precision": 1.0,
+        "recall": 0.5,
+        "f1": 0.667,
+        "support": 10
+      }
+    },
+    "confusion": {
+      "LOW": {
+        "LOW": 12,
+        "MEDIUM": 1,
+        "HIGH": 0,
+        "CRITICAL": 0
+      },
+      "MEDIUM": {
+        "LOW": 1,
+        "MEDIUM": 8,
+        "HIGH": 7,
+        "CRITICAL": 0
+      },
+      "HIGH": {
+        "LOW": 0,
+        "MEDIUM": 5,
+        "HIGH": 7,
+        "CRITICAL": 0
+      },
+      "CRITICAL": {
+        "LOW": 0,
+        "MEDIUM": 1,
+        "HIGH": 4,
+        "CRITICAL": 5
+      }
+    },
+    "predicted": {
+      "LOW": 13,
+      "CRITICAL": 5,
+      "MEDIUM": 15,
+      "HIGH": 18
+    }
+  },
+  "keywords": {
+    "n": 51,
+    "accuracy": 0.392,
+    "macro_f1": 0.297,
+    "off_by_two_or_more": 13,
+    "per_class": {
+      "LOW": {
+        "precision": 0.371,
+        "recall": 1.0,
+        "f1": 0.542,
+        "support": 13
+      },
+      "MEDIUM": {
+        "precision": 0.4,
+        "recall": 0.125,
+        "f1": 0.19,
+        "support": 16
+      },
+      "HIGH": {
+        "precision": 0.5,
+        "recall": 0.417,
+        "f1": 0.455,
+        "support": 12
+      },
+      "CRITICAL": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 10
+      }
+    },
+    "confusion": {
+      "LOW": {
+        "LOW": 13,
+        "MEDIUM": 0,
+        "HIGH": 0,
+        "CRITICAL": 0
+      },
+      "MEDIUM": {
+        "LOW": 12,
+        "MEDIUM": 2,
+        "HIGH": 2,
+        "CRITICAL": 0
+      },
+      "HIGH": {
+        "LOW": 6,
+        "MEDIUM": 0,
+        "HIGH": 5,
+        "CRITICAL": 1
+      },
+      "CRITICAL": {
+        "LOW": 4,
+        "MEDIUM": 3,
+        "HIGH": 3,
+        "CRITICAL": 0
+      }
+    },
+    "predicted": {
+      "LOW": 35,
+      "MEDIUM": 5,
+      "HIGH": 10,
+      "CRITICAL": 1
+    }
+  },
+  "errors": [
+    "dvwa GET /hackable/users: MEDIUM -> HIGH",
+    "dvwa GET /phpinfo.php: HIGH -> MEDIUM",
+    "dvwa GET /security.php: CRITICAL -> HIGH",
+    "dvwa GET /vulnerabilities/brute: HIGH -> MEDIUM",
+    "dvwa GET /vulnerabilities/captcha: HIGH -> MEDIUM",
+    "dvwa GET /vulnerabilities/csp: MEDIUM -> HIGH",
+    "dvwa GET /vulnerabilities/csrf: HIGH -> MEDIUM",
+    "dvwa GET /vulnerabilities/fi: MEDIUM -> HIGH",
+    "dvwa GET /vulnerabilities/sqli: MEDIUM -> HIGH",
+    "dvwa GET /vulnerabilities/sqli_blind: MEDIUM -> HIGH",
+    "dvwa GET /vulnerabilities/weak_id: HIGH -> MEDIUM",
+    "dvwa GET /vulnerabilities/xss_d: MEDIUM -> HIGH",
+    "vampi DELETE /users/v1/:id: CRITICAL -> HIGH",
+    "vampi GET /books/v1: LOW -> MEDIUM",
+    "vampi GET /createdb: CRITICAL -> MEDIUM",
+    "vampi GET /users/v1: CRITICAL -> HIGH",
+    "vampi GET /users/v1/:id: MEDIUM -> HIGH",
+    "vampi GET /users/v1/_debug: CRITICAL -> HIGH",
+    "vampi POST /books/v1: MEDIUM -> LOW"
+  ]
+}

@@ -213,6 +213,32 @@ The full numbers are in `eval/results/final/`.
   environmental and legacy final scores, so it does not isolate the method):
   mean NDCG@10 0.260 → 0.304, first critical 2.7 → 1.27.
 
+## Anchor classifier (Prompt 6, proposed, off by default)
+
+Built on `atta/fix-asim-p11-sensitivity` for Asim to review. `app/ml/sensitivity.py`
+has an embedding classifier: the path becomes text ("GET api user accounts
+password reset"), all-MiniLM-L6-v2 compares it with each class's anchor phrases
+in `config/sensitivity_anchors.yaml`, and the best class wins (below the
+threshold: MEDIUM). `enabled: false` in that file keeps the keyword classifier
+that every table above was produced with.
+
+`eval/harness/eval_sensitivity.py`, same split by target. Tuned on dev only
+(general changes: an empty path reads as "home page", a few abbreviations, anchors
+for diagnostics, command execution and database control from the labelling
+guide; nothing for DVWA's module names), then run once on test:
+
+| | dev accuracy | dev macro-F1 | test accuracy | test macro-F1 | test off by two or more |
+|-|-|-|-|-|-|
+| keyword classifier (shipped) | 0.392 | 0.297 | 0.425 | 0.362 | 34 of 113 |
+| keyword families proposal (above) | 0.569 | 0.577 | 0.487 | 0.454 | |
+| anchor classifier | 0.627 | 0.643 | 0.522 | 0.518 | 9 of 113 |
+
+Confusion matrices: `eval/results/sensitivity_{dev,test}_confusion.png`. On test
+the anchors are weakest on LOW (recall 0.31: 25 of 39 LOW paths read as MEDIUM)
+and CRITICAL (recall 0.3: 5 of 10 read as MEDIUM). HIGH is the strongest class
+(recall 0.79, the keyword classifier 0.13). Turning it on changes every scan's sensitivity classes, so the detection
+and ranking tables would have to be re-run before they could be reported with it.
+
 ## Threats to validity
 
 - **Priority ground truth vs context:** priority items are one per issue at a
