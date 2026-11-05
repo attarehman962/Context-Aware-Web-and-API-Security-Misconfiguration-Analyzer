@@ -86,7 +86,9 @@ def git_revision(root: Path = ROOT) -> dict[str, str]:
 
 def stats(raw: Path = RAW, ground_truth: Path = GROUND_TRUTH) -> dict[str, Any]:
     spec_registry.load_implementations()
-    specs = set(spec_registry.load_specs())
+    loaded = spec_registry.load_specs()
+    specs = set(loaded)
+    proposed = {cid for cid, spec in loaded.items() if spec.status == "proposed"}
     environmental = set(spec_registry.CHECKS)
     legacy = legacy_ids()
     all_ids = set(CATALOG) | specs
@@ -98,8 +100,13 @@ def stats(raw: Path = RAW, ground_truth: Path = GROUND_TRUTH) -> dict[str, Any]:
         **git_revision(),
         "check_ids": len(all_ids),
         "with_spec": len(specs & all_ids),
+        # The report counts approved specs only; proposed ones await Asim's review.
+        "with_approved_spec": len((specs - proposed) & all_ids),
+        "with_proposed_spec": len(proposed & all_ids),
+        "proposed_ids": sorted(proposed),
         "with_ground_truth": len(truth),
         "scored_environmental": len(environmental & all_ids),
+        "scored_environmental_approved": len((environmental - proposed) & all_ids),
         "scored_legacy": len(legacy & all_ids),
         "not_implemented": len(all_ids - environmental - legacy),
         "eval_targets": sorted(runs),
@@ -114,9 +121,12 @@ def report(s: dict[str, Any]) -> str:
     lines = [
         f"on {s['branch']} @ {s['commit']}",
         f"{n} check ids",
-        f"  with a checks.yaml spec        {s['with_spec']:>3} of {n}",
+        f"  with an approved spec          {s['with_approved_spec']:>3} of {n}",
+        f"  with a proposed spec           {s['with_proposed_spec']:>3} of {n}"
+        + (f"  ({', '.join(s['proposed_ids'])})" if s["proposed_ids"] else ""),
         f"  with a ground-truth entry      {s['with_ground_truth']:>3} of {n}",
-        f"  scored environmental (CVSS)    {s['scored_environmental']:>3} of {n}",
+        f"  scored environmental (CVSS)    {s['scored_environmental']:>3} of {n}"
+        f"  ({s['scored_environmental_approved']} with an approved spec)",
         f"  scored legacy (interim)        {s['scored_legacy']:>3} of {n}",
     ]
     if s["not_implemented"]:
@@ -128,6 +138,11 @@ def report(s: dict[str, Any]) -> str:
             f"  environmental {s['findings_environmental']} ({share:.0f} %), "
             f"legacy {s['findings_legacy']} ({100 - share:.0f} %)",
         ]
+    lines.append(
+        f"for the report (approved specs only): {s['with_approved_spec']} of {n} checks "
+        f"specified, {s['scored_environmental_approved']} of {n} scored with CVSS "
+        "environmental metrics"
+    )
     return "\n".join(lines)
 
 

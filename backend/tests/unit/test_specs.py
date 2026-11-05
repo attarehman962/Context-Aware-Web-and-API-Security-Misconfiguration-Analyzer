@@ -209,3 +209,21 @@ def test_severity_notes_is_an_optional_field(tmp_path):
     spec = load_checks(_write(tmp_path, _mutated(severity_notes="raise with endpoint sensitivity")))
     assert spec.checks[0].severity_notes == "raise with endpoint sensitivity"
     assert load_checks(CONFIG / "checks.yaml").checks[0].severity_notes is None
+
+
+def test_spec_status_defaults_to_approved_and_only_takes_two_values():
+    from app.core.specs import CheckSpec
+
+    base = {
+        "check_id": "HDR-001",
+        "category": "HEADERS",
+        "description": "missing HSTS header",
+        "http_condition": {"rules": [{"header": "Strict-Transport-Security", "op": "missing"}]},
+        "owasp": ["A05:2021"],
+        "cwe": ["CWE-319"],
+        "base_cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N",
+    }
+    assert CheckSpec.model_validate(base).status == "approved"
+    assert CheckSpec.model_validate({**base, "status": "proposed"}).status == "proposed"
+    with pytest.raises(ValueError):
+        CheckSpec.model_validate({**base, "status": "draft"})
