@@ -16,6 +16,7 @@ spec's ``http_condition``. Header names are case-insensitive and values are
 compared case-insensitively unless a rule says otherwise (``NOSNIFF`` passes
 HDR-004, as in Observatory). Evidence carries the header's value, redacted.
 """
+
 from __future__ import annotations
 
 from app.core.checks.registry import CheckFn, RawFinding, condition_matches, register_check
@@ -33,8 +34,10 @@ _CHECKS: dict[str, tuple[tuple[str, ...], str]] = {
     "HDR-005": (("Referrer-Policy",), "Missing or weak Referrer-Policy"),
     "HDR-006": (("Permissions-Policy",), "Missing Permissions-Policy"),
     "HDR-007": (("Server",), "Server header discloses a version"),
-    "HDR-008": (("X-Powered-By", "X-AspNet-Version", "X-AspNetMvc-Version"),
-                "Framework version disclosed"),
+    "HDR-008": (
+        ("X-Powered-By", "X-AspNet-Version", "X-AspNetMvc-Version"),
+        "Framework version disclosed",
+    ),
 }
 
 
@@ -43,11 +46,18 @@ def _make(check_id: str, headers: tuple[str, ...], summary: str) -> CheckFn:
         if not resp.ok or not condition_matches(check_id, resp):
             return []
         seen = {h: resp.headers.get(h.lower()) for h in headers}
-        return [RawFinding(check_id, endpoint, {
-            "text": f"{summary} on {endpoint.path}",
-            "headers": {h: redact_header(h, v) if v is not None else None
-                        for h, v in seen.items()},
-        })]
+        return [
+            RawFinding(
+                check_id,
+                endpoint,
+                {
+                    "text": f"{summary} on {endpoint.path}",
+                    "headers": {
+                        h: redact_header(h, v) if v is not None else None for h, v in seen.items()
+                    },
+                },
+            )
+        ]
 
     check.__name__ = f"{check_id.lower().replace('-', '_')}_header"
     return register_check(check_id)(check)

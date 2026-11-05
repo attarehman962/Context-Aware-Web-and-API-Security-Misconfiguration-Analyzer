@@ -68,7 +68,7 @@ Key settings (full list in `backend/app/config.py`, sample in `.env.example`):
 |----------|---------|---------|
 | `DATABASE_URL` | async DB URL | postgres (docker) |
 | `REDIS_URL` | broker + pub/sub | `redis://redis:6379/0` |
-| `FRONTEND_ORIGIN` | CORS allow-list (never `*`) | `http://localhost:5173` |
+| `FRONTEND_ORIGIN` | CORS allow-list (never `*`) | `http://localhost:3000` |
 | `RUN_SCANS_INLINE` | run scans in-process (no Celery) | `false` |
 | `REQUEST_TIMEOUT`, `MAX_RESPONSE_SIZE`, `MAX_ENDPOINTS`, `MAX_CRAWL_DEPTH`, `MAX_REDIRECTS`, `MAX_CONCURRENT_REQUESTS` | safety limits | see file |
 | `LLM_ENABLED`, `LLM_PROVIDER`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | optional LLM for URL expansion | off |

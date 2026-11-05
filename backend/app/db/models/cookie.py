@@ -3,6 +3,7 @@
 Only cookie *metadata* is stored (flags, scope), never the secret token value
 itself (spec section 20).
 """
+
 from __future__ import annotations
 
 import uuid
@@ -21,9 +22,7 @@ if TYPE_CHECKING:
 class Cookie(Base, TimestampMixin):
     __tablename__ = "cookies"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     endpoint_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("endpoints.id", ondelete="CASCADE"), nullable=False, index=True
     )

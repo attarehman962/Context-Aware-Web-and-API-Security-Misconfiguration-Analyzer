@@ -5,6 +5,7 @@ queued without storing anything extra. Publishing fails fast (two quick
 retries) when the broker is down, so ``POST /api/scan`` can answer 503 instead
 of hanging.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -13,8 +14,7 @@ from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
-_PUBLISH_RETRY = {"max_retries": 2, "interval_start": 0, "interval_step": 0.5,
-                  "interval_max": 1}
+_PUBLISH_RETRY = {"max_retries": 2, "interval_start": 0, "interval_step": 0.5, "interval_max": 1}
 
 
 class QueueUnavailable(RuntimeError):
@@ -25,9 +25,10 @@ def queue_scan(scan_id: uuid.UUID) -> None:
     from app.workers.tasks import run_scan
 
     try:
-        run_scan.apply_async(args=[str(scan_id)], task_id=str(scan_id),
-                             retry=True, retry_policy=_PUBLISH_RETRY)
-    except Exception as exc:  # noqa: BLE001 - kombu raises several connection errors
+        run_scan.apply_async(
+            args=[str(scan_id)], task_id=str(scan_id), retry=True, retry_policy=_PUBLISH_RETRY
+        )
+    except Exception as exc:
         logger.error("could not queue scan %s: %s", scan_id, exc)
         raise QueueUnavailable(str(exc)) from exc
 

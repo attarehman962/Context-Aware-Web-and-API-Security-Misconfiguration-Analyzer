@@ -1,4 +1,5 @@
 """Tests for the response body classifier (Contribution 3)."""
+
 from __future__ import annotations
 
 from app.core.body_classifier import classify_body
@@ -6,7 +7,7 @@ from app.utils.redaction import MASK
 
 
 def test_credentials_detected_and_force_critical():
-    body = 'api_key = "sk_live_abcdef123456"'
+    body = 'api_key = "cawasma-fake-abcdef123456"'
     r = classify_body(body)
     assert r.credentials is True
     assert r.bonus >= 3.5

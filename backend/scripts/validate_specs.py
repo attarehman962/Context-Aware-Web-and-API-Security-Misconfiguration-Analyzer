@@ -8,6 +8,7 @@ Exit status 0 when every file is valid, 1 otherwise. Problems are printed one
 per line as ``path: location: message``. Paths default to ``settings.CONFIG_DIR``;
 override with ``--config-dir``.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -30,8 +31,10 @@ def catalog_score_mismatches() -> list[str]:
             out.append(f"{meta.rule_id}: invalid vector {meta.cvss_vector!r}: {exc}")
             continue
         if computed != meta.base_score:
-            out.append(f"{meta.rule_id}: base_score {meta.base_score} but "
-                       f"{meta.cvss_vector} scores {computed}")
+            out.append(
+                f"{meta.rule_id}: base_score {meta.base_score} but "
+                f"{meta.cvss_vector} scores {computed}"
+            )
     return out
 
 
@@ -70,8 +73,10 @@ def main(argv: list[str] | None = None) -> int:
             _report(exc)
         mismatches = catalog_score_mismatches()
         if mismatches:
-            print(f"WARN backend/app/core/checks/catalog.py: {len(mismatches)} rules' "
-                  "base_score disagrees with their CVSS vector:")
+            print(
+                f"WARN backend/app/core/checks/catalog.py: {len(mismatches)} rules' "
+                "base_score disagrees with their CVSS vector:"
+            )
             for line in mismatches:
                 print(f"     {line}")
     return 0 if ok else 1

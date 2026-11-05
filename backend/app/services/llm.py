@@ -9,6 +9,7 @@ the scanner never depends on an external API being reachable.
 Provider APIs are called directly over httpx (no extra SDK dependency). Results
 are cached per token so repeated tokens across a scan cost nothing.
 """
+
 from __future__ import annotations
 
 import json
@@ -51,8 +52,7 @@ class LLMClient:
         """Return {token: expansion} for ``tokens`` (LLM for unknown short ones)."""
         # Only short alphabetic tokens are plausible abbreviations worth asking about.
         unknown = [
-            t for t in dict.fromkeys(tokens)
-            if t not in self._cache and t.isalpha() and len(t) <= 6
+            t for t in dict.fromkeys(tokens) if t not in self._cache and t.isalpha() and len(t) <= 6
         ]
         if unknown:
             try:
@@ -119,10 +119,10 @@ def _parse_json_object(text: str) -> dict:
     text = text.strip()
     if text.startswith("```"):
         text = text.strip("`")
-        text = text[text.find("{"):]
+        text = text[text.find("{") :]
     start, end = text.find("{"), text.rfind("}")
     if start != -1 and end != -1:
-        text = text[start:end + 1]
+        text = text[start : end + 1]
     obj = json.loads(text)
     return {str(k).lower(): str(v).lower() for k, v in obj.items()}
 
@@ -141,8 +141,7 @@ def get_llm_client() -> LLMClient | None:
         _client = None
         return None
     provider = settings.LLM_PROVIDER
-    key = (settings.OPENAI_API_KEY if provider == "openai"
-           else settings.ANTHROPIC_API_KEY)
+    key = settings.OPENAI_API_KEY if provider == "openai" else settings.ANTHROPIC_API_KEY
     if not key:
         logger.info("LLM enabled but no API key for provider '%s'; using fallback", provider)
         _client = None
@@ -150,9 +149,3 @@ def get_llm_client() -> LLMClient | None:
     _client = LLMClient(provider, key, settings.LLM_MODEL or None)
     logger.info("LLM token expansion enabled (provider=%s)", provider)
     return _client
-
-
-def reset_llm_client() -> None:
-    """Testing helper: clear the cached singleton."""
-    global _client, _initialized
-    _client, _initialized = None, False

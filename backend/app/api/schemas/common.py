@@ -3,6 +3,7 @@
 Every endpoint returns Pydantic models, never raw ORM objects. The error
 envelope matches the format mandated by the project spec (section 44).
 """
+
 from __future__ import annotations
 
 from typing import Generic, TypeVar

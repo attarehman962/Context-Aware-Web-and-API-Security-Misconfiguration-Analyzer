@@ -3,6 +3,7 @@
 Reads only; scan creation goes through :mod:`app.services.scan_service`.
 Export rendering reuses the DB-free renderers in :mod:`app.core.reports`.
 """
+
 from __future__ import annotations
 
 import csv
@@ -44,9 +45,20 @@ _SIGNAL_KEYS = {
 }
 
 CSV_COLUMNS = [
-    "id", "check_id", "title", "category", "severity_bucket", "final_score", "base_score",
-    "cvss_vector", "sensitivity_class", "body_signals", "owasp_map", "cwe_map",
-    "endpoint_url", "chain_ids",
+    "id",
+    "check_id",
+    "title",
+    "category",
+    "severity_bucket",
+    "final_score",
+    "base_score",
+    "cvss_vector",
+    "sensitivity_class",
+    "body_signals",
+    "owasp_map",
+    "cwe_map",
+    "endpoint_url",
+    "chain_ids",
 ]
 
 
@@ -82,11 +94,13 @@ def scan_status(scan: Scan, counts: SeverityCounts | None = None) -> ScanStatus:
 async def severity_counts(
     session: AsyncSession, scan_ids: list[uuid.UUID]
 ) -> dict[uuid.UUID, SeverityCounts]:
-    rows = (await session.execute(
-        select(FindingRow.scan_id, FindingRow.severity_bucket, func.count())
-        .where(FindingRow.scan_id.in_(scan_ids))
-        .group_by(FindingRow.scan_id, FindingRow.severity_bucket)
-    )).all()
+    rows = (
+        await session.execute(
+            select(FindingRow.scan_id, FindingRow.severity_bucket, func.count())
+            .where(FindingRow.scan_id.in_(scan_ids))
+            .group_by(FindingRow.scan_id, FindingRow.severity_bucket)
+        )
+    ).all()
     out: dict[uuid.UUID, dict[str, int]] = defaultdict(dict)
     for scan_id, bucket, n in rows:
         out[scan_id][bucket.value.lower()] = n
@@ -97,9 +111,13 @@ async def list_scans(
     session: AsyncSession, offset: int, limit: int
 ) -> tuple[list[ScanStatus], int]:
     total = await session.scalar(select(func.count()).select_from(Scan)) or 0
-    scans = list((await session.execute(
-        select(Scan).order_by(Scan.created_at.desc(), Scan.id).offset(offset).limit(limit)
-    )).scalars())
+    scans = list(
+        (
+            await session.execute(
+                select(Scan).order_by(Scan.created_at.desc(), Scan.id).offset(offset).limit(limit)
+            )
+        ).scalars()
+    )
     counts = await severity_counts(session, [s.id for s in scans])
     return [scan_status(s, counts[s.id]) for s in scans], total
 
@@ -111,15 +129,19 @@ class FindingFilter:
 
     severity: frozenset[Severity] = frozenset()
     category: frozenset[FindingCategory] = frozenset()
-    owasp: frozenset[str] = frozenset()        # e.g. "A05:2021", case-insensitive
+    owasp: frozenset[str] = frozenset()  # e.g. "A05:2021", case-insensitive
     in_chain: bool | None = None
 
     def keep(self, f: Finding) -> bool:
-        return ((not self.severity or f.severity_bucket in self.severity)
-                and (not self.category or f.category in self.category)
-                and (not self.owasp or bool({o.upper() for o in f.owasp_map}
-                                            & {o.upper() for o in self.owasp}))
-                and (self.in_chain is None or bool(f.chain_ids) == self.in_chain))
+        return (
+            (not self.severity or f.severity_bucket in self.severity)
+            and (not self.category or f.category in self.category)
+            and (
+                not self.owasp
+                or bool({o.upper() for o in f.owasp_map} & {o.upper() for o in self.owasp})
+            )
+            and (self.in_chain is None or bool(f.chain_ids) == self.in_chain)
+        )
 
     def as_dict(self) -> dict[str, Any]:
         out: dict[str, Any] = {}
@@ -134,33 +156,45 @@ class FindingFilter:
         return out
 
 
-def select_findings(results: ScanResults, flt: FindingFilter | None = None,
-                    page: int | None = None, limit: int | None = None) -> ScanResults:
+def select_findings(
+    results: ScanResults,
+    flt: FindingFilter | None = None,
+    page: int | None = None,
+    limit: int | None = None,
+) -> ScanResults:
     """Filter, then paginate, the ranked findings. Same code for mock and real
     data, so both behave alike. Severity counts and chains stay whole-scan."""
     flt = flt or FindingFilter()
     if not flt.as_dict() and page is None and limit is None:
-        return results            # unfiltered: exactly the 1.1 response (and the export)
-    kept = [f for f in results.findings if flt.keep(f)]       # already ranked
+        return results  # unfiltered: exactly the 1.1 response (and the export)
+    kept = [f for f in results.findings if flt.keep(f)]  # already ranked
     total = len(kept)
     pages = None
     if page is not None or limit is not None:
         page, limit = page or 1, limit or 50
         pages = (total + limit - 1) // limit
-        kept = kept[(page - 1) * limit: page * limit]
-    return results.model_copy(update={
-        "findings": kept,
-        "findings_meta": FindingsMeta(total=total, page=page, limit=limit, pages=pages,
-                                      filters=flt.as_dict()),
-    })
+        kept = kept[(page - 1) * limit : page * limit]
+    return results.model_copy(
+        update={
+            "findings": kept,
+            "findings_meta": FindingsMeta(
+                total=total, page=page, limit=limit, pages=pages, filters=flt.as_dict()
+            ),
+        }
+    )
 
 
 def _chain(c: AttackChain) -> Chain:
     return Chain(
-        id=c.id, chain_code=c.chain_code, name=c.name, description=c.description,
-        composite_score=c.template_composite_score, severity=c.severity,
+        id=c.id,
+        chain_code=c.chain_code,
+        name=c.name,
+        description=c.description,
+        composite_score=c.template_composite_score,
+        severity=c.severity,
         finding_ids=sorted(f.id for f in c.findings),
-        composite_vector=c.composite_vector, evidence=c.evidence,
+        composite_vector=c.composite_vector,
+        evidence=c.evidence,
     )
 
 
@@ -168,15 +202,25 @@ async def get_results(session: AsyncSession, scan_id: uuid.UUID) -> ScanResults 
     scan = await session.get(Scan, scan_id)
     if scan is None:
         return None
-    findings = list((await session.execute(
-        select(FindingRow).where(FindingRow.scan_id == scan_id)
-        .options(selectinload(FindingRow.endpoint), selectinload(FindingRow.chains))
-    )).scalars())
-    chains = list((await session.execute(
-        select(AttackChain).where(AttackChain.scan_id == scan_id)
-        .options(selectinload(AttackChain.findings))
-        .order_by(AttackChain.template_composite_score.desc())
-    )).scalars())
+    findings = list(
+        (
+            await session.execute(
+                select(FindingRow)
+                .where(FindingRow.scan_id == scan_id)
+                .options(selectinload(FindingRow.endpoint), selectinload(FindingRow.chains))
+            )
+        ).scalars()
+    )
+    chains = list(
+        (
+            await session.execute(
+                select(AttackChain)
+                .where(AttackChain.scan_id == scan_id)
+                .options(selectinload(AttackChain.findings))
+                .order_by(AttackChain.template_composite_score.desc())
+            )
+        ).scalars()
+    )
     counts = (await severity_counts(session, [scan_id]))[scan_id]
     return ScanResults(
         scan=scan_status(scan, counts),
@@ -185,16 +229,21 @@ async def get_results(session: AsyncSession, scan_id: uuid.UUID) -> ScanResults 
     )
 
 
-async def get_finding_detail(session: AsyncSession, scan_id: uuid.UUID,
-                             finding_id: uuid.UUID) -> FindingDetail | None:
+async def get_finding_detail(
+    session: AsyncSession, scan_id: uuid.UUID, finding_id: uuid.UUID
+) -> FindingDetail | None:
     """One finding with its endpoint and chains (contract 1.2), or None."""
-    f = (await session.execute(
-        select(FindingRow)
-        .where(FindingRow.id == finding_id, FindingRow.scan_id == scan_id)
-        .options(selectinload(FindingRow.endpoint).selectinload(Endpoint.headers),
-                 selectinload(FindingRow.endpoint).selectinload(Endpoint.cookies),
-                 selectinload(FindingRow.chains).selectinload(AttackChain.findings))
-    )).scalar_one_or_none()
+    f = (
+        await session.execute(
+            select(FindingRow)
+            .where(FindingRow.id == finding_id, FindingRow.scan_id == scan_id)
+            .options(
+                selectinload(FindingRow.endpoint).selectinload(Endpoint.headers),
+                selectinload(FindingRow.endpoint).selectinload(Endpoint.cookies),
+                selectinload(FindingRow.chains).selectinload(AttackChain.findings),
+            )
+        )
+    ).scalar_one_or_none()
     if f is None:
         return None
     ep = f.endpoint
@@ -202,19 +251,35 @@ async def get_finding_detail(session: AsyncSession, scan_id: uuid.UUID,
     if ep is not None:
         signals = ep.body_signals or {}
         endpoint = EndpointDetail(
-            id=ep.id, url=ep.url, path=ep.path, method=ep.method, status_code=ep.status_code,
-            content_type=ep.content_type, sensitivity_class=ep.context_class,
+            id=ep.id,
+            url=ep.url,
+            path=ep.path,
+            method=ep.method,
+            status_code=ep.status_code,
+            content_type=ep.content_type,
+            sensitivity_class=ep.context_class,
             sensitivity_confidence=ep.context_confidence,
             sensitivity_reason=list(ep.context_reason or []),
             body_signals=sorted(sig for key, sig in _SIGNAL_KEYS.items() if signals.get(key)),
             security_headers={h.name: h.value or "" for h in ep.headers},
-            cookies=[{"name": c.name, "http_only": c.http_only, "secure": c.secure,
-                      "same_site": c.same_site.value, "domain": c.domain, "path": c.path}
-                     for c in ep.cookies],
+            cookies=[
+                {
+                    "name": c.name,
+                    "http_only": c.http_only,
+                    "secure": c.secure,
+                    "same_site": c.same_site.value,
+                    "domain": c.domain,
+                    "path": c.path,
+                }
+                for c in ep.cookies
+            ],
         )
     return FindingDetail(
-        **_finding(f).model_dump(), description=f.description, impact=f.impact,
-        references=list(f.references or []), endpoint=endpoint,
+        **_finding(f).model_dump(),
+        description=f.description,
+        impact=f.impact,
+        references=list(f.references or []),
+        endpoint=endpoint,
         chains=[_chain(c) for c in f.chains],
     )
 
@@ -223,20 +288,30 @@ def _finding(f: FindingRow) -> Finding:
     ep = f.endpoint
     signals = ep.body_signals if ep is not None else {}
     return Finding(
-        id=f.id, check_id=f.check_id, title=f.title, category=f.category,
-        endpoint_id=f.endpoint_id, endpoint_url=ep.url if ep is not None else None,
-        owasp_map=f.owasp_map, cwe_map=f.cwe_map, cvss_vector=f.cvss_vector,
-        base_score=f.base_score, final_score=f.final_score, final_vector=f.final_vector,
-        score_reasons=f.score_reasons or [], severity_bucket=f.severity_bucket,
+        id=f.id,
+        check_id=f.check_id,
+        title=f.title,
+        category=f.category,
+        endpoint_id=f.endpoint_id,
+        endpoint_url=ep.url if ep is not None else None,
+        owasp_map=f.owasp_map,
+        cwe_map=f.cwe_map,
+        cvss_vector=f.cvss_vector,
+        base_score=f.base_score,
+        final_score=f.final_score,
+        final_vector=f.final_vector,
+        score_reasons=f.score_reasons or [],
+        severity_bucket=f.severity_bucket,
         evidence=f.evidence or {"text": f.title},
         sensitivity_class=ep.context_class if ep is not None else f.context_class,
         body_signals=sorted(sig for key, sig in _SIGNAL_KEYS.items() if signals.get(key)),
         chain_ids=sorted(c.id for c in f.chains),
-        recommendation=f.recommendation, limitation=f.limitation,
+        recommendation=f.recommendation,
+        limitation=f.limitation,
     )
 
 
-# ------------------------------------------------------------------- export
+# Export
 
 MEDIA_TYPES: dict[str, str] = {
     "json": "application/json",
@@ -263,9 +338,14 @@ def export(results: ScanResults, fmt: ExportFormat) -> bytes:
 def redacted(results: ScanResults) -> ScanResults:
     """A copy whose evidence is redacted again (defence in depth: it was redacted
     when stored, but no export may carry a secret even from an older row)."""
-    return results.model_copy(update={"findings": [
-        f.model_copy(update={"evidence": redact_evidence(f.evidence)})
-        for f in results.findings]})
+    return results.model_copy(
+        update={
+            "findings": [
+                f.model_copy(update={"evidence": redact_evidence(f.evidence)})
+                for f in results.findings
+            ]
+        }
+    )
 
 
 def _csv(results: ScanResults) -> str:
@@ -273,13 +353,27 @@ def _csv(results: ScanResults) -> str:
     writer = csv.writer(buf)
     writer.writerow(CSV_COLUMNS)
     for f in results.findings:
-        writer.writerow([csv_safe(v) for v in (
-            f.id, f.check_id, f.title, f.category.value, f.severity_bucket.value,
-            f.final_score, f.base_score, f.cvss_vector,
-            f.sensitivity_class.value if f.sensitivity_class else "",
-            ";".join(s.value for s in f.body_signals), ";".join(f.owasp_map),
-            ";".join(f.cwe_map), f.endpoint_url or "", ";".join(str(c) for c in f.chain_ids),
-        )])
+        writer.writerow(
+            [
+                csv_safe(v)
+                for v in (
+                    f.id,
+                    f.check_id,
+                    f.title,
+                    f.category.value,
+                    f.severity_bucket.value,
+                    f.final_score,
+                    f.base_score,
+                    f.cvss_vector,
+                    f.sensitivity_class.value if f.sensitivity_class else "",
+                    ";".join(s.value for s in f.body_signals),
+                    ";".join(f.owasp_map),
+                    ";".join(f.cwe_map),
+                    f.endpoint_url or "",
+                    ";".join(str(c) for c in f.chain_ids),
+                )
+            ]
+        )
     return buf.getvalue()
 
 
@@ -291,43 +385,73 @@ def report_data(results: ScanResults) -> dict[str, Any]:
     endpoints = {f.endpoint_url: f for f in results.findings if f.endpoint_url}
     return {
         "scan": {
-            "id": str(s.scan_id), "target_url": s.url, "status": s.status.value,
+            "id": str(s.scan_id),
+            "target_url": s.url,
+            "status": s.status.value,
             "started_at": s.started_at.isoformat() if s.started_at else None,
             "completed_at": s.completed_at.isoformat() if s.completed_at else None,
             "duration_seconds": (s.completed_at - s.started_at).total_seconds()
-            if s.completed_at and s.started_at else None,
+            if s.completed_at and s.started_at
+            else None,
         },
         "summary": {
-            "total_findings": len(results.findings), "total_endpoints": len(endpoints),
-            "total_chains": len(results.chains), "by_severity": by_sev,
+            "total_findings": len(results.findings),
+            "total_endpoints": len(endpoints),
+            "total_chains": len(results.chains),
+            "by_severity": by_sev,
             "max_score": max((f.final_score for f in results.findings), default=0),
         },
         "insight": None,
         "tls": [],
-        "endpoints": [{
-            "url": url, "path": urlparse(url).path or "/",
-            "method": "GET", "status_code": None,
-            "context_class": f.sensitivity_class.value if f.sensitivity_class else None,
-            "context_confidence": None, "context_reason": None, "discovered_by": "-",
-        } for url, f in endpoints.items()],
-        "findings": [{
-            "rule_id": f.check_id, "title": f.title, "category": f.category.value,
-            "severity": f.severity_bucket.value, "cvss_vector": f.cvss_vector,
-            "cvss_base_score": f.base_score, "final_vector": f.final_vector,
-            "score_reasons": f.score_reasons,
-            "context_class": f.sensitivity_class.value if f.sensitivity_class else None,
-            "body_signals": [b.value for b in f.body_signals],
-            "owasp_map": f.owasp_map, "cwe_map": f.cwe_map,
-            "cawasma_context_multiplier": "", "response_bonus": None,
-            "cawasma_final_score": f.final_score, "endpoint_url": f.endpoint_url,
-            "evidence": f.evidence.get("text"), "impact": None,
-            "recommendation": f.recommendation, "references": [],
-            "limitation": f.limitation,
-        } for f in results.findings],
-        "chains": [{
-            "code": c.chain_code, "name": c.name, "description": c.description,
-            "composite_score": c.composite_score, "severity": c.severity.value,
-            "composite_vector": c.composite_vector,
-            "member_findings": sorted({code_of[i] for i in c.finding_ids if i in code_of}),
-        } for c in results.chains],
+        "endpoints": [
+            {
+                "url": url,
+                "path": urlparse(url).path or "/",
+                "method": "GET",
+                "status_code": None,
+                "context_class": f.sensitivity_class.value if f.sensitivity_class else None,
+                "context_confidence": None,
+                "context_reason": None,
+                "discovered_by": "-",
+            }
+            for url, f in endpoints.items()
+        ],
+        "findings": [
+            {
+                "rule_id": f.check_id,
+                "title": f.title,
+                "category": f.category.value,
+                "severity": f.severity_bucket.value,
+                "cvss_vector": f.cvss_vector,
+                "cvss_base_score": f.base_score,
+                "final_vector": f.final_vector,
+                "score_reasons": f.score_reasons,
+                "context_class": f.sensitivity_class.value if f.sensitivity_class else None,
+                "body_signals": [b.value for b in f.body_signals],
+                "owasp_map": f.owasp_map,
+                "cwe_map": f.cwe_map,
+                "cawasma_context_multiplier": "",
+                "response_bonus": None,
+                "cawasma_final_score": f.final_score,
+                "endpoint_url": f.endpoint_url,
+                "evidence": f.evidence.get("text"),
+                "impact": None,
+                "recommendation": f.recommendation,
+                "references": [],
+                "limitation": f.limitation,
+            }
+            for f in results.findings
+        ],
+        "chains": [
+            {
+                "code": c.chain_code,
+                "name": c.name,
+                "description": c.description,
+                "composite_score": c.composite_score,
+                "severity": c.severity.value,
+                "composite_vector": c.composite_vector,
+                "member_findings": sorted({code_of[i] for i in c.finding_ids if i in code_of}),
+            }
+            for c in results.chains
+        ],
     }

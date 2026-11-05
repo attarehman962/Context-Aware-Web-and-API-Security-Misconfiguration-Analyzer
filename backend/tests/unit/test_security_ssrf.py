@@ -1,4 +1,5 @@
 """Tests for SSRF protection."""
+
 from __future__ import annotations
 
 import pytest
@@ -9,15 +10,15 @@ from app.utils.security import SSRFError, validate_ip, validate_url_ssrf
 @pytest.mark.parametrize(
     "ip",
     [
-        "127.0.0.1",       # loopback
-        "10.0.0.5",        # private
-        "192.168.1.1",     # private
-        "172.16.0.1",      # private
-        "169.254.169.254", # link-local / cloud metadata
-        "0.0.0.0",         # unspecified
-        "::1",             # IPv6 loopback
-        "fe80::1",         # IPv6 link-local
-        "fc00::1",         # IPv6 unique-local (private)
+        "127.0.0.1",  # loopback
+        "10.0.0.5",  # private
+        "192.168.1.1",  # private
+        "172.16.0.1",  # private
+        "169.254.169.254",  # link-local / cloud metadata
+        "0.0.0.0",  # unspecified
+        "::1",  # IPv6 loopback
+        "fe80::1",  # IPv6 link-local
+        "fc00::1",  # IPv6 unique-local (private)
     ],
 )
 def test_blocked_ips(ip):

@@ -9,6 +9,7 @@ Use it where the target is reachable, e.g. on the eval network:
 
 Options mirror the eval harness (crawl depth 2, wordlist on, active probes).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -23,13 +24,18 @@ async def profile(url: str, *, passive: bool, repeat: int) -> dict:
     runs = []
     for _ in range(repeat):
         start = time.perf_counter()
-        result = await run_pipeline(url, probe=not passive, passive_only=passive,
-                                    crawl_depth=2, use_wordlist=True)
-        runs.append({"wall_seconds": round(time.perf_counter() - start, 2),
-                     "stage_seconds": result.stats["stage_seconds"],
-                     "requests": result.stats["requests"],
-                     "endpoints": result.stats["endpoints"],
-                     "findings": result.stats["findings"]})
+        result = await run_pipeline(
+            url, probe=not passive, passive_only=passive, crawl_depth=2, use_wordlist=True
+        )
+        runs.append(
+            {
+                "wall_seconds": round(time.perf_counter() - start, 2),
+                "stage_seconds": result.stats["stage_seconds"],
+                "requests": result.stats["requests"],
+                "endpoints": result.stats["endpoints"],
+                "findings": result.stats["findings"],
+            }
+        )
     return {"url": url, "passive": passive, "runs": runs}
 
 
@@ -40,8 +46,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--repeat", type=int, default=1)
     args = p.parse_args(argv)
     for url in args.urls:
-        print(json.dumps(asyncio.run(profile(url, passive=args.passive, repeat=args.repeat))),
-              flush=True)
+        print(
+            json.dumps(asyncio.run(profile(url, passive=args.passive, repeat=args.repeat))),
+            flush=True,
+        )
     return 0
 
 

@@ -5,6 +5,7 @@ actually detected. The composite score is a documented *template* value for a
 known pattern, stored as ``template_composite_score`` so it is never mistaken
 for a computed CVSS (spec section 6 & Phase-1 conflict resolution).
 """
+
 from __future__ import annotations
 
 import uuid
@@ -50,9 +51,7 @@ chain_findings = Table(
 class AttackChain(Base, TimestampMixin):
     __tablename__ = "attack_chains"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     scan_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("scans.id", ondelete="CASCADE"), nullable=False, index=True
     )

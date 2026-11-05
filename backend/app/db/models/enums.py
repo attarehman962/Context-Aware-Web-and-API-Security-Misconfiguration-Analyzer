@@ -4,6 +4,7 @@ Kept in one module so both the database layer and the scanner pipeline import
 the same canonical values (no drift between "CRITICAL" in one place and
 "Critical" in another).
 """
+
 from __future__ import annotations
 
 import enum
@@ -16,15 +17,6 @@ class ScanStatus(str, enum.Enum):
     RUNNING = "RUNNING"
     DONE = "DONE"
     FAILED = "FAILED"
-
-    @property
-    def public_value(self) -> str:
-        """Value exposed by the API, WebSocket and reports.
-
-        ``DONE`` is still published as ``"COMPLETED"`` so the current frontend
-        keeps working (docs/db-decisions.md, D3).
-        """
-        return "COMPLETED" if self is ScanStatus.DONE else self.value
 
 
 class Severity(str, enum.Enum):
@@ -49,11 +41,11 @@ class ContextClass(str, enum.Enum):
 class DiscoveryMethod(str, enum.Enum):
     """How an endpoint was discovered by the crawler (spec section 18)."""
 
-    SEED = "SEED"              # the original target URL
-    HTML = "HTML"             # extracted from HTML (<a>, <form>, <script>)
-    JAVASCRIPT = "JAVASCRIPT" # found in JS (fetch/axios/baseURL/api paths)
-    WORDLIST = "WORDLIST"     # controlled wordlist probe
-    RECURSIVE = "RECURSIVE"   # recursive crawl (depth <= 2)
+    SEED = "SEED"  # the original target URL
+    HTML = "HTML"  # extracted from HTML (<a>, <form>, <script>)
+    JAVASCRIPT = "JAVASCRIPT"  # found in JS (fetch/axios/baseURL/api paths)
+    WORDLIST = "WORDLIST"  # controlled wordlist probe
+    RECURSIVE = "RECURSIVE"  # recursive crawl (depth <= 2)
 
 
 class FindingCategory(str, enum.Enum):

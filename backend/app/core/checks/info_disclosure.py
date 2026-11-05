@@ -2,6 +2,7 @@
 
 INF-002 moved to ``checks/spec/disclosure.py``.
 """
+
 from __future__ import annotations
 
 from app.core.checks.base import CheckContext, RawFinding, make, rule
@@ -18,8 +19,9 @@ def inf_001_internal_ip(ctx: CheckContext) -> RawFinding | None:
 def inf_003_env(ctx: CheckContext) -> RawFinding | None:
     if ctx.path.endswith("/.env") and ctx.result.status_code == 200:
         body = ctx.result.body
-        if "=" in body and any(k in body.upper() for k in
-                               ("SECRET", "KEY", "PASSWORD", "TOKEN", "DB_", "API")):
+        if "=" in body and any(
+            k in body.upper() for k in ("SECRET", "KEY", "PASSWORD", "TOKEN", "DB_", "API")
+        ):
             return make("INF-003", "Exposed .env with environment variables (values redacted).")
     return None
 

@@ -48,8 +48,8 @@ also declared in `.github/CODEOWNERS`, so the owner is requested as reviewer.
 Adding a check spans two owners: Asim adds the catalog entry (spec + vector),
 Atta adds the detection function and its unit test.
 
-The current `frontend/` is a React + Vite SPA. Neelam's Next.js app replaces it
-in the same compose slot.
+`frontend/` is Neelam's Next.js app (it replaced the first React + Vite SPA in
+the same compose slot).
 
 ## Branches and pull requests
 
@@ -87,9 +87,11 @@ Notes:
   built-in classifiers as fallback.
 - `POST /api/scan` queues the scan on Celery (`services/scan_dispatch.py`, task id =
   scan id; 503 `QUEUE_UNAVAILABLE` if the broker is down) and is rate-limited
-  (`SCAN_RATE_LIMIT`, Redis fixed window, 429). `RUN_SCANS_INLINE=true` runs it as a
+  (`SCAN_RATE_LIMIT`, Redis fixed window, 429; `api/limits.py`, shared with the
+  deprecated `POST /api/scans`). `RUN_SCANS_INLINE=true` runs it as a
   FastAPI background task instead. Progress per stage goes to `Scan.progress_detail`;
-  live status is SSE (`GET /api/scan/{id}/events`, reads the DB); cancel sets
+  live status is SSE (`GET /api/scan/{id}/events`, reads the DB, at most
+  `SSE_MAX_STREAMS_PER_CLIENT` open per client); cancel sets
   `Scan.cancel_requested`, checked at every progress step. `SCAN_TIMEOUT` bounds a scan.
 - The engine enforces the scan's scope (`HttpEngine(scope_host=...)`): no request to
   another host, and no redirect followed off it; passive mode sends only GET/HEAD.
@@ -214,10 +216,10 @@ backend/app/
   api/       routes/ + schemas/ (Pydantic). Never return ORM objects.
   db/        base (JSONType), session (engine, SessionDep), models/
   workers/   celery_app.py, tasks.py (cawasma.run_scan)
-  ml/        sensitivity.classify + body_classifier.analyze (Asim; stubs for now)
+  ml/        sensitivity.classify + body_classifier.analyze (Asim)
   services/  orchestration + persistence (scan_runner, result_service, ...)
   utils/     validators, security (SSRF), redaction, logging
-backend/migrations/   Alembic (async env; one initial migration 0001)
+backend/migrations/   Alembic (async env; migrations 0001-0005)
 backend/scripts/      seed.py (sample data), reset.py (drop + migrate)
 backend/tests/        unit/ integration/ api/ fixtures/
 config/               shared service config (e.g. postgres init scripts)
@@ -232,7 +234,9 @@ frontend/             web UI (Neelam)
 - **`core/` stays database-free.** A check is a pure function
   `detect(ctx: CheckContext) -> RawFinding | None` registered with `@rule`. It
   reads only from `CheckContext`. Adding a check means a catalog entry, the
-  function, and a unit test. Keep the catalog count check (58) in sync.
+  function, and a fire/no-fire test (`tests/checks/`; the guard test fails
+  without one). Keep the catalog count check (58) in sync; checks.yaml adds 4
+  spec-only ids, 62 in all (`make check-coverage`).
 - Configuration comes only from `app.config.settings`; never read `os.environ` elsewhere.
 - Safety rules are not negotiable: HTTPS-only targets; SSRF guard on the
   *resolved IP* for every hop (`utils/security.py`); bounded requests. Only
@@ -244,9 +248,9 @@ frontend/             web UI (Neelam)
   create tables by hand, never edit a migration that has been merged. Models must
   stay portable (SQLite tests, Postgres prod): JSON columns use `JSONType` (JSONB
   on Postgres), and cascades rely on DB `ON DELETE` rules (FKs are enforced on SQLite too).
-- The REST/report JSON keeps its pre-rename field names (`rule_id`,
-  `cvss_base_score`, `cawasma_final_score`, `severity`, status `COMPLETED`) for
-  the frontend; map in `api/schemas/` rather than renaming (docs/db-decisions.md D2-D3).
+- The API uses the contract field names (`check_id`, `base_score`, `final_score`,
+  status `DONE`; docs/api-contract.md). Map in `api/schemas/` rather than renaming
+  DB columns (docs/db-decisions.md D2-D3).
 - ML code plugs in through `app/ml/sensitivity.py` and `app/ml/body_classifier.py`
   with the types in `app/core/contracts.py`; the engine must keep working with the
   built-in classifiers when ML deps are absent.
@@ -288,6 +292,7 @@ make openapi   # regenerate docs/openapi.json after any API change (CI checks it
   then scan `https://demo-target:8443/` (README "Demo the vertical slice").
 
 CI (`.github/workflows/ci.yml`) has independent jobs: branch-name check (PRs),
-backend lint (ruff + mypy), and backend tests (Alembic upgrade/downgrade + pytest
-against a Postgres 16 service container). A commented `frontend` job is ready
-for Neelam to enable.
+backend lint (ruff + mypy), backend tests (Alembic upgrade/downgrade + pytest
+against a Postgres 16 service container), and Neelam's `frontend` job (lint,
+format, typecheck, unit tests, build, Playwright) plus `frontend-e2e-eval` (the
+full flow against the real stack).

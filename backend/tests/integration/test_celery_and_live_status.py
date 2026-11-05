@@ -5,6 +5,7 @@ Atta Prompt 9. The Celery tests are synchronous: the task calls
 no broker is needed. The scanner is replaced by a fake pipeline that reports
 progress like the real one; the real pipeline is covered elsewhere.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -30,21 +31,12 @@ from app.workers.celery_app import celery_app
 BODY = {"url": "https://example.com", "authorisation_confirmed": True}
 
 
-# ------------------------------------------------------------------ helpers
+# Helpers
+
 
 class _FakeEngine:
     async def dispose(self) -> None:
         return None
-
-
-async def _quiet(self, *a, **k):
-    return None
-
-
-@pytest.fixture
-def quiet_publisher(monkeypatch):
-    monkeypatch.setattr(runner.RedisProgressPublisher, "publish", _quiet)
-    monkeypatch.setattr(runner.RedisProgressPublisher, "close", _quiet)
 
 
 def _fake_pipeline(steps=None, *, hook=None, sleep: float = 0.0):
@@ -52,8 +44,11 @@ def _fake_pipeline(steps=None, *, hook=None, sleep: float = 0.0):
         ("crawling", 8, {"endpoints_found": 0}),
         ("checking", 40, {"endpoints_found": 4, "endpoints_checked": 2, "findings": 3}),
         ("scoring", 90, {"endpoints_found": 4, "endpoints_checked": 4, "findings": 6}),
-        ("completed", 100, {"endpoints_found": 4, "endpoints_checked": 4, "findings": 6,
-                            "chains": 1}),
+        (
+            "completed",
+            100,
+            {"endpoints_found": 4, "endpoints_checked": 4, "findings": 6, "chains": 1},
+        ),
     ]
 
     async def pipeline(target, on_progress, **kw):
@@ -91,8 +86,12 @@ def worker_db(tmp_path, monkeypatch):
         async with eng.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         async with async_sessionmaker(eng, expire_on_commit=False)() as s:
-            scan = Scan(target_url="https://a.example", status=ScanStatus.QUEUED, progress=0,
-                        options={"passive_only": True})
+            scan = Scan(
+                target_url="https://a.example",
+                status=ScanStatus.QUEUED,
+                progress=0,
+                options={"passive_only": True},
+            )
             s.add(scan)
             await s.commit()
         await eng.dispose()
@@ -102,8 +101,7 @@ def worker_db(tmp_path, monkeypatch):
     async def scope():
         eng = create_async_engine(url)
         try:
-            async with async_sessionmaker(eng, class_=AsyncSession,
-                                          expire_on_commit=False)() as s:
+            async with async_sessionmaker(eng, class_=AsyncSession, expire_on_commit=False)() as s:
                 yield s
         finally:
             await eng.dispose()
@@ -118,10 +116,10 @@ def worker_db(tmp_path, monkeypatch):
     return SimpleNamespace(scan_id=scan_id, load=lambda: asyncio.run(load(scan_id)))
 
 
-# ------------------------------------------------------------------ Celery
+# Celery
 
-def test_queued_scan_runs_on_the_celery_task_and_stores_progress(
-        eager, worker_db, quiet_publisher, monkeypatch):
+
+def test_queued_scan_runs_on_the_celery_task_and_stores_progress(eager, worker_db, monkeypatch):
     seen: dict = {}
 
     async def pipeline(target, on_progress, **kw):
@@ -131,25 +129,30 @@ def test_queued_scan_runs_on_the_celery_task_and_stores_progress(
     monkeypatch.setattr(runner, "run_pipeline", pipeline)
     monkeypatch.setattr(runner, "persist_result", _no_persist)
 
-    scan_dispatch.queue_scan(worker_db.scan_id)          # apply_async, eager
+    scan_dispatch.queue_scan(worker_db.scan_id)  # apply_async, eager
 
     scan = worker_db.load()
     assert scan.status == ScanStatus.DONE and scan.progress == 100
     assert scan.current_stage == "completed"
-    assert scan.progress_detail == {"stage": "completed", "endpoints_found": 4,
-                                    "endpoints_checked": 4, "findings": 6, "chains": 1}
-    assert seen["passive_only"] is True and seen["probe"] is False   # options reach it
+    assert scan.progress_detail == {
+        "stage": "completed",
+        "endpoints_found": 4,
+        "endpoints_checked": 4,
+        "findings": 6,
+        "chains": 1,
+    }
+    assert seen["passive_only"] is True and seen["probe"] is False  # options reach it
 
 
-def test_progress_detail_is_stored_at_every_stage(eager, worker_db, quiet_publisher,
-                                                  monkeypatch):
+def test_progress_detail_is_stored_at_every_stage(eager, worker_db, monkeypatch):
     snapshots: list[dict | None] = []
 
     async def hook(i):
-        if i:     # after step i-1 was committed
+        if i:  # after step i-1 was committed
             async with runner.session_scope() as s:
-                snapshots.append(await s.scalar(
-                    select(Scan.progress_detail).where(Scan.id == worker_db.scan_id)))
+                snapshots.append(
+                    await s.scalar(select(Scan.progress_detail).where(Scan.id == worker_db.scan_id))
+                )
 
     monkeypatch.setattr(runner, "run_pipeline", _fake_pipeline(hook=hook))
     monkeypatch.setattr(runner, "persist_result", _no_persist)
@@ -227,7 +230,7 @@ def test_other_errors_are_not_retried(eager, monkeypatch):
     assert result.failed() and isinstance(result.result, ValueError) and len(calls) == 1
 
 
-def test_scan_timeout_fails_the_scan(eager, worker_db, quiet_publisher, monkeypatch):
+def test_scan_timeout_fails_the_scan(eager, worker_db, monkeypatch):
     monkeypatch.setattr(settings, "SCAN_TIMEOUT", 0.05)
     monkeypatch.setattr(runner, "run_pipeline", _fake_pipeline(sleep=5))
     tasks.run_scan.apply(args=[str(worker_db.scan_id)])
@@ -235,7 +238,7 @@ def test_scan_timeout_fails_the_scan(eager, worker_db, quiet_publisher, monkeypa
     assert scan.status == ScanStatus.FAILED and "timed out" in scan.error_message
 
 
-def test_cancel_flag_stops_a_running_scan(eager, worker_db, quiet_publisher, monkeypatch):
+def test_cancel_flag_stops_a_running_scan(eager, worker_db, monkeypatch):
     async def cancel_after_first_step(i):
         if i == 1:
             async with runner.session_scope() as s:
@@ -256,8 +259,7 @@ def test_cancel_flag_stops_a_running_scan(eager, worker_db, quiet_publisher, mon
     assert scan.progress_detail["stage"] == "crawling" and not persisted
 
 
-def test_a_scan_cancelled_while_queued_never_starts(eager, worker_db, quiet_publisher,
-                                                    monkeypatch):
+def test_a_scan_cancelled_while_queued_never_starts(eager, worker_db, monkeypatch):
     async def flag():
         async with runner.session_scope() as s:
             scan = await s.get(Scan, worker_db.scan_id)
@@ -274,7 +276,7 @@ def test_a_scan_cancelled_while_queued_never_starts(eager, worker_db, quiet_publ
     assert scan.status == ScanStatus.FAILED and scan.error_message == runner.CANCELLED
 
 
-# --------------------------------------------------------- POST /api/scan
+# POST /api/scan
 
 
 @pytest.fixture
@@ -297,8 +299,7 @@ async def test_post_scan_queues_it_on_celery(client, queued, sessionmaker_):
 
 
 @pytest.mark.asyncio
-async def test_post_scan_answers_503_when_the_queue_is_down(client, monkeypatch,
-                                                            sessionmaker_):
+async def test_post_scan_answers_503_when_the_queue_is_down(client, monkeypatch, sessionmaker_):
     def down(scan_id):
         raise scan_dispatch.QueueUnavailable("refused")
 
@@ -310,10 +311,11 @@ async def test_post_scan_answers_503_when_the_queue_is_down(client, monkeypatch,
     assert r.json()["error"]["code"] == "QUEUE_UNAVAILABLE"
     async with sessionmaker_() as s:
         scans = (await s.execute(select(Scan))).scalars().all()
-    assert [x.status for x in scans] == [ScanStatus.FAILED]      # not left QUEUED forever
+    assert [x.status for x in scans] == [ScanStatus.FAILED]  # not left QUEUED forever
 
 
-# -------------------------------------------------------------- rate limit
+# Rate limit
+
 
 @pytest.fixture
 def local_limiter(monkeypatch):
@@ -335,7 +337,7 @@ async def test_post_scan_is_rate_limited(client, queued, local_limiter):
     assert codes == [202, 202] and r.status_code == 429
     assert r.json()["error"]["code"] == "RATE_LIMITED"
     assert 1 <= int(r.headers["Retry-After"]) <= 60
-    assert len(queued) == 2                       # the refused one was never created
+    assert len(queued) == 2  # the refused one was never created
 
 
 @pytest.mark.asyncio
@@ -345,11 +347,12 @@ async def test_rate_limit_window_resets_and_is_per_client(local_limiter):
     third = await local_limiter.hit("a", now=150.0)
     assert not third.allowed and third.retry_after == 30
     assert (await local_limiter.hit("b", now=150.0)).allowed
-    assert (await local_limiter.hit("a", now=180.0)).allowed     # next minute
+    assert (await local_limiter.hit("a", now=180.0)).allowed  # next minute
 
 
-@pytest.mark.parametrize("rule, parsed", [("5/minute", (5, 60)), ("100/hour", (100, 3600)),
-                                          ("", None), ("  ", None)])
+@pytest.mark.parametrize(
+    "rule, parsed", [("5/minute", (5, 60)), ("100/hour", (100, 3600)), ("", None), ("  ", None)]
+)
 def test_rate_limit_rule_parsing(rule, parsed):
     assert rate_limit.parse(rule) == parsed
 
@@ -360,7 +363,8 @@ def test_bad_rate_limit_rules_are_rejected(rule):
         rate_limit.parse(rule)
 
 
-# ------------------------------------------------------------------ cancel
+# Cancel
+
 
 async def _add(sessionmaker_, status_: ScanStatus) -> uuid.UUID:
     async with sessionmaker_() as s:
@@ -405,7 +409,8 @@ async def test_cancel_unknown_or_finished(client, sessionmaker_, revoked):
     assert revoked == []
 
 
-# --------------------------------------------------------------------- SSE
+# SSE
+
 
 def _events(text: str) -> list[dict]:
     out = []
@@ -413,7 +418,7 @@ def _events(text: str) -> list[dict]:
         lines = block.splitlines()
         if "event: status" in lines:
             data = next(ln for ln in lines if ln.startswith("data: "))
-            out.append(json.loads(data[len("data: "):]))
+            out.append(json.loads(data[len("data: ") :]))
     return out
 
 
@@ -428,8 +433,10 @@ async def test_events_stream_every_change_and_end_after_done(client, sessionmake
     sid = await _add(sessionmaker_, ScanStatus.RUNNING)
 
     async def worker():
-        steps = [(30, "crawling", {"endpoints_found": 3}),
-                 (60, "checking", {"endpoints_found": 3, "endpoints_checked": 1})]
+        steps = [
+            (30, "crawling", {"endpoints_found": 3}),
+            (60, "checking", {"endpoints_found": 3, "endpoints_checked": 1}),
+        ]
         for pct, stage, detail in steps:
             await asyncio.sleep(0.05)
             async with sessionmaker_() as s:
@@ -451,10 +458,33 @@ async def test_events_stream_every_change_and_end_after_done(client, sessionmake
     assert r.headers["content-type"].startswith("text/event-stream")
     assert r.text.startswith("retry: 3000\n\n")
     events = _events(r.text)
-    assert [e["progress"] for e in events] == [0, 30, 60, 100]       # one per change
-    assert events[2]["progress_detail"] == {"stage": "checking", "endpoints_found": 3,
-                                            "endpoints_checked": 1}
+    assert [e["progress"] for e in events] == [0, 30, 60, 100]  # one per change
+    assert events[2]["progress_detail"] == {
+        "stage": "checking",
+        "endpoints_found": 3,
+        "endpoints_checked": 1,
+    }
     assert events[-1]["status"] == "DONE"
+
+
+@pytest.mark.asyncio
+async def test_events_streams_are_capped_per_client(client, sessionmaker_, sse_db, monkeypatch):
+    """SEC-09: each open stream polls the DB, so one client can't hold many."""
+    monkeypatch.setattr(settings, "SSE_MAX_STREAMS_PER_CLIENT", 1)
+    sid = await _add(sessionmaker_, ScanStatus.RUNNING)
+    first = asyncio.create_task(client.get(f"/api/scan/{sid}/events"))
+    await asyncio.sleep(0.1)  # the first stream is open and polling
+
+    second = await client.get(f"/api/scan/{sid}/events")
+    assert second.status_code == 429 and second.json()["error"]["code"] == "RATE_LIMITED"
+
+    async with sessionmaker_() as s:
+        (await s.get(Scan, sid)).status = ScanStatus.DONE
+        await s.commit()
+    async with asyncio.timeout(10):
+        assert (await first).status_code == 200
+    third = await client.get(f"/api/scan/{sid}/events")  # the slot was given back
+    assert third.status_code == 200
 
 
 @pytest.mark.asyncio

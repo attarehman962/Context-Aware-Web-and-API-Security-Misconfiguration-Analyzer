@@ -8,6 +8,7 @@ evidence string.
 Detection is regex-based (no model dependency). Credit-card candidates are
 validated with the Luhn checksum to cut false positives.
 """
+
 from __future__ import annotations
 
 import re
@@ -18,28 +19,32 @@ from typing import Any
 from app.core.cvss import RESPONSE_BONUS
 from app.utils.redaction import safe_evidence
 
-# --- Patterns --------------------------------------------------------------
+# Patterns
 _CRED_PATTERNS = [
     re.compile(r"eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}"),  # JWT
-    re.compile(r"AKIA[0-9A-Z]{16}"),                                                # AWS
-    re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),                             # key
+    re.compile(r"AKIA[0-9A-Z]{16}"),  # AWS
+    re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),  # key
     # SECRET_KEY=..., password: ..., and JSON "password": "..." (quote before ':').
-    re.compile(r"(?i)(api[_-]?key|secret|token|password|passwd|pwd|access[_-]?key)"
-               r"[\w-]*['\"]?\s*[=:]\s*['\"]?[^\s'\",;&<>]{5,}"),
+    re.compile(
+        r"(?i)(api[_-]?key|secret|token|password|passwd|pwd|access[_-]?key)"
+        r"[\w-]*['\"]?\s*[=:]\s*['\"]?[^\s'\",;&<>]{5,}"
+    ),
 ]
 _EMAIL = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}")
 # Grouped numbers (+92 300 1234567, (555) 123-4567, 555-123-4567) or E.164
 # (+923001234567). Not any 10+ digit run: that matched every ISO timestamp.
 _PHONE = re.compile(
     r"(?<![\w+])(?:\+\d{1,3}[\s.-]?)?(?:\(\d{2,4}\)\s?|\d{3}[\s.-])\d{3}[\s.-]?\d{4}(?!\d)"
-    r"|(?<![\w+])\+\d{8,14}(?!\d)")
+    r"|(?<![\w+])\+\d{8,14}(?!\d)"
+)
 _SSN = re.compile(r"(?<!\d)\d{3}-\d{2}-\d{4}(?!\d)")
 _CARD_CANDIDATE = re.compile(r"(?<!\d)(?:\d[ -]?){13,16}(?!\d)")
 _IBAN = re.compile(r"\b[A-Z]{2}\d{2}[A-Z0-9]{10,30}\b")
 # "total" alone is pagination ("total": 3), so it needs a currency or cents.
 _MONEY = re.compile(
     r"(?i)\b(?:balance|amount|price)\b\W{0,5}[\$€£]?\s?\d"
-    r"|\btotal\b\W{0,5}(?:[\$€£]\s?\d|\d+\.\d{2}\b)")
+    r"|\btotal\b\W{0,5}(?:[\$€£]\s?\d|\d+\.\d{2}\b)"
+)
 # Card brands by prefix (Visa, Mastercard, Amex, Discover); a bare Luhn check
 # also passes ~1 in 10 timestamps and ids.
 _CARD_PREFIX = re.compile(r"^(?:4|5[1-5]|2[2-7]|3[47]|6(?:011|5))")
@@ -94,14 +99,21 @@ class BodyClassification:
         return self.credentials
 
 
-_SIGNAL_FIELDS = (("CREDENTIALS", "credentials", "Credential-like value detected in response"),
-                  ("PII", "pii", "Personally identifiable information detected"),
-                  ("FINANCIAL", "financial", "Financial data detected"),
-                  ("INTERNAL_IP", "internal_ip", "Internal/private IP address detected"))
+_SIGNAL_FIELDS = (
+    ("CREDENTIALS", "credentials", "Credential-like value detected in response"),
+    ("PII", "pii", "Personally identifiable information detected"),
+    ("FINANCIAL", "financial", "Financial data detected"),
+    ("INTERNAL_IP", "internal_ip", "Internal/private IP address detected"),
+)
 
 
-def classify_response(url: str, status_code: int | None, content_type: str | None,
-                      headers: dict[str, str], body: str | None) -> BodyClassification:
+def classify_response(
+    url: str,
+    status_code: int | None,
+    content_type: str | None,
+    headers: dict[str, str],
+    body: str | None,
+) -> BodyClassification:
     """The classification scans use: the ML contract's body classifier
     (``app.ml.body_classifier``, Asim) when it loads, else :func:`classify_body`.
 
@@ -115,9 +127,15 @@ def classify_response(url: str, status_code: int | None, content_type: str | Non
     if detect is None:
         return classify_body(body, content_type)
     try:
-        found = detect(ResponseInfo(url=url, status_code=status_code or 0,
-                                    content_type=content_type, headers=headers,
-                                    body=body or ""))
+        found = detect(
+            ResponseInfo(
+                url=url,
+                status_code=status_code or 0,
+                content_type=content_type,
+                headers=headers,
+                body=body or "",
+            )
+        )
     except Exception:  # noqa: BLE001 - contract rule 1: a classifier bug can't stop a scan
         return classify_body(body, content_type)
     signals = {d.signal.value for d in found if d.signal is not None}
@@ -142,8 +160,7 @@ def _ml_detect() -> Callable[[Any], list[Any]] | None:
     return detect
 
 
-def classify_body(body: str | None, content_type: str | None = None
-                  ) -> BodyClassification:
+def classify_body(body: str | None, content_type: str | None = None) -> BodyClassification:
     """Classify a response body and compute the response bonus (built-in regex)."""
     result = BodyClassification()
     if not body:
@@ -164,8 +181,7 @@ def classify_body(body: str | None, content_type: str | None = None
         result.reasons.append("Personally identifiable information detected")
         hits.append("pii")
 
-    financial = bool(_MONEY.search(body)
-                     or any(_iban_ok(m) for m in _IBAN.findall(body)))
+    financial = bool(_MONEY.search(body) or any(_iban_ok(m) for m in _IBAN.findall(body)))
     if not financial:
         for cand in _CARD_CANDIDATE.findall(body):
             if _card_ok(cand):

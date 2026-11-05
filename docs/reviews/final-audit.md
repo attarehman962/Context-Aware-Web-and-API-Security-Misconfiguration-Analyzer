@@ -169,7 +169,7 @@ Marks: **done**, **partly** (what is missing is said), **missing**, **differentl
 
 | Check | Result | Detail |
 |---|---|---|
-| gitleaks over all history (v8.21.2) | 13 hits, **all fake test values** | 5 Stripe-shaped `sk_live_…` (Atta's tests: test_structured_logging, test_export_reports; old test_redaction/test_body_classifier), 3 JWTs, 3 generic api keys, 1 PEM header, 1 AWS-shaped key in a body_classifier docstring (`AKIAQ3EGRZ7X2MPLWXYZ`, made up). No real credential. The provider-shaped ones should be replaced (push protection blocked one before) and the rest allow-listed in `.gitleaks.toml` |
+| gitleaks over all history (v8.21.2) | 13 hits, **all fake test values** | 5 Stripe-shaped `sk_live_…` (Atta's tests: test_structured_logging, test_export_reports; old test_redaction/test_body_classifier), 3 JWTs, 3 generic api keys, 1 PEM header, 1 AWS-shaped key in a body_classifier docstring (`AKIA…`, made up). No real credential. The provider-shaped ones should be replaced (push protection blocked one before) and the rest allow-listed in `.gitleaks.toml` |
 | .env / key files ever committed | none | only `.env.example` and `frontend/.env.example`; no `.pem`/`.key`/`.kdbx` |
 | real credentials in fixtures | none | fixtures use AWS's documented example key and made-up values |
 | unredacted evidence: live dev DB | none | `pg_dump` of the dev database (14 scans, 3,756 findings) searched for JWTs, AWS keys, PEM blocks, `secret=value` pairs, URL userinfo: 0 hits (the only 16-digit "card" matches are float digits) |
@@ -286,3 +286,96 @@ files on `atta/fix-<name>-p11-<topic>`.
 - Then the comment, docstring and naming pass: the catch-all `utils/` split
   by purpose, banner comments removed.
 - Then the docs wording pass.
+
+## Phase 2 results (2026-11-05)
+
+On `atta/p11-final-audit` (Atta's files):
+
+| Proposal | Outcome | Commit |
+|---|---|---|
+| 0 disk, one image build, failing step named | done. Freed 17 GB of build cache; `api` builds the image and `worker`/`demo-target` reuse it. The re-run found two more bugs, both fixed: the fixed network name `cawasma-backend` let the check's stack join the dev stack's network (two `postgres` hosts), and `grep -q` + `pipefail` turned a found scan id into a failure. **The clean-machine check now passes from a fresh clone of this branch.** | 5aeb12e, 82cf2ba, 70f3ca3 |
+| 1 prompts in `docs/prompts/` | done: `atta.md` (10 prompts + review, fix, final pass), README pointing to Asim's and Neelam's (they stay in `docs/project/`, which `import.sh` regenerates) | 2464655 |
+| 2 licence | **deferred** at Atta's request until after the presentation | — |
+| 3 SEC-01..07, SEC-09 | done, test first (the strict xfails). `tests/security`: 164 passed, 0 xfailed. New `api/limits.py` (shared scan rate limit, SSE cap) | 6d165bb |
+| 4 vector conflict | done in two parts: legacy findings for an id with a spec use the spec's vector (here, 6e93e62); the catalog itself is aligned on Asim's branch | 6e93e62 |
+| 5 fire/no-fire for legacy rules | done: 42 of 42 legacy rules, guard extended; `make check-coverage`: 62 of 62 checks with fire and no-fire tests, all passing | 2e61771 |
+| 6 fake secrets, `.gitleaks.toml` | done: `gitleaks git` reports no leaks; one docstring in Asim's file is on his branch | c24f7ef |
+| 7 stale CLAUDE.md lines | done (Neelam's line about `docs/04-api-reference.md` is left for Phase 3, with the deprecated routes) | b05dbb9 |
+
+For the other owners (each on its own branch, pushed to origin, for review):
+
+| Branch | Owner | What | Merge order |
+|---|---|---|---|
+| `atta/fix-asim-p11-catalog-vectors` | Asim | catalog.py takes the checks.yaml vector for the 16 conflicting ids; `base_score` computed from the vector; `validate-config` fails on disagreement | 1 |
+| `atta/fix-neelam-p11-fixtures` | Neelam | the MSW fixture copy and 5 unit tests for the new example scores (based on the branch above) | 2, with 1 |
+| `atta/fix-neelam-p11-security-headers` | Neelam | SEC-08: CSP (`frame-ancestors 'none'`, ...), nosniff, Referrer-Policy, X-Frame-Options | any |
+| `atta/fix-asim-p11-sensitivity` | Asim | Prompt 6: anchor classifier, `config/sensitivity_anchors.yaml` (`enabled: false`), `eval_sensitivity.py`; test split accuracy 0.522 vs 0.425 | any |
+| `atta/fix-asim-p11-fake-secrets` | Asim | the AWS-shaped docstring example | any |
+
+## Phase 3: removal candidates (listed before removing)
+
+Tools: vulture 2.14 (`app`, `scripts`, 60 %), deptry 0.21.2, depcheck 1.4.7
+(knip 5.41 crashed on TypeScript 5.9), plus searches for TODO/FIXME, debug prints,
+`console.log`, `breakpoint()`, commented-out code, notebooks and scratch files.
+
+| # | Candidate | Reason | Decision |
+|---|---|---|---|
+| 1 | Deprecated pre-contract API: `POST /api/scans`, `GET /api/scans/{id}` (+ `/status`, `/findings`, `/endpoints`, `/chains`, `/report/{fmt}`), WebSocket `/ws/scans/{id}`, the worker's Redis progress channel (`services/progress.py`), their schemas and tests, `docs/04-api-reference.md` | api-contract.md: "will be removed once the Next.js app uses the contract routes". Nothing calls them: not `frontend/src`, `e2e`, `scripts/`, `eval/`, the clean-machine check. Live status is SSE from the DB | remove (Atta) |
+| 2 | `AttackChain.matched_rule_ids`, `services/llm.reset_llm_client` | no caller anywhere | remove |
+| 3 | `scikit-learn`, `pandas` in the `ml` extra | imported nowhere (scikit-learn still comes with sentence-transformers); their pins contradict `constraints.txt` (1.6.0 vs 1.9.1) | remove |
+| 4 | `reviews/` | the task asks for `docs/reviews/` | move |
+| 5 | `tests/unit/test_ml_stubs.py` | `app/ml/` holds Asim's real modules; the file tests the ML contract | rename to `test_ml_contract.py` |
+| 6 | `app/ml/__init__.py` docstring ("both are stubs") | stale | Asim's branch `atta/fix-asim-p11-sensitivity` |
+| 7 | Neelam's CLAUDE.md line pointing to `docs/04-api-reference.md`; her generated `api-schema.ts` still has the removed paths | follows from 1 | Neelam's branch `atta/fix-neelam-p11-api-schema` |
+| — | Squashing migrations 0001–0005 | all five are merged; CLAUDE.md: never edit a merged migration | keep |
+| — | `MOCK_API` | used by the contract mock mode, tests and docs | keep |
+| — | `commands.txt` | the run sheet for the demo | keep |
+| — | deptry DEP002/003 for drivers and tools (asyncpg, aiosqlite, greenlet, h2, python-dotenv, pytest, ruff, ...), the `reset.py` fallback import | loaded indirectly or by tools; `make reset` runs `reset.py` as a file, so the fallback is live | keep (false positives) |
+| — | depcheck: shadcn, tw-animate-css, tailwind packages | used from CSS and the shadcn CLI | keep (false positives) |
+| — | `eval/harness/proposed_{anchors,families}.json` | evidence for docs/evaluation-method.md | keep |
+| — | TODO/FIXME, debug prints, `console.log`, `breakpoint()`, commented-out code, notebooks, scratch scripts | none found | nothing to do |
+| — | `.gitignore` | already covers `__pycache__/`, `eval/results/raw/`, `eval/.cache/`, `eval/.run/`, `frontend/test-results/`, `playwright-report/`, `demo-output/`, `.next/` | nothing to do |
+
+## Phase 3 and 4 results (2026-11-05)
+
+- **Removed:** the pre-contract routes and WebSocket, the Redis progress channel, `report_service.py`, the legacy schemas, `ScanStatus.public_value`, the Vite CORS origin, `docs/04-api-reference.md` (1a28f65); two functions with no callers and two unused ml extras (d1035dd). `test_ml_stubs.py` → `test_ml_contract.py`; `reviews/` → `docs/reviews/`.
+- **Read like ours:** `ruff format` once, now enforced in `make lint` and CI (47683e6); unused `noqa` comments (9a8fb19); section banners → plain comments (eafa126); docs wording and stale numbers (7948ae7); `docs/walkthrough.md` (8eac1b2). No emoji, decorative logs, buzzwords, "This function…" openers or Args/Returns blocks remain in our code; errors all go through `ApiError`, logs through `get_logger`.
+
+## Final check (fresh clone of `atta/p11-final-audit` at 7948ae7)
+
+| Step | Result |
+|---|---|
+| ruff check, ruff format --check, mypy | pass |
+| pytest (all) | 933 passed, 2 skipped, 0 xfailed |
+| pytest tests/security | 155 passed (the deprecated-route cases went with the routes) |
+| validate-checks, validate-config, openapi drift | pass |
+| check-coverage | 62 of 62 checks with passing fire/no-fire tests |
+| frontend lint, prettier, typecheck, unit, build | pass; 263 unit tests |
+| Playwright + axe | 34 passed |
+| gitleaks (history, with `.gitleaks.toml`) | no leaks |
+| clean_machine_check.sh (no cache) | **pass** (build, health, migrate 0005, seed, Celery demo scan, verify) |
+| eval re-run, CAWASMA only, 4 targets | precision 0.857, recall 0.727, FPR 0.085; NDCG@10 0.260 → 0.304; identical to `eval/results/final/` except scan times. Results not committed (Asim's files) |
+
+## Definitions of done, final
+
+| Owner | Item | Result |
+|---|---|---|
+| Atta | scan runs end to end | pass |
+| Atta | every finding carries a valid, recomputable vector | partly: every base vector valid and recomputable, one vector per check id; legacy findings (42 checks) still have no environmental vector |
+| Atta | API serves ranked results | pass |
+| Atta | backend up with one Docker command | pass (clean-machine check) |
+| Atta | every check has a passing fire/no-fire test | **pass** (62/62; was 34/62) |
+| Atta | security review issues fixed | **pass** (SEC-01..07, 09); SEC-08 on Neelam's branch |
+| Asim | every check has a spec and ground truth | fail: 25/62 specs, 17/62 ground truth |
+| Asim | classifier has a measured accuracy | pass (anchor classifier on his branch: 0.522 vs 0.425 on test) |
+| Asim | mapping, chains, tool comparison, ranking | pass |
+| Neelam | full user flow on the real backend, one command | pass |
+
+## Still open
+
+1. **Licence** (AGPL-3.0 vs dropping SSLyze): deferred by Atta until after the presentation.
+2. **Branches waiting for review:** Asim: `atta/fix-asim-p11-catalog-vectors`, `-sensitivity`, `-fake-secrets`. Neelam: `atta/fix-neelam-p11-fixtures` (merge with Asim's catalog branch), `-security-headers`, `-api-schema`.
+3. **Asim's specs:** 37 catalog-only checks have no `checks.yaml` spec or ground truth; the 5 blocked specs need his answers (`docs/check-coverage.md`). Until then 42 checks use the interim formula.
+4. **Anchor classifier** is off; turning it on needs the detection and ranking tables re-run.
+5. **After Asim's branches merge:** run `ruff format` on `app/ml/` and `catalog.py` and drop the format exclude in `pyproject.toml`.
+6. Second rater for the endpoint labels (Cohen's kappa), as `docs/evaluation-method.md` notes.

@@ -9,6 +9,7 @@ Every model forbids unknown keys, so a typo fails validation instead of being
 ignored. Load with :func:`load_checks`, :func:`load_cvss_mapping`,
 :func:`load_chains`; they raise :class:`SpecError` with every problem listed.
 """
+
 from __future__ import annotations
 
 import re
@@ -35,13 +36,16 @@ from app.db.models.enums import FindingCategory, Severity
 
 CHECK_SPEC_VERSION = 1
 CVSS_MAPPING_VERSION = 1
-CHAINS_VERSION = 1   # format 1.1 (groups, scope, context, vectors) is additive
+CHAINS_VERSION = 1  # format 1.1 (groups, scope, context, vectors) is additive
 
 CheckId = Annotated[str, Field(pattern=r"^[A-Z]{3}-\d{3}$", examples=["HDR-001"])]
 # OWASP API Security Top 10 2023 (API1-API10) or OWASP Top 10 2021/2025 (A01-A10).
 OwaspId = Annotated[
-    str, Field(pattern=r"^(API([1-9]|10):2023|A(0[1-9]|10):(2021|2025))$",
-               examples=["API8:2023", "A02:2025"])
+    str,
+    Field(
+        pattern=r"^(API([1-9]|10):2023|A(0[1-9]|10):(2021|2025))$",
+        examples=["API8:2023", "A02:2025"],
+    ),
 ]
 CweId = Annotated[str, Field(pattern=r"^CWE-[1-9]\d*$", examples=["CWE-319"])]
 
@@ -59,10 +63,11 @@ class _Strict(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
-# ---------------------------------------------------------------- checks.yaml
+# Checks.yaml
 
-HeaderOp = Literal["missing", "present", "equals", "not_equals", "contains",
-                   "not_contains", "matches"]
+HeaderOp = Literal[
+    "missing", "present", "equals", "not_equals", "contains", "not_contains", "matches"
+]
 StatusOp = Literal["in", "not_in"]
 BodyOp = Literal["contains", "not_contains", "matches"]
 _NO_VALUE_OPS = {"missing", "present"}
@@ -232,7 +237,7 @@ class CheckSpecFile(_Strict):
         return self
 
 
-# ---------------------------------------------------------- cvss_mapping.yaml
+# Cvss_mapping.yaml
 
 # CVSS v3.1 Security Requirements: L(ow), M(edium), H(igh), X (Not Defined).
 Requirement = Literal["L", "M", "H", "X"]
@@ -260,7 +265,7 @@ class CvssMapping(_Strict):
         return self
 
 
-# --------------------------------------------------------------- chains.yaml
+# Chains.yaml
 
 ChainScope = Literal["same_endpoint", "same_host", "any_endpoint"]
 
@@ -325,11 +330,15 @@ class ChainSpec(_Strict):
         if self.composite_cvss_vector is not None and self.composite_score is not None:
             derived = base_score(self.composite_cvss_vector)
             if derived != self.composite_score:
-                raise ValueError(f"composite_score {self.composite_score} does not match its "
-                                 f"vector ({derived}); leave it out")
+                raise ValueError(
+                    f"composite_score {self.composite_score} does not match its "
+                    f"vector ({derived}); leave it out"
+                )
         if severity_for(self.score) != self.severity:
-            raise ValueError(f"severity {self.severity.value} does not match the chain score "
-                             f"{self.score} ({severity_for(self.score).value})")
+            raise ValueError(
+                f"severity {self.severity.value} does not match the chain score "
+                f"{self.score} ({severity_for(self.score).value})"
+            )
         return self
 
     @property
@@ -356,7 +365,8 @@ class ChainsFile(_Strict):
         return self
 
 
-# ------------------------------------------------------------------- loading
+# Loading
+
 
 def _reject_duplicates(values: list[str], what: str) -> None:
     dupes = sorted({v for v in values if values.count(v) > 1})
@@ -394,7 +404,8 @@ def load_cvss_mapping(path: Path | str) -> CvssMapping:
 
 
 def load_chains(
-    path: Path | str, known_check_ids: Iterable[str] = (),
+    path: Path | str,
+    known_check_ids: Iterable[str] = (),
     member_scores: Mapping[str, float] | None = None,
 ) -> ChainsFile:
     """Load chains. With ``known_check_ids``, reject unknown check references; with
@@ -404,14 +415,22 @@ def load_chains(
     known = set(known_check_ids)
     problems = []
     for c in chains.chains:
-        problems += [f"chains.{c.chain_id}: unknown check {rid}"
-                     for rid in sorted(c.member_ids) if known and rid not in known]
-        scored = {rid: member_scores[rid] for rid in c.member_ids
-                  if member_scores and rid in member_scores}
+        problems += [
+            f"chains.{c.chain_id}: unknown check {rid}"
+            for rid in sorted(c.member_ids)
+            if known and rid not in known
+        ]
+        scored = {
+            rid: member_scores[rid]
+            for rid in c.member_ids
+            if member_scores and rid in member_scores
+        }
         if scored and c.score <= max(scored.values()):
             top = max(scored, key=lambda k: scored[k])
-            problems.append(f"chains.{c.chain_id}: score {c.score} must exceed every member "
-                            f"(highest: {top} {scored[top]})")
+            problems.append(
+                f"chains.{c.chain_id}: score {c.score} must exceed every member "
+                f"(highest: {top} {scored[top]})"
+            )
     if problems:
         raise SpecError(path, problems)
     return chains

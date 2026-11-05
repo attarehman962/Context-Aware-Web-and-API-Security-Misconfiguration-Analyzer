@@ -13,11 +13,8 @@
 
 services:
   demo-target:
-    image: cawasma-backend:${CAWASMA_IMAGE_TAG:-dev}
-    build:
-      context: ./backend
-      args:
-        INSTALL_ML: ${INSTALL_ML:-true}
+    image: cawasma-backend:${CAWASMA_IMAGE_TAG:-dev}      # built by api
+    pull_policy: never
     command: >
       python -m scripts.demo_target --name demo-target --port 8443
       --ca-out /certs/demo-ca.pem

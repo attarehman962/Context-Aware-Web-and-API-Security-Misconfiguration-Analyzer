@@ -2,8 +2,9 @@
 
     from app.api.schemas import ScanRequest, ScanStatus, Finding, ScanResults
 
-``common``, ``endpoint``, ``scan`` and ``health`` hold the legacy route schemas.
+``common`` holds the error envelope and pagination, ``health`` the health check.
 """
+
 from __future__ import annotations
 
 from app.api.schemas.contract import (

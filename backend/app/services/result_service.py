@@ -3,6 +3,7 @@
 Kept separate from the pipeline so the scanner stays database-free and unit-
 testable. All writes happen inside the caller's transaction/session.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -30,11 +31,20 @@ logger = get_logger(__name__)
 
 # Only persist headers that carry security signal (keeps rows bounded).
 _SECURITY_HEADERS = {
-    "strict-transport-security", "content-security-policy", "x-frame-options",
-    "x-content-type-options", "referrer-policy", "permissions-policy",
-    "cross-origin-opener-policy", "cross-origin-resource-policy",
-    "cache-control", "server", "x-powered-by", "set-cookie",
-    "access-control-allow-origin", "access-control-allow-credentials",
+    "strict-transport-security",
+    "content-security-policy",
+    "x-frame-options",
+    "x-content-type-options",
+    "referrer-policy",
+    "permissions-policy",
+    "cross-origin-opener-policy",
+    "cross-origin-resource-policy",
+    "cache-control",
+    "server",
+    "x-powered-by",
+    "set-cookie",
+    "access-control-allow-origin",
+    "access-control-allow-credentials",
     "www-authenticate",
 }
 
@@ -96,20 +106,29 @@ async def persist_result(session, scan: Scan, result: ScanResult) -> None:
             if name.lower() in _SECURITY_HEADERS:
                 session.add(Header(endpoint=row, name=name, value=value))
         for ck in ep.cookies:
-            session.add(Cookie(
-                endpoint=row, name=ck.name, value_length=ck.value_length,
-                http_only=ck.http_only, secure=ck.secure, same_site=ck.same_site,
-                domain=ck.domain, path=ck.path,
-            ))
+            session.add(
+                Cookie(
+                    endpoint=row,
+                    name=ck.name,
+                    value_length=ck.value_length,
+                    http_only=ck.http_only,
+                    secure=ck.secure,
+                    same_site=ck.same_site,
+                    domain=ck.domain,
+                    path=ck.path,
+                )
+            )
 
     # Findings -- keep a rule_id -> [Finding] map for chain linking.
     finding_rows: list[Finding] = []
     by_rule: dict[str, list[Finding]] = {}
     for sf in result.findings:
         raw = sf.raw
-        ep_row = (endpoint_rows[sf.endpoint_index]
-                  if sf.endpoint_index is not None and sf.endpoint_index < len(endpoint_rows)
-                  else None)
+        ep_row = (
+            endpoint_rows[sf.endpoint_index]
+            if sf.endpoint_index is not None and sf.endpoint_index < len(endpoint_rows)
+            else None
+        )
         frow = Finding(
             scan_id=scan.id,
             endpoint=ep_row,
@@ -142,25 +161,34 @@ async def persist_result(session, scan: Scan, result: ScanResult) -> None:
     # TLS info (host-level).
     if result.tls and result.tls.reachable:
         t = result.tls
-        session.add(TlsInfo(
-            scan_id=scan.id, host=t.host,
-            protocols_offered=t.protocols_offered,
-            weak_ciphers=weak_ciphers(t),
-            issues=tls_issues([sf.raw for sf in result.findings]),
-            negotiated_protocol=t.negotiated_protocol,
-            negotiated_cipher=t.negotiated_cipher,
-            cert_subject=t.cert_subject, cert_issuer=t.cert_issuer,
-            cert_not_after=t.cert_not_after, is_self_signed=t.is_self_signed,
-            hostname_matches=t.hostname_matches,
-        ))
+        session.add(
+            TlsInfo(
+                scan_id=scan.id,
+                host=t.host,
+                protocols_offered=t.protocols_offered,
+                weak_ciphers=weak_ciphers(t),
+                issues=tls_issues([sf.raw for sf in result.findings]),
+                negotiated_protocol=t.negotiated_protocol,
+                negotiated_cipher=t.negotiated_cipher,
+                cert_subject=t.cert_subject,
+                cert_issuer=t.cert_issuer,
+                cert_not_after=t.cert_not_after,
+                is_self_signed=t.is_self_signed,
+                hostname_matches=t.hostname_matches,
+            )
+        )
 
     # Attack chains + link member findings.
     for ch in result.chains:
         chain_row = AttackChain(
-            scan_id=scan.id, chain_code=ch.code, name=ch.name,
+            scan_id=scan.id,
+            chain_code=ch.code,
+            name=ch.name,
             description=ch.description,
-            template_composite_score=ch.composite_score, severity=ch.severity,
-            composite_vector=ch.composite_vector, evidence=ch.evidence,
+            template_composite_score=ch.composite_score,
+            severity=ch.severity,
+            composite_vector=ch.composite_vector,
+            evidence=ch.evidence,
         )
         # Exactly the member findings of this unit (not every finding with a
         # matching check id elsewhere in the scan).
@@ -169,10 +197,18 @@ async def persist_result(session, scan: Scan, result: ScanResult) -> None:
         session.add(chain_row)
 
     # Deterministic executive insight (built-in, not an external LLM).
-    session.add(AiInsight(
-        scan_id=scan.id, provider="builtin",
-        summary=generate_insight(result),
-    ))
+    session.add(
+        AiInsight(
+            scan_id=scan.id,
+            provider="builtin",
+            summary=generate_insight(result),
+        )
+    )
 
-    logger.info("persisted scan %s: %d endpoints, %d findings, %d chains",
-                scan.id, len(endpoint_rows), len(finding_rows), len(result.chains))
+    logger.info(
+        "persisted scan %s: %d endpoints, %d findings, %d chains",
+        scan.id,
+        len(endpoint_rows),
+        len(finding_rows),
+        len(result.chains),
+    )

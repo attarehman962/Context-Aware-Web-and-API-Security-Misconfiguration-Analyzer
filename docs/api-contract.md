@@ -452,19 +452,26 @@ Show `message` to the user; branch on `code`, never on `message`.
 - Every change bumps the version, regenerates `openapi.json` (`make openapi`)
   and adds a line to the changelog below.
 
-## Pre-contract routes (deprecated)
+## Pre-contract routes (removed)
 
-The current Vite frontend uses older routes (`POST /api/scans`,
-`/api/scans/{id}`, `/findings`, `/endpoints`, `/chains`, `/report`, the
-WebSocket). They still work, are marked deprecated in `openapi.json`, and will
-be removed once the Next.js app uses the contract routes.
-
-**Breaking for the Vite app:** `GET /api/scans` now returns contract
-`ScanStatus` items (`scan_id`, `url`, status `DONE`) instead of the old shape
-(`id`, `target_url`, status `COMPLETED`), because the contract needs that path
-for history. The old dashboard list must switch to the new fields.
+The first Vite frontend used older routes (`POST /api/scans`,
+`/api/scans/{id}`, `/status`, `/findings`, `/endpoints`, `/chains`, `/report`,
+the `/ws/scans/{id}` WebSocket). They were removed on 2026-11-05, once the
+Next.js app used only the contract routes. `GET /api/scans` (history) is a
+contract route and stays.
 
 ## Changelog
+
+- **1.3.0, pre-contract routes removed** (2026-11-05): the deprecated routes and
+  the WebSocket are gone (section above). No contract route changed, so the
+  version stays.
+- **1.3.0 fixes** (2026-11-05, security review SEC-01..07, SEC-09; no shape
+  changes, so the version stays): `POST /api/scan` and the then-deprecated `POST /api/scans` refuse
+  with 400 `INVALID_TARGET` a URL with a user name or password, control
+  characters, port 0 or an out-of-range port, or a malformed IPv6 host;
+  `authorisation_confirmed` must be JSON `true` (1 is 422 now); the deprecated
+  `POST /api/scans` shares the scan rate limit; `GET /api/scan/{id}/events` can
+  return 429 `RATE_LIMITED` past `SSE_MAX_STREAMS_PER_CLIENT` open streams.
 
 - **1.3.0** (Sprint 4): additive. Scans run on the Celery worker. `ScanStatus`
   gains `progress_detail` (counts per stage). New `GET /api/scan/{id}/events`

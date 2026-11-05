@@ -5,12 +5,12 @@ The seeded scan is changed so one finding's stored evidence holds a raw secret
 HTML in it. No format may carry the secret; HTML must escape the title; the
 report shows vectors, the score story and the chains.
 """
+
 from __future__ import annotations
 
 import contextlib
 import csv
 import io
-import json
 import shutil
 import subprocess
 
@@ -23,7 +23,7 @@ from app.db.models import Finding
 
 pytestmark = pytest.mark.asyncio
 
-SECRET = "sk_live_9f8e7d6c5b4a3210"
+SECRET = "cawasma-fake-9f8e7d6c5b4a3210"
 RAW_EVIDENCE = f"config leak: api_key={SECRET} and Authorization: Bearer abcdefghijklmnop"
 XSS = "<img src=x onerror=alert(1)>"
 
@@ -40,8 +40,17 @@ async def scan_id(sessionmaker_, monkeypatch):
     await seed_mod.seed()
     sid = seed_mod.RESCAN_SCAN_ID
     async with sessionmaker_() as s:
-        top = (await s.execute(select(Finding).where(Finding.scan_id == sid)
-                               .order_by(Finding.final_score.desc()))).scalars().first()
+        top = (
+            (
+                await s.execute(
+                    select(Finding)
+                    .where(Finding.scan_id == sid)
+                    .order_by(Finding.final_score.desc())
+                )
+            )
+            .scalars()
+            .first()
+        )
         top.evidence = {"text": RAW_EVIDENCE, "headers": {"x-debug": f"token={SECRET}"}}
         top.title = f"Leaky endpoint {XSS}"
         await s.commit()
@@ -99,8 +108,10 @@ def _pdf_text(pdf: bytes) -> str | None:
     tool = shutil.which("pdftotext")
     if tool is None:
         return None
-    return subprocess.run([tool, "-", "-"], input=pdf, capture_output=True,  # noqa: S603 - fixed tool, our own PDF
-                          check=True).stdout.decode()
+    done = subprocess.run(  # noqa: S603 - fixed tool, our own PDF
+        [tool, "-", "-"], input=pdf, capture_output=True, check=True
+    )
+    return done.stdout.decode()
 
 
 async def test_pdf_report_is_rendered_from_the_same_html(client, scan_id):
@@ -126,42 +137,61 @@ async def test_every_format_refuses_an_unfinished_scan(client, sessionmaker_):
         assert r.status_code == 409 and r.json()["error"]["code"] == "SCAN_NOT_FINISHED"
 
 
-# ---------------------------------------------------------- renderer units
+# Renderer units
+
 
 def _finding(**kw):
-    base = {"rule_id": "HDR-002", "title": "t", "severity": "MEDIUM", "cvss_vector": "V",
-            "cvss_base_score": 5.4, "cawasma_final_score": 6.4, "endpoint_url": None,
-            "evidence": None, "recommendation": None, "limitation": None}
+    base = {
+        "rule_id": "HDR-002",
+        "title": "t",
+        "severity": "MEDIUM",
+        "cvss_vector": "V",
+        "cvss_base_score": 5.4,
+        "cawasma_final_score": 6.4,
+        "endpoint_url": None,
+        "evidence": None,
+        "recommendation": None,
+        "limitation": None,
+    }
     return {**base, **kw}
 
 
 def test_score_story_explains_environmental_requirements():
-    story = reports.score_story(_finding(
-        final_vector="V/CR:H", score_reasons=[
-            "sensitivity:CRITICAL", "signal:PII", "CR:H<-sensitivity:CRITICAL+signal:PII",
-            "base:5.4", "environmental:6.4"]))
-    assert ("Confidentiality requirement High because endpoint sensitivity is CRITICAL, "
-            "the response contains PII.") in story
+    story = reports.score_story(
+        _finding(
+            final_vector="V/CR:H",
+            score_reasons=[
+                "sensitivity:CRITICAL",
+                "signal:PII",
+                "CR:H<-sensitivity:CRITICAL+signal:PII",
+                "base:5.4",
+                "environmental:6.4",
+            ],
+        )
+    )
+    assert (
+        "Confidentiality requirement High because endpoint sensitivity is CRITICAL, "
+        "the response contains PII."
+    ) in story
     assert story[-1] == "Base 5.4 → final 6.4 (+1.0)."
 
 
 def test_score_story_for_unchanged_and_legacy_scores():
-    same = reports.score_story(_finding(cawasma_final_score=5.4, final_vector="V",
-                                        score_reasons=["no-context-change"]))
+    same = reports.score_story(
+        _finding(cawasma_final_score=5.4, final_vector="V", score_reasons=["no-context-change"])
+    )
     assert any("equals the base score" in s for s in same) and same[-1].endswith("(unchanged).")
-    legacy = reports.score_story(_finding(cawasma_context_multiplier=1.2, response_bonus=0.5,
-                                          context_class="HIGH", body_signals=["PII"]))
+    legacy = reports.score_story(
+        _finding(
+            cawasma_context_multiplier=1.2,
+            response_bonus=0.5,
+            context_class="HIGH",
+            body_signals=["PII"],
+        )
+    )
     assert "interim formula" in legacy[0]
     assert "Context multiplier ×1.2 for a HIGH endpoint." in legacy
     assert "Response bonus +0.5 for sensitive data in the response (PII)." in legacy
-
-
-def test_legacy_json_report_redacts_evidence_too():
-    data = {"scan": {}, "summary": {}, "findings": [_finding(evidence=RAW_EVIDENCE)],
-            "chains": []}
-    out = reports.render_json(data)
-    assert SECRET not in out and json.loads(out)["findings"][0]["evidence"].startswith(
-        "config leak")
 
 
 def test_template_is_packaged_next_to_the_code():

@@ -17,6 +17,7 @@ Checks, failing with exit code 1 and a reason per failed check:
 
 Standard library + the ``cvss`` package only, so it runs in the api image.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -29,8 +30,10 @@ import urllib.request
 
 from cvss import CVSS3
 
-SECRET_RE = re.compile(r"eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.|AKIA[0-9A-Z]{16}|"
-                       r"-----BEGIN [A-Z ]*PRIVATE KEY-----")
+SECRET_RE = re.compile(
+    r"eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.|AKIA[0-9A-Z]{16}|"
+    r"-----BEGIN [A-Z ]*PRIVATE KEY-----"
+)
 
 
 def get(url: str, timeout: float = 60) -> tuple[int, str, bytes]:
@@ -62,17 +65,25 @@ def verify(api: str, scan_id: str, expect: list[str]) -> list[str]:
         where = f"{f['check_id']} {f.get('endpoint_url') or 'host'}"
         try:
             if abs(base_score(f["cvss_vector"]) - f["base_score"]) > 0.05:
-                errors.append(f"{where}: base_score {f['base_score']} != vector "
-                              f"{f['cvss_vector']} ({base_score(f['cvss_vector'])})")
-            if f.get("final_vector") and abs(env_score(f["final_vector"])
-                                             - f["final_score"]) > 0.05:
-                errors.append(f"{where}: final_score {f['final_score']} != "
-                              f"{f['final_vector']} ({env_score(f['final_vector'])})")
+                errors.append(
+                    f"{where}: base_score {f['base_score']} != vector "
+                    f"{f['cvss_vector']} ({base_score(f['cvss_vector'])})"
+                )
+            if (
+                f.get("final_vector")
+                and abs(env_score(f["final_vector"]) - f["final_score"]) > 0.05
+            ):
+                errors.append(
+                    f"{where}: final_score {f['final_score']} != "
+                    f"{f['final_vector']} ({env_score(f['final_vector'])})"
+                )
         except Exception as exc:  # noqa: BLE001 - report every bad vector
             errors.append(f"{where}: invalid CVSS vector: {exc}")
     for c in chains:
-        if c.get("composite_vector") and abs(base_score(c["composite_vector"])
-                                             - c["composite_score"]) > 0.05:
+        if (
+            c.get("composite_vector")
+            and abs(base_score(c["composite_vector"]) - c["composite_score"]) > 0.05
+        ):
             errors.append(f"chain {c['chain_code']}: composite score does not recompute")
     ids = {f["check_id"] for f in findings}
     errors += [f"expected finding {cid} is missing" for cid in expect if cid not in ids]
@@ -84,8 +95,7 @@ def verify(api: str, scan_id: str, expect: list[str]) -> list[str]:
             continue
         if fmt == "json" and len(json.loads(body)["findings"]) != len(findings):
             errors.append("export json: finding count differs from the API")
-        if fmt == "csv" and len(list(csv.DictReader(io.StringIO(body.decode())))) != len(
-                findings):
+        if fmt == "csv" and len(list(csv.DictReader(io.StringIO(body.decode())))) != len(findings):
             errors.append("export csv: row count differs from the API")
         if fmt == "pdf" and not body.startswith(b"%PDF-"):
             errors.append(f"export pdf: not a PDF ({ctype})")
@@ -93,8 +103,9 @@ def verify(api: str, scan_id: str, expect: list[str]) -> list[str]:
             errors.append(f"export {fmt}: contains an unredacted secret pattern")
 
     _, _, stream = get(f"{api}/api/scan/{scan_id}/events", timeout=30)
-    events = [json.loads(line[6:]) for line in stream.decode().splitlines()
-              if line.startswith("data: ")]
+    events = [
+        json.loads(line[6:]) for line in stream.decode().splitlines() if line.startswith("data: ")
+    ]
     if not events or events[-1]["status"] != "DONE":
         errors.append("SSE stream did not end with the DONE event")
     return errors

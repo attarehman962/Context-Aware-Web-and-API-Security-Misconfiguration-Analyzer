@@ -10,6 +10,7 @@ tagged without passing the id around), anything given as ``extra={...}``, and
 runs. Secrets must be redacted (``utils/redaction.py``) before they reach the
 logger; both formatters also redact the final line as a last line of defence.
 """
+
 from __future__ import annotations
 
 import json
@@ -29,7 +30,11 @@ scan_id_var: ContextVar[str | None] = ContextVar("scan_id", default=None)
 
 # LogRecord attributes that are not ``extra`` fields.
 _STANDARD = set(vars(logging.LogRecord("", 0, "", 0, "", None, None))) | {
-    "message", "asctime", "scan_id", "taskName"}
+    "message",
+    "asctime",
+    "scan_id",
+    "taskName",
+}
 
 
 class _ScanIdFilter(logging.Filter):
@@ -48,8 +53,9 @@ class JsonFormatter(logging.Formatter):
         }
         if scan_id := getattr(record, "scan_id", None):
             out["scan_id"] = scan_id
-        out.update({k: v for k, v in vars(record).items()
-                    if k not in _STANDARD and not k.startswith("_")})
+        out.update(
+            {k: v for k, v in vars(record).items() if k not in _STANDARD and not k.startswith("_")}
+        )
         if record.exc_info:
             out["exc"] = self.formatException(record.exc_info)
         return redact_text(json.dumps(out, default=str)) or ""
@@ -57,8 +63,9 @@ class JsonFormatter(logging.Formatter):
 
 class TextFormatter(logging.Formatter):
     def __init__(self) -> None:
-        super().__init__(fmt="%(asctime)s %(levelname)-8s %(name)s :: %(message)s",
-                         datefmt="%Y-%m-%dT%H:%M:%S%z")
+        super().__init__(
+            fmt="%(asctime)s %(levelname)-8s %(name)s :: %(message)s", datefmt="%Y-%m-%dT%H:%M:%S%z"
+        )
 
     def format(self, record: logging.LogRecord) -> str:
         line = super().format(record)
@@ -74,8 +81,7 @@ def configure_logging() -> None:
         return
 
     handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(JsonFormatter() if settings.LOG_FORMAT == "json"
-                         else TextFormatter())
+    handler.setFormatter(JsonFormatter() if settings.LOG_FORMAT == "json" else TextFormatter())
     handler.addFilter(_ScanIdFilter())
 
     root = logging.getLogger()
