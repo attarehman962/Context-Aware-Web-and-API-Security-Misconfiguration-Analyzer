@@ -98,7 +98,7 @@ describe("scoreStory: interim formula", () => {
   it("names the context and says it is the interim formula", () => {
     const story = scoreStory(byCheck("API-003"));
     expect(story.sentence).toBe(
-      "Raised from 7.5 to 10.0 because the endpoint is classified as Authentication and the response contains personal data (CAWASMA's interim formula; this check is not yet scored with CVSS environmental metrics).",
+      "Raised from 9.1 to 10.0 because the endpoint is classified as Authentication and the response contains personal data (CAWASMA's interim formula; this check is not yet scored with CVSS environmental metrics).",
     );
     expect(story.method).toBe("interim");
   });

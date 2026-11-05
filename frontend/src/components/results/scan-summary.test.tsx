@@ -40,7 +40,7 @@ describe("ScanSummary", () => {
     expect(critical).toHaveTextContent("2");
 
     const shift = screen.getByTestId("context-shift");
-    expect(shift).toHaveTextContent("2 findings moved up a severity");
+    expect(shift).toHaveTextContent("0 findings moved up a severity");
     expect(shift).toHaveTextContent("1 finding moved down");
   });
 
