@@ -24,7 +24,7 @@ from app.core.contracts import BodySignal, SensitivityClass
 from app.db.models.enums import FindingCategory, Severity
 from app.db.models.enums import ScanStatus as ScanState
 
-CONTRACT_VERSION = "1.3.0"
+CONTRACT_VERSION = "1.4.0"
 
 __all__ = [
     "CONTRACT_VERSION",
@@ -43,6 +43,9 @@ __all__ = [
 ]
 
 ExportFormat = Literal["json", "csv", "html", "pdf"]
+# How final_score was computed: CVSS v3.1 environmental metrics, or the interim
+# formula the legacy @rule checks still use (docs/06-scoring-model.md).
+ScoringMethod = Literal["environmental", "legacy"]
 
 
 class _Contract(BaseModel):
@@ -152,6 +155,13 @@ class Finding(_Contract):
         examples=[["sensitivity:LOW", "no-context-change", "base:5.9", "environmental:5.9"]],
         description="Since 1.1. Why each requirement was set; empty when final_vector is null.",
     )
+    scoring_method: ScoringMethod = Field(
+        "legacy",
+        description="Since 1.4. 'environmental': final_score is the CVSS v3.1 environmental "
+        "score of final_vector. 'legacy': the interim formula (base x context multiplier + "
+        "body bonus) and final_vector is null. The two are different scales: label them, "
+        "don't compare them as one.",
+    )
     severity_bucket: Severity
     evidence: dict[str, Any] = Field(
         ..., description="Redacted. Always has 'text'; other " "keys depend on the check."
@@ -171,6 +181,22 @@ class Finding(_Contract):
     limitation: str | None = Field(
         None, description="Set when black-box testing cannot " "confirm the finding; show it."
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _derive_scoring_method(cls, data: Any) -> Any:
+        if isinstance(data, dict) and "scoring_method" not in data:
+            method = "environmental" if data.get("final_vector") else "legacy"
+            data = {**data, "scoring_method": method}
+        return data
+
+    @model_validator(mode="after")
+    def _scoring_method_matches_vector(self) -> Finding:
+        if (self.scoring_method == "environmental") != (self.final_vector is not None):
+            raise ValueError(
+                "scoring_method must be 'environmental' exactly when final_vector is set"
+            )
+        return self
 
 
 class Chain(_Contract):

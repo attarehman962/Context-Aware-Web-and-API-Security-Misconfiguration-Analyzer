@@ -79,4 +79,21 @@ def test_results_rank_findings_by_final_score_desc():
         (3.7, "HDR-001"),
         (3.7, "HDR-003"),
     ]
-    assert results.contract_version == "1.3.0"
+    assert results.contract_version == "1.4.0"
+
+
+def test_every_finding_says_how_it_was_scored():
+    """Since 1.4: environmental and legacy scores are never mixed silently."""
+    legacy = _finding(6.2, "HDR-009")
+    assert legacy.scoring_method == "legacy"
+    env = legacy.model_copy(update={}).model_validate(
+        {
+            **legacy.model_dump(exclude={"scoring_method"}),
+            "final_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N/CR:H/IR:X/AR:X",
+        }
+    )
+    assert env.scoring_method == "environmental"
+    # Exported JSON reads back (the field is part of the shape, not extra).
+    assert Finding.model_validate_json(env.model_dump_json()).scoring_method == "environmental"
+    with pytest.raises(ValidationError, match="scoring_method"):
+        Finding.model_validate({**legacy.model_dump(), "scoring_method": "environmental"})

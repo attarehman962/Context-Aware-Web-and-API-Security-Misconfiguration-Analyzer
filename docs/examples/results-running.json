@@ -1,5 +1,5 @@
 {
-  "contract_version": "1.3.0",
+  "contract_version": "1.4.0",
   "scan": {
     "scan_id": "22222222-2222-4222-8222-222222222222",
     "url": "https://api.example.org",
