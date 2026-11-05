@@ -21,9 +21,9 @@ Finding generation  →  CVSS base × context multiplier + response bonus = fina
     ↓
 Attack-chain correlation  (Contribution 2)
     ↓
-PostgreSQL  →  Reports (JSON/CSV/HTML/PDF)  →  REST API + WebSocket
+PostgreSQL  →  Reports (JSON/CSV/HTML/PDF)  →  REST API + SSE live status
     ↓
-React frontend
+Next.js frontend
 ```
 
 ## Process topology
@@ -31,26 +31,27 @@ React frontend
 CAWASMA runs as cooperating processes so that a scan never blocks the API:
 
 ```
-          HTTP / WebSocket
-Browser  ─────────────────▶  FastAPI (async)
- (React)                        │  creates QUEUED scan row
-                                │  enqueues job
-                                ▼
-                            Redis  ◀───────────────┐
-                                │ broker           │ progress pub/sub
-                                ▼                  │
-                          Celery worker  ──────────┘
-                                │  runs the scan pipeline
-                                ▼
-                           PostgreSQL
+          HTTP / SSE
+Browser  ─────────────────▶  FastAPI (async)  ◀────────┐
+(Next.js)                       │  creates QUEUED scan row │ SSE reads progress
+                                │  enqueues job            │
+                                ▼                          │
+                            Redis (broker)                 │
+                                │                          │
+                                ▼                          │
+                          Celery worker                    │
+                                │  runs the scan pipeline  │
+                                ▼                          │
+                           PostgreSQL  ────────────────────┘
 ```
 
 - **FastAPI** accepts the scan, writes a `QUEUED` row, and returns immediately.
 - **Celery worker** (separate process) runs the full pipeline with
   `asyncio.run()`.
-- The worker **cannot** write to FastAPI's WebSocket directly, so it publishes
-  progress events to a Redis channel `scan:{id}:events`. The FastAPI WebSocket
-  endpoint subscribes to that channel and forwards events to the browser.
+- The worker writes progress per stage to the scan row (`progress`,
+  `current_stage`, `progress_detail`). `GET /api/scan/{id}/events` (SSE) re-reads
+  that row and sends a `status` event whenever it changes, so live status needs
+  no second channel between the worker and the API.
 - The worker writes endpoints, findings, chains, TLS info and an insight to
   **PostgreSQL**.
 
@@ -91,7 +92,7 @@ cover them deterministically without a live target.
   endpoint classifier; the classifier falls back to an explainable keyword layer
   when the model isn't installed.
 - **WeasyPrint + Jinja2** — professional PDF/HTML reports.
-- **React + Vite** — the separate JavaScript frontend consuming REST + WebSocket.
+- **Next.js** — the separate frontend consuming the REST contract and the SSE stream.
 
 ## Safety architecture (the scanner scans safely, and protects itself)
 

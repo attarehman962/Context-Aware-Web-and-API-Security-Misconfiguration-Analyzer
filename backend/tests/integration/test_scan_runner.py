@@ -30,16 +30,11 @@ async def test_scan_runner_completes(engine, monkeypatch):
         finally:
             await session.close()
 
-    async def noop(self, *a, **k):
-        return None
-
     async def patched_pipeline(target, on_progress=None, *, probe=True, allow_private=False, **_):
         return await run_pipeline(target, on_progress, probe=False, allow_private=True)
 
     monkeypatch.setattr(runner, "session_scope", fake_scope)
     monkeypatch.setattr(runner, "run_pipeline", patched_pipeline)
-    monkeypatch.setattr(runner.RedisProgressPublisher, "publish", noop)
-    monkeypatch.setattr(runner.RedisProgressPublisher, "close", noop)
 
     with mock_server() as base:
         async with async_session() as s:
@@ -73,13 +68,8 @@ async def _run_failing(engine, monkeypatch, exc):
     async def failing_pipeline(*a, **k):
         raise exc
 
-    async def noop(self, *a, **k):
-        return None
-
     monkeypatch.setattr(runner, "session_scope", fake_scope)
     monkeypatch.setattr(runner, "run_pipeline", failing_pipeline)
-    monkeypatch.setattr(runner.RedisProgressPublisher, "publish", noop)
-    monkeypatch.setattr(runner.RedisProgressPublisher, "close", noop)
     async with async_session() as s:
         scan = Scan(target_url="https://unreachable.example", status=ScanStatus.QUEUED,
                     progress=0)

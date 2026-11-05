@@ -17,7 +17,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app import __version__
 from app.api.errors import ApiError
-from app.api.routes import contract, findings, health, reports, scans, ws
+from app.api.routes import contract, health
 from app.api.schemas.contract import CONTRACT_VERSION
 from app.config import settings
 from app.core.checks.registry import validate_registry_at_startup
@@ -69,8 +69,7 @@ def create_app() -> FastAPI:
         description=(
             "Defensive black-box security misconfiguration analyzer. "
             f"Public routes follow API contract v{CONTRACT_VERSION} "
-            "(tag 'contract v1'; docs/api-contract.md). Deprecated routes serve the "
-            "pre-contract frontend and will be removed."
+            "(tag 'contract v1'; docs/api-contract.md)."
         ),
         version=__version__,
         lifespan=lifespan,
@@ -149,9 +148,6 @@ def create_app() -> FastAPI:
     # --- Routers ---------------------------------------------------------
     app.include_router(health.router)
     app.include_router(contract.router)
-    # Pre-contract routes used by the current Vite SPA; kept until it migrates.
-    for legacy in (scans.router, findings.router, reports.router, ws.router):
-        app.include_router(legacy, deprecated=True)
 
     _add_contract_version_to_openapi(app)
     return app

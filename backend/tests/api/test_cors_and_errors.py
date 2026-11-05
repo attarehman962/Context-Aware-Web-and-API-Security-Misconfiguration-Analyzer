@@ -10,13 +10,12 @@ from app.main import create_app
 pytestmark = pytest.mark.asyncio
 
 
-async def test_default_origins_include_both_frontends():
-    default = Settings.model_fields["FRONTEND_ORIGIN"].default
-    assert {"http://localhost:3000", "http://localhost:5173"} <= set(default.split(","))
+async def test_default_origin_is_the_frontend():
+    assert Settings.model_fields["FRONTEND_ORIGIN"].default == "http://localhost:3000"
 
 
-@pytest.mark.parametrize("origin", ["http://localhost:3000", "http://localhost:5173"])
-async def test_preflight_allows_the_frontend_origins(monkeypatch, origin):
+async def test_preflight_allows_the_frontend_origin(monkeypatch):
+    origin = "http://localhost:3000"
     # A fresh app with the default origins: a developer's .env may override them.
     monkeypatch.setattr(settings, "FRONTEND_ORIGIN",
                         Settings.model_fields["FRONTEND_ORIGIN"].default)
@@ -36,7 +35,7 @@ async def test_unknown_origins_get_no_cors_grant(client):
 
 
 async def test_browser_code_can_read_location(client):
-    r = await client.get("/api/scans", headers={"Origin": "http://localhost:5173"})
+    r = await client.get("/api/scans", headers={"Origin": "http://localhost:3000"})
     exposed = r.headers["access-control-expose-headers"].lower()
     assert "location" in exposed and "x-contract-version" in exposed
 

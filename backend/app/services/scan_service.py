@@ -1,9 +1,8 @@
-"""Scan service -- persistence and orchestration for scans.
+"""Scan records: create, dispatch, cancel, fail.
 
-The API layer calls these functions; they own all database access so routes
-stay thin and the scanner modules stay DB-free. Actual background execution is
-wired to Celery in Phase 14; ``create_scan`` currently persists a QUEUED record
-and returns immediately (spec section 23), which is the real, honest state.
+The API layer calls these functions; they own the scan table's database access,
+so routes stay thin and the scanner modules stay DB-free. Results are read
+through ``contract_service``.
 """
 from __future__ import annotations
 
@@ -11,18 +10,13 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.schemas.scan import ScanSummary
 from app.config import settings
 from app.db.models import (
-    AttackChain,
-    Endpoint,
-    Finding,
     Scan,
     ScanStatus,
-    Severity,
 )
 from app.utils.logging import get_logger
 from app.utils.validators import validate_target_url
@@ -147,101 +141,3 @@ async def request_cancel(session: AsyncSession, scan: Scan) -> None:
 
 async def get_scan(session: AsyncSession, scan_id: uuid.UUID) -> Scan | None:
     return await session.get(Scan, scan_id)
-
-
-async def list_scans(
-    session: AsyncSession, offset: int, limit: int
-) -> tuple[list[Scan], int]:
-    total = await session.scalar(select(func.count()).select_from(Scan)) or 0
-    rows = (
-        await session.scalars(
-            select(Scan).order_by(Scan.created_at.desc(), Scan.id).offset(offset).limit(limit)
-        )
-    ).all()
-    return list(rows), total
-
-
-async def delete_scan(session: AsyncSession, scan_id: uuid.UUID) -> bool:
-    scan = await session.get(Scan, scan_id)
-    if scan is None:
-        return False
-    await session.delete(scan)  # cascades to the whole graph
-    await session.commit()
-    return True
-
-
-async def build_summary(session: AsyncSession, scan_id: uuid.UUID) -> ScanSummary:
-    """Aggregate counts for a scan (endpoints, findings by severity)."""
-    endpoint_count = await session.scalar(
-        select(func.count()).select_from(Endpoint).where(Endpoint.scan_id == scan_id)
-    ) or 0
-    finding_count = await session.scalar(
-        select(func.count()).select_from(Finding).where(Finding.scan_id == scan_id)
-    ) or 0
-
-    rows = (
-        await session.execute(
-            select(Finding.severity_bucket, func.count())
-            .where(Finding.scan_id == scan_id)
-            .group_by(Finding.severity_bucket)
-        )
-    ).all()
-    by_sev: dict[Severity, int] = {sev: n for sev, n in rows}
-    return ScanSummary(
-        endpoints=endpoint_count,
-        findings=finding_count,
-        critical=by_sev.get(Severity.CRITICAL, 0),
-        high=by_sev.get(Severity.HIGH, 0),
-        medium=by_sev.get(Severity.MEDIUM, 0),
-        low=by_sev.get(Severity.LOW, 0),
-        info=by_sev.get(Severity.INFO, 0),
-    )
-
-
-async def list_findings(
-    session: AsyncSession, scan_id: uuid.UUID, offset: int, limit: int
-) -> tuple[list[Finding], int]:
-    total = await session.scalar(
-        select(func.count()).select_from(Finding).where(Finding.scan_id == scan_id)
-    ) or 0
-    rows = (
-        await session.scalars(
-            select(Finding)
-            .where(Finding.scan_id == scan_id)
-            .order_by(Finding.final_score.desc(), Finding.id)   # stable pages on ties
-            .offset(offset)
-            .limit(limit)
-        )
-    ).all()
-    return list(rows), total
-
-
-async def list_endpoints(
-    session: AsyncSession, scan_id: uuid.UUID, offset: int, limit: int
-) -> tuple[list[Endpoint], int]:
-    total = await session.scalar(
-        select(func.count()).select_from(Endpoint).where(Endpoint.scan_id == scan_id)
-    ) or 0
-    rows = (
-        await session.scalars(
-            select(Endpoint)
-            .where(Endpoint.scan_id == scan_id)
-            .order_by(Endpoint.created_at.asc(), Endpoint.id)
-            .offset(offset)
-            .limit(limit)
-        )
-    ).all()
-    return list(rows), total
-
-
-async def list_chains(
-    session: AsyncSession, scan_id: uuid.UUID
-) -> list[AttackChain]:
-    rows = (
-        await session.scalars(
-            select(AttackChain)
-            .where(AttackChain.scan_id == scan_id)
-            .order_by(AttackChain.template_composite_score.desc())
-        )
-    ).all()
-    return list(rows)

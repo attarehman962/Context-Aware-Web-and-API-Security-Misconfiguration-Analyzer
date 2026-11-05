@@ -1,7 +1,6 @@
 """Report rendering (spec sections 25-27): JSON, CSV, HTML, PDF.
 
 Pure, DB-free renderers over the report dict built by
-:func:`app.services.report_service.build_report_data` (legacy route) or
 :func:`app.services.contract_service.report_data` (contract export). The HTML
 comes from the Jinja2 template ``app/templates/report.html.j2``; the PDF is that
 same HTML through WeasyPrint. Evidence is redacted when stored and again here. PDF rendering
@@ -10,9 +9,6 @@ they are unavailable the API returns a clear 501 rather than crashing.
 """
 from __future__ import annotations
 
-import csv
-import io
-import json
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -22,12 +18,6 @@ from app.utils.redaction import redact_text
 
 class ReportFormatUnavailable(RuntimeError):
     """Raised when a requested format cannot be produced in this environment."""
-
-
-def render_json(data: dict) -> str:
-    findings = [{**f, "evidence": redact_evidence(f.get("evidence"))}
-                for f in data.get("findings", [])]
-    return json.dumps({**data, "findings": findings}, indent=2, default=str)
 
 
 _FORMULA_START = ("=", "+", "-", "@", "\t", "\r")
@@ -40,25 +30,6 @@ def csv_safe(value: object) -> object:
     if isinstance(value, str) and value.startswith(_FORMULA_START):
         return "'" + value
     return value
-
-
-def render_csv(data: dict) -> str:
-    buf = io.StringIO()
-    writer = csv.writer(buf)
-    writer.writerow([
-        "rule_id", "title", "category", "severity", "cvss_base_score",
-        "context_class", "context_multiplier", "response_bonus",
-        "cawasma_final_score", "endpoint_url", "limitation",
-    ])
-    for f in data["findings"]:
-        writer.writerow([csv_safe(v) for v in (
-            f["rule_id"], f["title"], f["category"], f["severity"],
-            f["cvss_base_score"], f["context_class"],
-            f["cawasma_context_multiplier"], f["response_bonus"],
-            f["cawasma_final_score"], f["endpoint_url"] or "",
-            (f["limitation"] or "").replace("\n", " "),
-        )])
-    return buf.getvalue()
 
 
 SEVERITIES = ("CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO")

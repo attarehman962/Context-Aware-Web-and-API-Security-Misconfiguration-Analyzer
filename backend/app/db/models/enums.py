@@ -17,15 +17,6 @@ class ScanStatus(str, enum.Enum):
     DONE = "DONE"
     FAILED = "FAILED"
 
-    @property
-    def public_value(self) -> str:
-        """Value exposed by the API, WebSocket and reports.
-
-        ``DONE`` is still published as ``"COMPLETED"`` so the current frontend
-        keeps working (docs/db-decisions.md, D3).
-        """
-        return "COMPLETED" if self is ScanStatus.DONE else self.value
-
 
 class Severity(str, enum.Enum):
     """CVSS severity buckets (spec section 10)."""

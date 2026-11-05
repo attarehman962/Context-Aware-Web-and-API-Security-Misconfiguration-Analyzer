@@ -65,14 +65,9 @@ async def test_passive_scan_through_the_runner_is_passive(logging_target, sessio
         async with sessionmaker_() as s:
             yield s
 
-    async def quiet(self, *a, **k):
-        return None
-
     monkeypatch.setattr(runner, "session_scope", scope)
     monkeypatch.setattr(runner, "run_pipeline", functools.partial(run_pipeline,
                                                                   allow_private=True))
-    monkeypatch.setattr(runner.RedisProgressPublisher, "publish", quiet)
-    monkeypatch.setattr(runner.RedisProgressPublisher, "close", quiet)
     async with sessionmaker_() as s:
         scan = Scan(target_url=logging_target.url, status=ScanStatus.QUEUED, progress=0,
                     options={"passive_only": True, "use_wordlist": True, "crawl_depth": 2})

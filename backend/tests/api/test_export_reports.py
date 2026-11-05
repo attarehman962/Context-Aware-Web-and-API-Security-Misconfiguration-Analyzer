@@ -10,7 +10,6 @@ from __future__ import annotations
 import contextlib
 import csv
 import io
-import json
 import shutil
 import subprocess
 
@@ -154,14 +153,6 @@ def test_score_story_for_unchanged_and_legacy_scores():
     assert "interim formula" in legacy[0]
     assert "Context multiplier ×1.2 for a HIGH endpoint." in legacy
     assert "Response bonus +0.5 for sensitive data in the response (PII)." in legacy
-
-
-def test_legacy_json_report_redacts_evidence_too():
-    data = {"scan": {}, "summary": {}, "findings": [_finding(evidence=RAW_EVIDENCE)],
-            "chains": []}
-    out = reports.render_json(data)
-    assert SECRET not in out and json.loads(out)["findings"][0]["evidence"].startswith(
-        "config leak")
 
 
 def test_template_is_packaged_next_to_the_code():

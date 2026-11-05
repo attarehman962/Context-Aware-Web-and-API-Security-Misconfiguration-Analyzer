@@ -16,8 +16,7 @@ def client_of(request: Request) -> str:
 
 
 async def check_scan_rate_limit(request: Request) -> None:
-    """429 RATE_LIMITED once the client has used its SCAN_RATE_LIMIT. Both scan
-    routes call it, so the deprecated one is no way around the limit (SEC-03)."""
+    """429 RATE_LIMITED once the client has used its SCAN_RATE_LIMIT."""
     decision = await rate_limit.limiter.hit(client_of(request))
     if not decision.allowed:
         raise ApiError(status.HTTP_429_TOO_MANY_REQUESTS, "RATE_LIMITED",

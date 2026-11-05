@@ -5,7 +5,7 @@ a .env file and in JSON, an API key in a response header, a session cookie
 value, a private key in a script, and a card number. A full active scan runs
 through the real runner into the test database with DEBUG logging captured.
 Then every table of the database, the captured logs, every export format
-(contract and deprecated routes) and every read route are searched for each
+and every read route are searched for each
 secret value.
 """
 from __future__ import annotations
@@ -39,14 +39,9 @@ async def scanned(logging_target, sessionmaker_, monkeypatch, caplog):
         async with sessionmaker_() as s:
             yield s
 
-    async def quiet(self, *a, **k):
-        return None
-
     monkeypatch.setattr(runner, "session_scope", scope)
     monkeypatch.setattr(runner, "run_pipeline", functools.partial(run_pipeline,
                                                                   allow_private=True))
-    monkeypatch.setattr(runner.RedisProgressPublisher, "publish", quiet)
-    monkeypatch.setattr(runner.RedisProgressPublisher, "close", quiet)
     async with sessionmaker_() as s:
         scan = Scan(target_url=logging_target.url, status=ScanStatus.QUEUED, progress=0,
                     options={"passive_only": False, "use_wordlist": True, "crawl_depth": 2})
@@ -100,21 +95,11 @@ async def test_contract_exports_hold_no_secret(client, scanned, fmt):
     assert _leaks(text, SECRETS) == []
 
 
-@pytest.mark.parametrize("fmt", ["json", "csv", "html", "pdf"])
-async def test_deprecated_report_route_holds_no_secret(client, scanned, fmt):
-    r = await client.get(f"/api/scans/{scanned}/report", params={"format": fmt})
-    assert r.status_code == 200, r.text
-    text = r.text if fmt != "pdf" else _pdf_text(r.content)
-    assert _leaks(text, SECRETS) == []
-
-
 async def test_read_routes_hold_no_secret(client, scanned, sessionmaker_, monkeypatch):
     from app.api.routes import contract
 
     monkeypatch.setattr(contract, "AsyncSessionLocal", sessionmaker_)   # SSE's own session
-    paths = [f"/api/results/{scanned}?limit=500", f"/api/scans/{scanned}",
-             f"/api/scans/{scanned}/findings", f"/api/scans/{scanned}/endpoints",
-             f"/api/scans/{scanned}/chains", f"/api/scan/{scanned}/events", "/api/scans"]
+    paths = [f"/api/results/{scanned}?limit=500", f"/api/scan/{scanned}/events", "/api/scans"]
     results = (await client.get(f"/api/results/{scanned}?limit=500")).json()
     paths += [f"/api/results/{scanned}/findings/{f['id']}" for f in results["findings"]]
     leaks = {}

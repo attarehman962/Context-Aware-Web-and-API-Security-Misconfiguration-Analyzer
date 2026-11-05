@@ -119,8 +119,8 @@ curl -s  http://localhost:8000/api/results/<scan_id>              # ranked resul
 curl -s -o report.pdf "http://localhost:8000/api/results/<scan_id>/export?format=pdf"
 ```
 
-Full reference: [docs/04-api-reference.md](docs/04-api-reference.md) and
-[docs/api-contract.md](docs/api-contract.md). To check that a fresh clone
+Full reference: [docs/api-contract.md](docs/api-contract.md) (machine-readable:
+[docs/openapi.json](docs/openapi.json)). To check that a fresh clone
 builds and scans on a clean machine, run `scripts/clean_machine_check.sh`.
 
 ## Run the evaluation

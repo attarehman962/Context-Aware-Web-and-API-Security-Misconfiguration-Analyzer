@@ -2,7 +2,7 @@
 
 Everything goes straight to the API, as an attacker bypassing the frontend
 would: odd JSON types, alternative spellings, query strings, other content
-types, and the deprecated pre-contract route.
+types, and the removed pre-contract route.
 """
 from __future__ import annotations
 
@@ -69,14 +69,12 @@ async def test_contract_route_accepts_only_json(client, sessionmaker_, content_t
     assert await _count(sessionmaker_) == 0
 
 
-@pytest.mark.parametrize("flag", ["missing", False, "false", 0, None])
-async def test_deprecated_route_also_refuses_without_confirmation(client, sessionmaker_,
-                                                                  flag):
-    body: dict = {"target_url": URL}
-    if flag != "missing":
-        body["authorization_confirmed"] = flag
-    r = await client.post("/api/scans", json=body)
-    assert r.status_code in (400, 422), (flag, r.text)
+async def test_the_removed_pre_contract_route_creates_nothing(client, sessionmaker_):
+    """POST /api/scans (removed) was a second way in: it must not create a scan,
+    with or without the old confirmation field (SEC-03 was its missing rate limit)."""
+    for body in ({"target_url": URL}, {"target_url": URL, "authorization_confirmed": True}):
+        r = await client.post("/api/scans", json=body)
+        assert r.status_code == 405, r.text
     assert await _count(sessionmaker_) == 0
 
 
@@ -140,14 +138,6 @@ async def test_contract_scan_creation_is_rate_limited(client, limit_two):
     body = {"url": URL, "authorisation_confirmed": True}
     codes = [(await client.post("/api/scan", json=body)).status_code for _ in range(4)]
     assert codes == [202, 202, 429, 429]
-
-
-async def test_deprecated_scan_creation_is_rate_limited_too(client, limit_two):
-    """POST /api/scans creates and dispatches scans like POST /api/scan; without
-    the limit it is an open way around it."""
-    body = {"target_url": URL, "authorization_confirmed": True}
-    codes = [(await client.post("/api/scans", json=body)).status_code for _ in range(4)]
-    assert 429 in codes, codes
 
 
 async def test_rate_limit_ignores_spoofed_forwarded_for(client, limit_two):

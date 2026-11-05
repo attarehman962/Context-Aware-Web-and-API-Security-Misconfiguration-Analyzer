@@ -21,8 +21,9 @@ endpoints, which have many findings, which link to attack chains (many-to-many).
 Foreign keys, cascades and constraints keep it consistent; the ORM parameterizes
 queries, preventing SQL injection.
 
-**Why Redis?** Two jobs: it is the Celery message broker, and it is the pub/sub
-bridge that carries live progress from the worker to the WebSocket.
+**Why Redis?** Two jobs: it is the Celery message broker, and it holds the shared
+scan rate-limit counters. Live progress goes through PostgreSQL: the worker writes
+it to the scan row and the SSE route reads it.
 
 **Why Celery (async scanning)?** A scan takes seconds to minutes. Running it inside
 the HTTP request would block the client; Celery moves it to a background worker so

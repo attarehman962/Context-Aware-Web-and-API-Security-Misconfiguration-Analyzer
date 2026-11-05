@@ -17,7 +17,9 @@ def test_openapi_declares_the_contract():
     for path in ("/api/scan", "/api/results/{scan_id}", "/api/results/{scan_id}/export",
                  "/api/scans"):
         assert path in spec["paths"], path
-    assert spec["paths"]["/api/scans/{scan_id}"]["get"]["deprecated"] is True
+    assert "/api/scans/{scan_id}" not in spec["paths"]          # pre-contract routes removed
+    assert not any(op.get("deprecated") for item in spec["paths"].values()
+                   for op in item.values() if isinstance(op, dict))
 
 
 def test_committed_example_json_matches_mock_mode():

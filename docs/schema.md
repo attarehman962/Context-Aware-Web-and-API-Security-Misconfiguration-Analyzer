@@ -34,7 +34,7 @@ findings (their `endpoint_id` becomes null).
 | Column | Type | Notes |
 |--------|------|-------|
 | `target_url` | string, required | HTTPS URL; a "target" is this value (no separate table) |
-| `status` | enum, required | `QUEUED` → `RUNNING` → `DONE` / `FAILED`. The API still shows `DONE` as `COMPLETED` |
+| `status` | enum, required | `QUEUED` → `RUNNING` → `DONE` / `FAILED` |
 | `progress`, `current_stage` | int, string | 0–100 and a human-readable stage |
 | `options` | JSON, required | limits the scan ran with, e.g. `{"max_endpoints": 200, "max_crawl_depth": 2}` |
 | `authorization_confirmed` | bool, required | operator confirmed they may test the target |

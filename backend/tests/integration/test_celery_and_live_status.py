@@ -37,16 +37,6 @@ class _FakeEngine:
         return None
 
 
-async def _quiet(self, *a, **k):
-    return None
-
-
-@pytest.fixture
-def quiet_publisher(monkeypatch):
-    monkeypatch.setattr(runner.RedisProgressPublisher, "publish", _quiet)
-    monkeypatch.setattr(runner.RedisProgressPublisher, "close", _quiet)
-
-
 def _fake_pipeline(steps=None, *, hook=None, sleep: float = 0.0):
     steps = steps or [
         ("crawling", 8, {"endpoints_found": 0}),
@@ -121,7 +111,7 @@ def worker_db(tmp_path, monkeypatch):
 # ------------------------------------------------------------------ Celery
 
 def test_queued_scan_runs_on_the_celery_task_and_stores_progress(
-        eager, worker_db, quiet_publisher, monkeypatch):
+        eager, worker_db, monkeypatch):
     seen: dict = {}
 
     async def pipeline(target, on_progress, **kw):
@@ -141,7 +131,7 @@ def test_queued_scan_runs_on_the_celery_task_and_stores_progress(
     assert seen["passive_only"] is True and seen["probe"] is False   # options reach it
 
 
-def test_progress_detail_is_stored_at_every_stage(eager, worker_db, quiet_publisher,
+def test_progress_detail_is_stored_at_every_stage(eager, worker_db,
                                                   monkeypatch):
     snapshots: list[dict | None] = []
 
@@ -227,7 +217,7 @@ def test_other_errors_are_not_retried(eager, monkeypatch):
     assert result.failed() and isinstance(result.result, ValueError) and len(calls) == 1
 
 
-def test_scan_timeout_fails_the_scan(eager, worker_db, quiet_publisher, monkeypatch):
+def test_scan_timeout_fails_the_scan(eager, worker_db, monkeypatch):
     monkeypatch.setattr(settings, "SCAN_TIMEOUT", 0.05)
     monkeypatch.setattr(runner, "run_pipeline", _fake_pipeline(sleep=5))
     tasks.run_scan.apply(args=[str(worker_db.scan_id)])
@@ -235,7 +225,7 @@ def test_scan_timeout_fails_the_scan(eager, worker_db, quiet_publisher, monkeypa
     assert scan.status == ScanStatus.FAILED and "timed out" in scan.error_message
 
 
-def test_cancel_flag_stops_a_running_scan(eager, worker_db, quiet_publisher, monkeypatch):
+def test_cancel_flag_stops_a_running_scan(eager, worker_db, monkeypatch):
     async def cancel_after_first_step(i):
         if i == 1:
             async with runner.session_scope() as s:
@@ -256,7 +246,7 @@ def test_cancel_flag_stops_a_running_scan(eager, worker_db, quiet_publisher, mon
     assert scan.progress_detail["stage"] == "crawling" and not persisted
 
 
-def test_a_scan_cancelled_while_queued_never_starts(eager, worker_db, quiet_publisher,
+def test_a_scan_cancelled_while_queued_never_starts(eager, worker_db,
                                                     monkeypatch):
     async def flag():
         async with runner.session_scope() as s:

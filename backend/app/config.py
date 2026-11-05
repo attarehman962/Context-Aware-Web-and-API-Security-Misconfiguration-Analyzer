@@ -49,8 +49,7 @@ class Settings(BaseSettings):
     # --- Frontend / CORS ---------------------------------------------------
     # Comma-separated list of allowed origins. Never "*": the scanner returns
     # sensitive assessment data, so origins are explicit.
-    # 5173: the current Vite app; 3000: Neelam's Next.js app.
-    FRONTEND_ORIGIN: str = "http://localhost:5173,http://localhost:3000"
+    FRONTEND_ORIGIN: str = "http://localhost:3000"      # Neelam's Next.js app
 
     # --- Scanner safety limits ---------------------------------------------
     REQUEST_TIMEOUT: float = 15.0            # seconds per HTTP request

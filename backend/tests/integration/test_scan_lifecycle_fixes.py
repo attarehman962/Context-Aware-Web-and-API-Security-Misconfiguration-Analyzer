@@ -42,33 +42,26 @@ async def test_api_run_scans_left_running_are_failed_at_startup(sessionmaker_):
         assert status[ids[0]].completed_at is not None
 
 
-async def test_failed_scans_publish_a_terminal_event(sessionmaker_, monkeypatch):
-    events: list[tuple[str, int, str]] = []
-
+async def test_a_failed_scan_stores_a_message_without_internals(sessionmaker_, monkeypatch):
     @contextlib.asynccontextmanager
     async def scope():
         async with sessionmaker_() as session:
             yield session
-
-    async def publish(self, stage, percent, message):
-        events.append((stage, percent, message))
-
-    async def noop(self, *a, **k):
-        return None
 
     async def boom(*a, **k):
         raise RuntimeError("internal detail")
 
     monkeypatch.setattr(runner, "session_scope", scope)
     monkeypatch.setattr(runner, "run_pipeline", boom)
-    monkeypatch.setattr(runner.RedisProgressPublisher, "publish", publish)
-    monkeypatch.setattr(runner.RedisProgressPublisher, "close", noop)
     async with sessionmaker_() as s:
         scan = Scan(target_url="https://a.example", status=ScanStatus.QUEUED, progress=0)
         s.add(scan)
         await s.commit()
     await runner.run_scan_async(scan.id)
-    assert events[-1][0] == "failed" and "internal detail" not in events[-1][2]
+    async with sessionmaker_() as s:
+        failed = await s.get(Scan, scan.id)
+    assert failed.status is ScanStatus.FAILED
+    assert failed.error_message and "internal detail" not in failed.error_message
 
 
 async def test_worker_task_disposes_the_engine_even_when_the_scan_fails(monkeypatch):

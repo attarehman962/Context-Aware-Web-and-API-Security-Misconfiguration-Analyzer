@@ -27,7 +27,6 @@ from app.core.pipeline import ScanError, run_pipeline
 from app.db.models import Scan
 from app.db.models.enums import ScanStatus
 from app.db.session import session_scope
-from app.services.progress import RedisProgressPublisher
 from app.services.result_service import persist_result
 from app.utils.logging import get_logger, scan_id_var
 
@@ -47,7 +46,6 @@ async def run_scan_async(scan_id: str | uuid.UUID, *, probe: bool = True) -> Non
     """Run the scan identified by ``scan_id``; never raises."""
     sid = uuid.UUID(str(scan_id))
     scan_id_var.set(str(sid))           # tags every log line of this scan
-    publisher = RedisProgressPublisher(sid)
     started = datetime.now(UTC)
 
     async with session_scope() as session:
@@ -75,7 +73,6 @@ async def run_scan_async(scan_id: str | uuid.UUID, *, probe: bool = True) -> Non
 
         async def on_progress(stage: str, percent: int, message: str,
                               detail: dict[str, int]) -> None:
-            await publisher.publish(stage, percent, message)
             # A fresh read (not the cached attribute): the API sets it from outside.
             if await session.scalar(select(Scan.cancel_requested).where(Scan.id == sid)):
                 raise ScanCancelled
@@ -120,7 +117,3 @@ async def run_scan_async(scan_id: str | uuid.UUID, *, probe: bool = True) -> Non
                 scan.error_message = message[:500]
                 scan.completed_at = datetime.now(UTC)
                 await session.commit()
-            # Terminal event, so live listeners (WebSocket) stop waiting.
-            await publisher.publish("failed", scan.progress if scan else 0, message)
-        finally:
-            await publisher.close()

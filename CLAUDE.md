@@ -248,11 +248,9 @@ frontend/             web UI (Neelam)
   create tables by hand, never edit a migration that has been merged. Models must
   stay portable (SQLite tests, Postgres prod): JSON columns use `JSONType` (JSONB
   on Postgres), and cascades rely on DB `ON DELETE` rules (FKs are enforced on SQLite too).
-- The contract routes (`/api/scan`, `/api/results`, ...) use the contract field
-  names (`check_id`, `base_score`, `final_score`, status `DONE`;
-  docs/api-contract.md). Only the deprecated pre-contract routes keep the old names
-  (`rule_id`, `cvss_base_score`, `cawasma_final_score`, status `COMPLETED`). Map in
-  `api/schemas/` rather than renaming DB columns (docs/db-decisions.md D2-D3).
+- The API uses the contract field names (`check_id`, `base_score`, `final_score`,
+  status `DONE`; docs/api-contract.md). Map in `api/schemas/` rather than renaming
+  DB columns (docs/db-decisions.md D2-D3).
 - ML code plugs in through `app/ml/sensitivity.py` and `app/ml/body_classifier.py`
   with the types in `app/core/contracts.py`; the engine must keep working with the
   built-in classifiers when ML deps are absent.

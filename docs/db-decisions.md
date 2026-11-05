@@ -40,10 +40,9 @@ Stored as `QUEUED`, `RUNNING`, `DONE`, `FAILED` (uppercase like every other
 enum in the schema). The old `CANCELLED` value was dropped: there is no cancel
 feature. The old `COMPLETED` is now `DONE`.
 
-The API, WebSocket and reports still publish `DONE` as `"COMPLETED"`
-(`ScanStatus.public_value`), because the current frontend waits for that value.
-**Neelam:** when the Next.js app handles `DONE`, delete `public_value` and the
-three call sites.
+The API and reports publish `DONE`. (Until 2026-11-05 the pre-contract routes
+published it as `"COMPLETED"` through `ScanStatus.public_value`; both were
+removed with those routes.)
 
 ## D4. `owasp_map` and `cwe_map`
 

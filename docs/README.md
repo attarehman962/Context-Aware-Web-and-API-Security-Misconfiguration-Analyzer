@@ -21,7 +21,6 @@ Each file is self-contained; start with the Overview and follow the order below.
 | 01 | [Overview](01-overview.md) | What CAWASMA is, the problem, the research gap, the novelty |
 | 02 | [Architecture](02-architecture.md) | System design, process topology, data flow, technology choices |
 | 03 | [Installation & Running](03-installation.md) | Setup with and without Docker, configuration, tests |
-| 04 | [API Reference](04-api-reference.md) | All REST endpoints, the WebSocket, request/response shapes |
 | 05 | [Security Checks (all 58)](05-security-checks.md) | Every check with its category, CVSS vector and base score |
 | 06 | [Scoring Model](06-scoring-model.md) | CVSS base + context multiplier + response bonus formula |
 | 07 | [Novel Contributions](07-novel-contributions.md) | The three contributions, in depth |

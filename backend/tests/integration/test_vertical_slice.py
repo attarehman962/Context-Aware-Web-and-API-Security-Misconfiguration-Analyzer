@@ -58,14 +58,9 @@ def live_scans(monkeypatch, sessionmaker_):
         async with sessionmaker_() as session:
             yield session
 
-    async def quiet(self, *a, **k):
-        return None
-
     # In-process (BackgroundTasks) instead of the Celery worker: same runner code.
     monkeypatch.setattr(settings, "RUN_SCANS_INLINE", True)
     monkeypatch.setattr(runner, "session_scope", scope)
-    monkeypatch.setattr(runner.RedisProgressPublisher, "publish", quiet)
-    monkeypatch.setattr(runner.RedisProgressPublisher, "close", quiet)
 
 
 async def _poll(client, scan_id: str) -> dict:
