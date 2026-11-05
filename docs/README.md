@@ -22,7 +22,7 @@ Each file is self-contained; start with the Overview and follow the order below.
 | 02 | [Architecture](02-architecture.md) | System design, process topology, data flow, technology choices |
 | 03 | [Installation & Running](03-installation.md) | Setup with and without Docker, configuration, tests |
 | 05 | [Security Checks (all 58)](05-security-checks.md) | Every check with its category, CVSS vector and base score |
-| 06 | [Scoring Model](06-scoring-model.md) | CVSS base + context multiplier + response bonus formula |
+| 06 | [Scoring Model](06-scoring-model.md) | CVSS v3.1 environmental scoring, and the interim formula the legacy checks still use |
 | 07 | [Novel Contributions](07-novel-contributions.md) | The three contributions, in depth |
 | 08 | [Database Schema](08-database-schema.md) | Tables, relationships, cascades |
 | 09 | [Attack Chains](09-attack-chains.md) | The five chain templates and how they fire |
@@ -67,9 +67,12 @@ Each file is self-contained; start with the Overview and follow the order below.
 
 - **Type:** defensive, black-box, HTTPS-only web & REST-API misconfiguration scanner
 - **Core novelty:** context-aware risk prioritization (not just "find bugs")
-- **Checks:** 58 across 7 categories, each with a predefined CVSS v3.1 vector
+- **Checks:** 62 check ids across 7 categories (58 in the catalog, 25 with a
+  `checks.yaml` spec), each with a predefined CVSS v3.1 base vector
 - **Contributions:** (1) NLP endpoint sensitivity classification, (2) attack-chain
   correlation, (3) response-body sensitivity classification
 - **Stack:** FastAPI · PostgreSQL · Redis · Celery · httpx · SQLAlchemy ·
   sentence-transformers · WeasyPrint · Next.js frontend
-- **Tests:** 221 backend tests (unit, API, integration, database, eval tooling), plus the frontend's Vitest and Playwright suites
+- **Tests:** about 940 backend tests (unit, checks, API, integration, database,
+  security, eval tooling) and the frontend's Vitest and Playwright suites
+  (`make test`, `npm test`, `npm run test:e2e`)

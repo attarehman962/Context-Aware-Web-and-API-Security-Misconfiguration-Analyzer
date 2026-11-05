@@ -29,7 +29,7 @@ class CheckContext:
     context_class: ContextClass | None = None
     body_class: BodyClassification | None = None
 
-    # Optional probe-derived signals (populated by the pipeline in Phase 13).
+    # Probe-derived signals, filled in by the pipeline (empty in passive mode).
     allowed_methods: set[str] = field(default_factory=set)
     cors_acao: str | None = None  # Access-Control-Allow-Origin (probe)
     cors_acac: str | None = None  # Access-Control-Allow-Credentials
