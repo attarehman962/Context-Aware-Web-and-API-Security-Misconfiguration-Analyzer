@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   branch-name:
-    name: Branch name (<name>/pNN-topic)
+    name: Branch name (<name>/pNN-topic or <name>/fix-<partner>-pNN-topic)
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
@@ -22,8 +22,12 @@ jobs:
         env:
           BRANCH: ${{ github.head_ref }}
         run: |
-          if [[ ! "$BRANCH" =~ ^(atta|neelam|asim)/p[0-9]{2}-[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
-            echo "::error::Branch '$BRANCH' must match <name>/pNN-topic, e.g. atta/p01-repo-setup (name: atta|neelam|asim)"
+          # <name>/pNN-topic, or a review fix in a partner's files:
+          # <name>/fix-<partner>-pNN-topic (CLAUDE.md, "Branches and pull requests").
+          phase='^(atta|asim|neelam)/p[0-9]{2}-[a-z0-9-]+$'
+          fix='^(atta|asim|neelam)/fix-(atta|asim|neelam)-p[0-9]{2}-[a-z0-9-]+$'
+          if [[ ! "$BRANCH" =~ $phase && ! "$BRANCH" =~ $fix ]]; then
+            echo "::error::Branch '$BRANCH' must match <name>/pNN-topic (e.g. atta/p01-repo-setup) or <name>/fix-<partner>-pNN-topic (e.g. atta/fix-asim-p11-check-specs); name and partner: atta|asim|neelam"
             exit 1
           fi
 

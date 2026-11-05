@@ -55,6 +55,7 @@ Each file is self-contained; start with the Overview and follow the order below.
 | Document | What it covers |
 |----------|----------------|
 | [Check triage](check-triage.md) | PROPOSED: SPEC / MERGE / DROP for the 37 legacy-only checks, for Asim and Atta to confirm |
+| [Post-merge checklist](post-merge-checklist.md) | What to do on `main` after the final-pass branches merge |
 | [Code walkthrough](walkthrough.md) | Each main module in a few lines: how it works, why, who owns it |
 | [Prompts](prompts/README.md) | The 30 Claude Code prompts we ran, one per branch |
 | [Reviews](reviews/) | Atta's reviews of partner prompts, and the [final audit](reviews/final-audit.md) before submission |
