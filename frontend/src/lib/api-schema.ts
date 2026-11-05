@@ -1103,11 +1103,20 @@ export interface operations {
            *           "cwe_map": [
            *             "CWE-306"
            *           ],
-           *           "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
-           *           "base_score": 7.5,
-           *           "final_score": 10,
-           *           "score_reasons": [],
-           *           "scoring_method": "legacy",
+           *           "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N",
+           *           "base_score": 9.1,
+           *           "final_score": 9.8,
+           *           "final_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N/CR:H/IR:M/AR:M",
+           *           "score_reasons": [
+           *             "sensitivity:HIGH",
+           *             "signal:PII",
+           *             "CR:H<-sensitivity:HIGH+signal:PII",
+           *             "IR:M<-sensitivity:HIGH+signal:PII",
+           *             "AR:M<-sensitivity:HIGH",
+           *             "base:9.1",
+           *             "environmental:9.8"
+           *           ],
+           *           "scoring_method": "environmental",
            *           "severity_bucket": "CRITICAL",
            *           "evidence": {
            *             "text": "Unauthenticated data exposure on /api/v1/users/42",
@@ -1134,11 +1143,21 @@ export interface operations {
            *           "cwe_map": [
            *             "CWE-538"
            *           ],
-           *           "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
-           *           "base_score": 7.5,
-           *           "final_score": 10,
-           *           "score_reasons": [],
-           *           "scoring_method": "legacy",
+           *           "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N",
+           *           "base_score": 9.1,
+           *           "final_score": 9.8,
+           *           "final_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N/CR:H/IR:H/AR:M",
+           *           "score_reasons": [
+           *             "sensitivity:LOW",
+           *             "signal:CREDENTIALS",
+           *             "signal:INTERNAL_IP",
+           *             "CR:H<-signal:CREDENTIALS",
+           *             "IR:H<-signal:CREDENTIALS",
+           *             "AR:M<-signal:CREDENTIALS",
+           *             "base:9.1",
+           *             "environmental:9.8"
+           *           ],
+           *           "scoring_method": "environmental",
            *           "severity_bucket": "CRITICAL",
            *           "evidence": {
            *             "text": ".env file exposed on /.env",
@@ -1426,11 +1445,21 @@ export interface operations {
            *       "cwe_map": [
            *         "CWE-538"
            *       ],
-           *       "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
-           *       "base_score": 7.5,
-           *       "final_score": 10,
-           *       "score_reasons": [],
-           *       "scoring_method": "legacy",
+           *       "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N",
+           *       "base_score": 9.1,
+           *       "final_score": 9.8,
+           *       "final_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N/CR:H/IR:H/AR:M",
+           *       "score_reasons": [
+           *         "sensitivity:LOW",
+           *         "signal:CREDENTIALS",
+           *         "signal:INTERNAL_IP",
+           *         "CR:H<-signal:CREDENTIALS",
+           *         "IR:H<-signal:CREDENTIALS",
+           *         "AR:M<-signal:CREDENTIALS",
+           *         "base:9.1",
+           *         "environmental:9.8"
+           *       ],
+           *       "scoring_method": "environmental",
            *       "severity_bucket": "CRITICAL",
            *       "evidence": {
            *         "text": ".env file exposed on /.env",

@@ -24,10 +24,10 @@ describe("FindingsPanel: sorting and the base/final toggle", () => {
     render(<Harness />);
     const badged = (id: string) =>
       row(id).querySelector('[data-scoring-method="legacy"]') !== null;
-    expect(badged("API-003")).toBe(true); // interim formula
-    expect(badged("TLS-001")).toBe(true);
-    expect(badged("CKI-003")).toBe(false); // CVSS environmental
-    expect(badged("HDR-001")).toBe(false);
+    expect(badged("TLS-001")).toBe(true); // interim formula
+    expect(badged("HDR-012")).toBe(true);
+    expect(badged("API-003")).toBe(false); // CVSS environmental
+    expect(badged("CKI-003")).toBe(false);
   });
 
   it("ranks by context-aware score by default", () => {
@@ -91,7 +91,7 @@ describe("FindingsPanel: sorting and the base/final toggle", () => {
       within(cookie).getByText(/place higher than by base score \(#4\)/),
     ).toBeInTheDocument();
     expect(
-      within(row("API-003")).getByText("Raised from High by context"),
+      within(row("HDR-012")).getByText("Lowered from Low by context"),
     ).toBeVisible();
 
     await user.click(screen.getByRole("radio", { name: "Base score" }));
@@ -107,14 +107,14 @@ describe("FindingsPanel: sorting and the base/final toggle", () => {
   it("colours the band and badge by the score being ranked by", async () => {
     const user = userEvent.setup();
     render(<Harness />);
-    // .env exposure: base 7.5 (High), raised to 10.0 (Critical) by context.
-    const band = () => row("INF-003").querySelector("[data-band]");
-    expect(band()).toHaveAttribute("data-band", "CRITICAL");
-    expect(within(row("INF-003")).getByText("Critical")).toBeInTheDocument();
+    // Expect-CT: base 3.1 (Low), lowered to 0.0 (None) on a public page.
+    const band = () => row("HDR-012").querySelector("[data-band]");
+    expect(band()).toHaveAttribute("data-band", "INFO");
+    expect(within(row("HDR-012")).getByText("None")).toBeInTheDocument();
 
     await user.click(screen.getByRole("radio", { name: "Base score" }));
-    expect(band()).toHaveAttribute("data-band", "HIGH");
-    expect(within(row("INF-003")).getByText("High")).toBeInTheDocument();
+    expect(band()).toHaveAttribute("data-band", "LOW");
+    expect(within(row("HDR-012")).getByText("Low")).toBeInTheDocument();
   });
 });
 
