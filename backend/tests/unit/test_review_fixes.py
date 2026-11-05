@@ -140,11 +140,6 @@ def test_aut007_matches_parameter_names(query, fires):
     assert ("AUT-007" in _ids(_ctx(f"{SITE}/login?{query}"))) is fires
 
 
-def test_inf005_ignores_an_html_catch_all_page():
-    assert "INF-005" not in _ids(_ctx(SITE + "/backup.zip", body="<html>app</html>"))
-    assert "INF-005" in _ids(_ctx(SITE + "/backup.zip", body="PK\x03\x04", ctype="application/zip"))
-
-
 def test_cor005_judges_the_preflight_not_the_get_response():
     assert "COR-005" not in _ids(_ctx(cors_acao="*"))  # no preflight seen
     assert "COR-005" in _ids(_ctx(cors_preflight_acao="*"))

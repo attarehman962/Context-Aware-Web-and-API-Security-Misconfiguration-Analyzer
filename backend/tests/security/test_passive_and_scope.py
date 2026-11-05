@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import pytest
 
+from app.core.checks.registry import artifact_probe_paths
 from app.core.pipeline import run_pipeline
 from app.core.wordlist import PROBE_PATHS
 
@@ -27,11 +28,14 @@ LINKED = {
     "/api/users",
     "/api/orders",
     "/login",
+    "/.env",  # linked, so a passive scan fetches it: only the artifact gate keeps it quiet
 }
+ARTIFACT_CHECKS = {"INF-003", "INF-004", "INF-005"}
 
 
 def _unlinked_probes(target) -> set[str]:
-    return ({r.path.split("?")[0] for r in target.log} - LINKED) & set(PROBE_PATHS)
+    probes = set(PROBE_PATHS) | set(artifact_probe_paths())
+    return ({r.path.split("?")[0] for r in target.log} - LINKED) & probes
 
 
 async def _scan(target, **kw):
@@ -51,6 +55,19 @@ async def test_passive_scan_does_not_probe_the_wordlist(logging_target):
     await _scan(logging_target, passive_only=True, probe=False, use_wordlist=True)
     assert not _unlinked_probes(logging_target), sorted(_unlinked_probes(logging_target))
     assert all("cawasma-" not in r.path for r in logging_target.log)  # soft-404 probe
+
+
+async def test_passive_scan_runs_no_artifact_check(logging_target):
+    """INF-003/004/005 are probes: off in passive mode, even on a fetched .env."""
+    result = await _scan(logging_target, passive_only=True, probe=False, use_wordlist=True)
+    assert "/.env" in {r.path for r in logging_target.log}  # fetched (it is linked)
+    assert not {f.raw.rule_id for f in result.findings} & ARTIFACT_CHECKS
+
+
+async def test_active_scan_reports_the_exposed_env_file(logging_target):
+    result = await _scan(logging_target)
+    env = [f for f in result.findings if f.raw.rule_id == "INF-003"]
+    assert env and env[0].raw.evidence and "/.env" in env[0].raw.evidence
 
 
 async def test_passive_scan_sends_no_payloads_or_cors_probes(logging_target):

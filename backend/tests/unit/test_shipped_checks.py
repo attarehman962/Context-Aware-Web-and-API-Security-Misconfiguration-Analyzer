@@ -68,10 +68,12 @@ def _body(text: str) -> ResponseInfo:
     return ResponseInfo("https://shop.example.com/x", 200, "text/plain", {}, text)
 
 
-def test_env_exposure_needs_several_key_value_lines():
+def test_env_exposure_needs_a_key_value_line_on_a_200():
+    # Where it applies (a .env path, not HTML, not the soft-404 page) is the
+    # artifact block's job: tests/checks/test_exposure.py.
     env = CHECKS["INF-003"].http_condition
-    assert env.matches(_body("APP_ENV=production\nDB_HOST=10.0.3.17\nDB_PASSWORD=x\n"))
-    assert not env.matches(_body("<p>Set\nDEBUG=false in your config.</p>"))
+    assert env.matches(_body("APP_ENV=production\n"))
+    assert not env.matches(_body("app_env: production\n"))
 
 
 def test_stack_trace_needs_a_real_trace():

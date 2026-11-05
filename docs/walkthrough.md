@@ -27,8 +27,8 @@ changes (`/logout`, `/createdb`) are never requested.
 ## Checks: `backend/app/core/checks/` (Atta; specs and vectors: Asim)
 
 Each check is a pure function over one response and its endpoint; it reads
-nothing else, so it is easy to test. Twenty run through the spec registry
-(`registry.py`, `spec/`), driven by Asim's `config/checks.yaml`; 42 older ones are
+nothing else, so it is easy to test. Twenty-five run through the spec registry
+(`registry.py`, `spec/`), driven by Asim's `config/checks.yaml`; 37 older ones are
 `@rule` functions with metadata in `catalog.py`. Every check carries a fixed CVSS
 v3.1 base vector, never one computed at scan time, and a check id with a spec uses
 the spec's vector however it runs. Every check has a fire and a no-fire test, and

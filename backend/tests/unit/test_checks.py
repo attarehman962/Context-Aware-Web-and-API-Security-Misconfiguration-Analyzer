@@ -94,15 +94,26 @@ def test_env_exposure_and_secrets():
     ctx = _ctx(body=body, path="/.env", ctype="text/plain")
     ctx.body_class = classify_body(body)
     ids = {f.rule_id for f in run_checks(ctx)}
-    assert "INF-003" in ids  # .env exposed
-    assert "API-013" in ids  # secrets in response
+    assert "API-013" in ids  # secrets in response (INF-003 is a spec check now)
 
 
 def test_moved_rules_no_longer_run_as_legacy():
     ctx = _ctx(headers={}, body="Traceback (most recent call last): ...")
     ctx.result.set_cookie_headers = ["sessionid=abc; Path=/"]
     ids = {f.rule_id for f in run_checks(ctx)}
-    assert not ids & {"HDR-002", "CKI-001", "COR-002", "API-004", "INF-002", "TLS-005"}
+    assert not ids & {
+        "HDR-002",
+        "CKI-001",
+        "COR-002",
+        "API-004",
+        "INF-002",
+        "TLS-005",
+        "API-001",
+        "API-003",
+        "INF-003",
+        "INF-004",
+        "INF-005",
+    }
 
 
 def test_limitation_marked_on_blackbox_checks():

@@ -38,13 +38,7 @@ TEST_FILES = sorted(
 )
 
 # Specs that stay on their legacy rule until Asim answers (see the doc's questions).
-BLOCKED = {
-    "API-001": "Which endpoints are 'authentication endpoints'?",
-    "API-003": "Which sensitivity classes count as 'sensitive' (HIGH, CRITICAL, both)?",
-    "INF-003": "What is an 'artifact-like path' for .env, and must the status be 2xx?",
-    "INF-004": "Same for .git (the regex matches .git/HEAD quoted in a 404 page).",
-    "INF-005": "Same for backups/keys (path suffixes? status?).",
-}
+BLOCKED: dict[str, str] = {}
 
 
 def _ids(node: ast.AST) -> set[str]:
@@ -181,14 +175,19 @@ def main() -> int:
         "|---|---|---|---|---|---|---|",
         *rows,
         "",
-        "## Open questions for Asim (checks.yaml)",
-        "",
-        "These specs say *where* they apply in a `limitation` the condition format can't",
-        "express; implementing them would mean guessing, so they stay on their legacy rule",
-        "(which scans still report) until the spec says:",
-        "",
-        *[f"- **{cid}**: {q}" for cid, q in BLOCKED.items()],
-        "",
+        *(
+            [
+                "## Open questions for Asim (checks.yaml)",
+                "",
+                "These specs say *where* they apply in a way the format can't express yet,",
+                "so they stay on their legacy rule (which scans still report) until it does:",
+                "",
+                *[f"- **{cid}**: {q}" for cid, q in BLOCKED.items()],
+                "",
+            ]
+            if BLOCKED
+            else []
+        ),
     ]
     OUTPUT.write_text("\n".join(lines))
     print(
