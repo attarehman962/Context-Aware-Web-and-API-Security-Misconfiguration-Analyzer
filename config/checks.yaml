@@ -526,7 +526,8 @@ checks:
       A sensitive API endpoint (HIGH or CRITICAL) returns data, as non-empty
       JSON, to a request that carried no credentials, so access control may be
       missing.
-    # Drafted 2026-11-05 by Atta from Asim's answers.     # "Sensitive" = HIGH and CRITICAL. Fires on 2xx with a non-empty JSON body,
+    # Drafted 2026-11-05 by Atta from Asim's answers.
+    # "Sensitive" = HIGH and CRITICAL. Fires on 2xx with a non-empty JSON body,
     # no credentials sent, and not redirected to a login page.
     http_condition:
       method: GET
@@ -563,7 +564,8 @@ checks:
       An authentication endpoint sends no RateLimit-*, X-RateLimit-* or
       Retry-After header, so there is no sign that brute-force attempts are
       limited.
-    # Drafted 2026-11-05 by Atta from Asim's answers.     # "Authentication endpoint" = the classifier's authentication family (there is
+    # Drafted 2026-11-05 by Atta from Asim's answers.
+    # "Authentication endpoint" = the classifier's authentication family (there is
     # no AUTH sensitivity class; HIGH covers more than auth), or a POST route whose
     # path names a login, token, password, reset, register or session step. An
     # indicator: missing headers don't prove there is no rate limit, so the base
