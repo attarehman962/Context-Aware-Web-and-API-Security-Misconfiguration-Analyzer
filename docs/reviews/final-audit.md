@@ -335,3 +335,47 @@ Tools: vulture 2.14 (`app`, `scripts`, 60 %), deptry 0.21.2, depcheck 1.4.7
 | — | `eval/harness/proposed_{anchors,families}.json` | evidence for docs/evaluation-method.md | keep |
 | — | TODO/FIXME, debug prints, `console.log`, `breakpoint()`, commented-out code, notebooks, scratch scripts | none found | nothing to do |
 | — | `.gitignore` | already covers `__pycache__/`, `eval/results/raw/`, `eval/.cache/`, `eval/.run/`, `frontend/test-results/`, `playwright-report/`, `demo-output/`, `.next/` | nothing to do |
+
+## Phase 3 and 4 results (2026-11-05)
+
+- **Removed:** the pre-contract routes and WebSocket, the Redis progress channel, `report_service.py`, the legacy schemas, `ScanStatus.public_value`, the Vite CORS origin, `docs/04-api-reference.md` (1a28f65); two functions with no callers and two unused ml extras (d1035dd). `test_ml_stubs.py` → `test_ml_contract.py`; `reviews/` → `docs/reviews/`.
+- **Read like ours:** `ruff format` once, now enforced in `make lint` and CI (47683e6); unused `noqa` comments (9a8fb19); section banners → plain comments (eafa126); docs wording and stale numbers (7948ae7); `docs/walkthrough.md` (8eac1b2). No emoji, decorative logs, buzzwords, "This function…" openers or Args/Returns blocks remain in our code; errors all go through `ApiError`, logs through `get_logger`.
+
+## Final check (fresh clone of `atta/p11-final-audit` at 7948ae7)
+
+| Step | Result |
+|---|---|
+| ruff check, ruff format --check, mypy | pass |
+| pytest (all) | 933 passed, 2 skipped, 0 xfailed |
+| pytest tests/security | 155 passed (the deprecated-route cases went with the routes) |
+| validate-checks, validate-config, openapi drift | pass |
+| check-coverage | 62 of 62 checks with passing fire/no-fire tests |
+| frontend lint, prettier, typecheck, unit, build | pass; 263 unit tests |
+| Playwright + axe | 34 passed |
+| gitleaks (history, with `.gitleaks.toml`) | no leaks |
+| clean_machine_check.sh (no cache) | **pass** (build, health, migrate 0005, seed, Celery demo scan, verify) |
+| eval re-run, CAWASMA only, 4 targets | precision 0.857, recall 0.727, FPR 0.085; NDCG@10 0.260 → 0.304; identical to `eval/results/final/` except scan times. Results not committed (Asim's files) |
+
+## Definitions of done, final
+
+| Owner | Item | Result |
+|---|---|---|
+| Atta | scan runs end to end | pass |
+| Atta | every finding carries a valid, recomputable vector | partly: every base vector valid and recomputable, one vector per check id; legacy findings (42 checks) still have no environmental vector |
+| Atta | API serves ranked results | pass |
+| Atta | backend up with one Docker command | pass (clean-machine check) |
+| Atta | every check has a passing fire/no-fire test | **pass** (62/62; was 34/62) |
+| Atta | security review issues fixed | **pass** (SEC-01..07, 09); SEC-08 on Neelam's branch |
+| Asim | every check has a spec and ground truth | fail: 25/62 specs, 17/62 ground truth |
+| Asim | classifier has a measured accuracy | pass (anchor classifier on his branch: 0.522 vs 0.425 on test) |
+| Asim | mapping, chains, tool comparison, ranking | pass |
+| Neelam | full user flow on the real backend, one command | pass |
+
+## Still open
+
+1. **Licence** (AGPL-3.0 vs dropping SSLyze): deferred by Atta until after the presentation.
+2. **Branches waiting for review:** Asim: `atta/fix-asim-p11-catalog-vectors`, `-sensitivity`, `-fake-secrets`. Neelam: `atta/fix-neelam-p11-fixtures` (merge with Asim's catalog branch), `-security-headers`, `-api-schema`.
+3. **Asim's specs:** 37 catalog-only checks have no `checks.yaml` spec or ground truth; the 5 blocked specs need his answers (`docs/check-coverage.md`). Until then 42 checks use the interim formula.
+4. **Anchor classifier** is off; turning it on needs the detection and ranking tables re-run.
+5. **After Asim's branches merge:** run `ruff format` on `app/ml/` and `catalog.py` and drop the format exclude in `pyproject.toml`.
+6. Second rater for the endpoint labels (Cohen's kappa), as `docs/evaluation-method.md` notes.
