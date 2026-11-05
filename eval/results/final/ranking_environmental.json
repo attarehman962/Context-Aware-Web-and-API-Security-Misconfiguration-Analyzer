@@ -1,0 +1,59 @@
+{
+  "k": 10,
+  "tie_samples": 1000,
+  "seed": 13,
+  "scoring": "environmental",
+  "targets": [
+    {
+      "target": "juice-shop",
+      "run": "20261104T152231Z",
+      "findings": 283,
+      "priority_items": 5,
+      "critical_items": 2,
+      "ndcg10_before": 0.003,
+      "first_critical_before": null,
+      "ndcg10_after": 0.0,
+      "first_critical_after": null
+    },
+    {
+      "target": "dvwa",
+      "run": "20261104T152231Z",
+      "findings": 96,
+      "priority_items": 9,
+      "critical_items": 5,
+      "ndcg10_before": 0.163,
+      "first_critical_before": 3.6,
+      "ndcg10_after": 0.285,
+      "first_critical_after": 1.0
+    },
+    {
+      "target": "vampi",
+      "run": "20261104T152231Z",
+      "findings": 48,
+      "priority_items": 4,
+      "critical_items": 0,
+      "ndcg10_before": 0.207,
+      "first_critical_before": null,
+      "ndcg10_after": 0.0,
+      "first_critical_after": null
+    },
+    {
+      "target": "crapi",
+      "run": "20261104T152231Z",
+      "findings": 320,
+      "priority_items": 4,
+      "critical_items": 0,
+      "ndcg10_before": 0.029,
+      "first_critical_before": null,
+      "ndcg10_after": 0.0,
+      "first_critical_after": null
+    }
+  ],
+  "mean": {
+    "target": "mean",
+    "ndcg10_before": 0.101,
+    "ndcg10_after": 0.071,
+    "first_critical_before": 3.6,
+    "first_critical_after": 1.0
+  }
+}
