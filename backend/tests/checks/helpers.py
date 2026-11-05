@@ -19,7 +19,7 @@ from typing import Any
 from app.core.checks import REGISTRY, CheckContext, registry
 from app.core.checks import RawFinding as LegacyFinding
 from app.core.checks.base import DetectFn
-from app.core.checks.registry import RawFinding
+from app.core.checks.registry import RawFinding, SpecContext
 from app.core.contracts import EndpointInfo
 from app.core.engine import ScanResponse
 
@@ -58,23 +58,31 @@ def response(
     )
 
 
-def endpoint(url: str = URL) -> EndpointInfo:
+def endpoint(url: str = URL, method: str = "GET") -> EndpointInfo:
     from urllib.parse import urlparse
 
-    return EndpointInfo(url=url, path=urlparse(url).path or "/")
+    return EndpointInfo(url=url, path=urlparse(url).path or "/", method=method)
 
 
-def _run(check_id: str, resp: ScanResponse, ep: EndpointInfo | None) -> list[RawFinding]:
+def _run(
+    check_id: str, resp: ScanResponse, ep: EndpointInfo | None, ctx: SpecContext | None
+) -> list[RawFinding]:
     registry.load_implementations()
     assert check_id in registry.CHECKS, f"{check_id} is not registered"
-    return registry.CHECKS[check_id](resp, ep or endpoint(resp.requested_url))
+    # Through the spec's applies_to / artifact gate, as the pipeline runs it.
+    return registry.run_check(check_id, resp, ep or endpoint(resp.requested_url), ctx)
 
 
 def assert_fires(
-    check_id: str, resp: ScanResponse, ep: EndpointInfo | None = None
+    check_id: str,
+    resp: ScanResponse,
+    ep: EndpointInfo | None = None,
+    ctx: SpecContext | None = None,
 ) -> list[RawFinding]:
-    """The check fires on this (vulnerable) response, with well-formed findings."""
-    found = _run(check_id, resp, ep)
+    """The check fires on this (vulnerable) response, with well-formed findings.
+    ``ctx`` is what the pipeline knows about the endpoint (sensitivity, families,
+    passive mode, soft-404 baseline)."""
+    found = _run(check_id, resp, ep, ctx)
     assert found, f"{check_id} did not fire"
     for f in found:
         assert f.check_id == check_id
@@ -83,9 +91,14 @@ def assert_fires(
     return found
 
 
-def assert_no_fire(check_id: str, resp: ScanResponse, ep: EndpointInfo | None = None) -> None:
+def assert_no_fire(
+    check_id: str,
+    resp: ScanResponse,
+    ep: EndpointInfo | None = None,
+    ctx: SpecContext | None = None,
+) -> None:
     """The check stays silent on this (secure) response."""
-    found = _run(check_id, resp, ep)
+    found = _run(check_id, resp, ep, ctx)
     assert not found, f"{check_id} fired unexpectedly: {found}"
 
 

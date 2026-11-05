@@ -151,6 +151,18 @@ _KEYWORD_RULES: list[tuple[ContextClass, str, set[str]]] = [
     ),
 ]
 
+# Short names for the families, as checks.yaml refers to them
+# (applies_to.sensitivity_family).
+FAMILY_NAMES = {
+    "Contains identity/privilege tokens": "identity",
+    "Contains payment/financial tokens": "payment",
+    "Contains secret/credential tokens": "secrets",
+    "Contains authentication/session tokens": "authentication",
+    "Contains user/account tokens": "account",
+    "Contains generic API/data tokens": "api",
+    "Public/informational path": "public",
+}
+
 _CLASS_RANK = {
     ContextClass.LOW: 0,
     ContextClass.MEDIUM: 1,
@@ -172,6 +184,9 @@ class ClassificationResult:
     context_class: ContextClass
     confidence: float
     reason: list[str] = field(default_factory=list)
+    # Every keyword family the path matched, not only the winning class's
+    # (/admin/login is CRITICAL and still an authentication endpoint).
+    families: frozenset[str] = frozenset()
 
     def as_dict(self) -> dict:
         return {
@@ -260,6 +275,7 @@ class SensitivityClassifier:
             if _family_match(tokens, family):
                 matched.append((cls, reason))
 
+        families = frozenset(FAMILY_NAMES[r] for _, r in matched)
         if matched:
             best_cls = max((c for c, _ in matched), key=lambda c: _CLASS_RANK[c])
             reasons = [r for c, r in matched if c == best_cls]
@@ -290,11 +306,11 @@ class SensitivityClassifier:
                 confidence = min(0.99, (kw_conf + emb_conf) / 2 + (0.1 if agree else 0))
                 if agree:
                     reasons.append("Semantic similarity agrees with keyword signal")
-                return ClassificationResult(best_cls, confidence, reasons)
+                return ClassificationResult(best_cls, confidence, reasons, families)
             except Exception as exc:  # noqa: BLE001
                 logger.debug("embedding step skipped: %s", exc)
 
-        return ClassificationResult(best_cls, kw_conf, reasons)
+        return ClassificationResult(best_cls, kw_conf, reasons, families)
 
 
 # A module-level default instance (embeddings loaded if available).

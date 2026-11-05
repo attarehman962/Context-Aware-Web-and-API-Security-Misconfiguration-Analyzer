@@ -31,12 +31,14 @@ import asyncio
 import json
 import re
 import secrets
+from collections.abc import Iterable
 from dataclasses import dataclass
 from urllib.parse import urljoin, urlparse, urlunparse
 
 from bs4 import BeautifulSoup
 
 from app.config import settings
+from app.core.checks.registry import SoftNotFound
 from app.core.engine import HttpEngine, HttpResult
 from app.core.wordlist import PROBE_PATHS
 from app.db.models.enums import DiscoveryMethod
@@ -94,6 +96,7 @@ class Crawler:
         max_depth: int | None = None,
         use_wordlist: bool = True,
         max_pages: int | None = None,
+        extra_probes: Iterable[str] = (),
     ) -> None:
         self._engine = engine
         # Per-scan depth (ScanRequest.crawl_depth), never above the global cap.
@@ -101,6 +104,10 @@ class Crawler:
         # Wordlist probes are active requests: never in passive mode.
         self._use_wordlist = use_wordlist and not engine.passive_only
         self._max_pages = max_pages or settings.MAX_CRAWL_PAGES
+        # Fixed paths the artifact specs ask for (checks.yaml), probed with the wordlist.
+        self._probe_paths = tuple(dict.fromkeys([*PROBE_PATHS, *extra_probes]))
+        # The host's answer to a path that can't exist; None in passive mode.
+        self.soft_404: SoftNotFound | None = None
         self.off_host: set[str] = set()
         self._seen: set[tuple[str, str]] = set()  # (url, method)
         self._results: list[DiscoveredEndpoint] = []
@@ -150,6 +157,10 @@ class Crawler:
                     following += self._handle_page(seed, url, resp, depth)
             level, depth = following, depth + 1
 
+        # Soft-404 baseline (one random path), for the wordlist and the artifact
+        # checks; active mode only.
+        if not self._engine.passive_only:
+            await self._fetch_soft_404(seed)
         # Strategy 3: wordlist probing (bounded; ScanRequest.use_wordlist).
         if self._use_wordlist:
             await self._probe_wordlist(seed)
@@ -246,16 +257,20 @@ class Crawler:
             found[urljoin(root, m)] = None
         return list(found)
 
+    async def _fetch_soft_404(self, seed: str) -> None:
+        root = f"{urlparse(seed).scheme}://{urlparse(seed).netloc}"
+        path = f"/cawasma-{secrets.token_hex(8)}"
+        missing = await self._engine.fetch(root + path, method="GET", same_origin_only=True)
+        if missing.ok:
+            self.soft_404 = SoftNotFound(path, missing.status_code, missing.body)
+
     async def _probe_wordlist(self, seed: str) -> None:
         root = f"{urlparse(seed).scheme}://{urlparse(seed).netloc}"
-        # Soft-404 baseline: what a path that cannot exist returns.
-        missing = await self._engine.fetch(
-            f"{root}/cawasma-{secrets.token_hex(8)}", method="GET", same_origin_only=True
-        )
-        catch_all = missing.body if missing.ok and missing.status_code == 200 else None
+        base = self.soft_404
+        catch_all = base.body if base is not None and base.status_code == 200 else None
         urls = [
             root + path
-            for path in PROBE_PATHS
+            for path in self._probe_paths
             if (_normalize(root + path), "GET") not in self._seen
         ]
         responses = await asyncio.gather(
