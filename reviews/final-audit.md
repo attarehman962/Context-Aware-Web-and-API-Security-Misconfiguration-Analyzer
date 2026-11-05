@@ -311,3 +311,27 @@ For the other owners (each on its own branch, pushed to origin, for review):
 | `atta/fix-neelam-p11-security-headers` | Neelam | SEC-08: CSP (`frame-ancestors 'none'`, ...), nosniff, Referrer-Policy, X-Frame-Options | any |
 | `atta/fix-asim-p11-sensitivity` | Asim | Prompt 6: anchor classifier, `config/sensitivity_anchors.yaml` (`enabled: false`), `eval_sensitivity.py`; test split accuracy 0.522 vs 0.425 | any |
 | `atta/fix-asim-p11-fake-secrets` | Asim | the AWS-shaped docstring example | any |
+
+## Phase 3: removal candidates (listed before removing)
+
+Tools: vulture 2.14 (`app`, `scripts`, 60 %), deptry 0.21.2, depcheck 1.4.7
+(knip 5.41 crashed on TypeScript 5.9), plus searches for TODO/FIXME, debug prints,
+`console.log`, `breakpoint()`, commented-out code, notebooks and scratch files.
+
+| # | Candidate | Reason | Decision |
+|---|---|---|---|
+| 1 | Deprecated pre-contract API: `POST /api/scans`, `GET /api/scans/{id}` (+ `/status`, `/findings`, `/endpoints`, `/chains`, `/report/{fmt}`), WebSocket `/ws/scans/{id}`, the worker's Redis progress channel (`services/progress.py`), their schemas and tests, `docs/04-api-reference.md` | api-contract.md: "will be removed once the Next.js app uses the contract routes". Nothing calls them: not `frontend/src`, `e2e`, `scripts/`, `eval/`, the clean-machine check. Live status is SSE from the DB | remove (Atta) |
+| 2 | `AttackChain.matched_rule_ids`, `services/llm.reset_llm_client` | no caller anywhere | remove |
+| 3 | `scikit-learn`, `pandas` in the `ml` extra | imported nowhere (scikit-learn still comes with sentence-transformers); their pins contradict `constraints.txt` (1.6.0 vs 1.9.1) | remove |
+| 4 | `reviews/` | the task asks for `docs/reviews/` | move |
+| 5 | `tests/unit/test_ml_stubs.py` | `app/ml/` holds Asim's real modules; the file tests the ML contract | rename to `test_ml_contract.py` |
+| 6 | `app/ml/__init__.py` docstring ("both are stubs") | stale | Asim's branch `atta/fix-asim-p11-sensitivity` |
+| 7 | Neelam's CLAUDE.md line pointing to `docs/04-api-reference.md`; her generated `api-schema.ts` still has the removed paths | follows from 1 | Neelam's branch `atta/fix-neelam-p11-api-schema` |
+| — | Squashing migrations 0001–0005 | all five are merged; CLAUDE.md: never edit a merged migration | keep |
+| — | `MOCK_API` | used by the contract mock mode, tests and docs | keep |
+| — | `commands.txt` | the run sheet for the demo | keep |
+| — | deptry DEP002/003 for drivers and tools (asyncpg, aiosqlite, greenlet, h2, python-dotenv, pytest, ruff, ...), the `reset.py` fallback import | loaded indirectly or by tools; `make reset` runs `reset.py` as a file, so the fallback is live | keep (false positives) |
+| — | depcheck: shadcn, tw-animate-css, tailwind packages | used from CSS and the shadcn CLI | keep (false positives) |
+| — | `eval/harness/proposed_{anchors,families}.json` | evidence for docs/evaluation-method.md | keep |
+| — | TODO/FIXME, debug prints, `console.log`, `breakpoint()`, commented-out code, notebooks, scratch scripts | none found | nothing to do |
+| — | `.gitignore` | already covers `__pycache__/`, `eval/results/raw/`, `eval/.cache/`, `eval/.run/`, `frontend/test-results/`, `playwright-report/`, `demo-output/`, `.next/` | nothing to do |
