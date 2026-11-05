@@ -22,6 +22,9 @@ from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
+from sqlalchemy.engine import make_url
+
+from tests.conftest import TEST_DB
 
 # Fake secrets the target serves. None may appear unredacted anywhere.
 # Each one is assembled at run time, so no secret-shaped literal sits in the repo.
@@ -199,11 +202,21 @@ class _Handler(BaseHTTPRequestHandler):
 
 @pytest.fixture
 def dns(monkeypatch):
-    """Resolve names from a table; anything else fails to resolve (no real DNS)."""
+    """Resolve names from a table; anything else fails to resolve (no real DNS).
+
+    The test database's own host (PostgreSQL in CI, TEST_DATABASE_URL) still
+    resolves for real, or the database connection itself would fail. The
+    scanner never reaches that name: the SSRF guard refuses localhost before any
+    lookup.
+    """
     table: dict[str, list[str]] = {}
+    real_getaddrinfo = socket.getaddrinfo
+    db_host = (make_url(TEST_DB).host or "").lower()
 
     def getaddrinfo(host, port, *args, **kwargs):
         name = str(host).rstrip(".").lower()
+        if db_host and name == db_host and name not in table:
+            return real_getaddrinfo(host, port, *args, **kwargs)
         if name not in table:
             raise socket.gaierror(socket.EAI_NONAME, f"{name}: stubbed, unknown")
         out = []
