@@ -343,7 +343,7 @@ class HttpEngine:
             result.error = f"Connection error: {exc}"
         except httpx.HTTPError as exc:
             result.error = f"HTTP error: {exc}"
-        except Exception as exc:  # noqa: BLE001 - engine must never propagate
+        except Exception as exc:
             result.error = f"Unexpected error: {exc}"
             logger.exception("engine unexpected error for %s", url)
 

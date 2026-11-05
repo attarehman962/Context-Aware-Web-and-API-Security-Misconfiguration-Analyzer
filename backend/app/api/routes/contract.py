@@ -313,7 +313,7 @@ async def get_finding(
 async def export_results(
     scan_id: uuid.UUID,
     session: SessionDep,
-    format: ExportFormat = Query("json", description="json | csv | html | pdf"),  # noqa: A002
+    format: ExportFormat = Query("json", description="json | csv | html | pdf"),
 ) -> Response:
     if settings.MOCK_API:
         results = mock.RESULTS.get(scan_id)

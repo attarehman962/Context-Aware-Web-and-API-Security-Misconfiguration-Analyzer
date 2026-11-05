@@ -158,7 +158,7 @@ def render_pdf(data: dict) -> bytes:
     html = render_html(data)
     try:
         from weasyprint import HTML
-    except Exception as exc:  # noqa: BLE001 - native libs may be absent
+    except Exception as exc:
         raise ReportFormatUnavailable(
             "PDF rendering requires WeasyPrint native libraries (available in the " "Docker image)."
         ) from exc

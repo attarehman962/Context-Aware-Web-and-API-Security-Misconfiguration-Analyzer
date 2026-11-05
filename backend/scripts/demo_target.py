@@ -135,10 +135,10 @@ class _Handler(BaseHTTPRequestHandler):
         if self.command != "HEAD":
             self.wfile.write(body)
 
-    def do_GET(self) -> None:  # noqa: N802 - http.server API
+    def do_GET(self) -> None:
         self._send(200, PAGE) if self.path.split("?")[0] == "/" else self._send(404, b"")
 
-    def do_HEAD(self) -> None:  # noqa: N802 - http.server API
+    def do_HEAD(self) -> None:
         self.do_GET()
 
 

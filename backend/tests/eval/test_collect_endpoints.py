@@ -24,7 +24,7 @@ PAGES = {
 
 
 class _Handler(BaseHTTPRequestHandler):
-    def do_GET(self):  # noqa: N802 - http.server API
+    def do_GET(self):
         body = PAGES.get(self.path)
         self.send_response(200 if body is not None else 404)
         self.send_header("Content-Type", "text/html")

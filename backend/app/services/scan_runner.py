@@ -114,7 +114,7 @@ async def run_scan_async(scan_id: str | uuid.UUID, *, probe: bool = True) -> Non
                     for k in ("endpoints", "findings", "chains", "requests", "stage_seconds")
                 },
             )
-        except Exception as exc:  # noqa: BLE001 - record failure, never propagate
+        except Exception as exc:
             logger.exception("scan %s failed", sid)
             # Shown to the user: only ScanError messages are written for them.
             message = (

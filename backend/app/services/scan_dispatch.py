@@ -28,7 +28,7 @@ def queue_scan(scan_id: uuid.UUID) -> None:
         run_scan.apply_async(
             args=[str(scan_id)], task_id=str(scan_id), retry=True, retry_policy=_PUBLISH_RETRY
         )
-    except Exception as exc:  # noqa: BLE001 - kombu raises several connection errors
+    except Exception as exc:
         logger.error("could not queue scan %s: %s", scan_id, exc)
         raise QueueUnavailable(str(exc)) from exc
 
