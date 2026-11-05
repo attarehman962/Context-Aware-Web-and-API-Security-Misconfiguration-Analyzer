@@ -20,6 +20,16 @@ function row(checkId: string) {
 }
 
 describe("FindingsPanel: sorting and the base/final toggle", () => {
+  it("badges every legacy-scored row and no environmental one", () => {
+    render(<Harness />);
+    const badged = (id: string) =>
+      row(id).querySelector('[data-scoring-method="legacy"]') !== null;
+    expect(badged("API-003")).toBe(true); // interim formula
+    expect(badged("TLS-001")).toBe(true);
+    expect(badged("CKI-003")).toBe(false); // CVSS environmental
+    expect(badged("HDR-001")).toBe(false);
+  });
+
   it("ranks by context-aware score by default", () => {
     render(<Harness />);
     expect(

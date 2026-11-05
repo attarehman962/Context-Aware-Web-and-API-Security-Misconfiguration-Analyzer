@@ -61,6 +61,7 @@ function buildLargeScan(): ScanResults {
         endpoint_url: t.endpoint_url && `https://shop.example.com${path}`,
         final_score: final,
         final_vector: null,
+        scoring_method: "legacy",
         score_reasons: [],
         severity_bucket: severityFromScore(final),
         chain_ids: i % 25 === 0 ? [chainId] : [],

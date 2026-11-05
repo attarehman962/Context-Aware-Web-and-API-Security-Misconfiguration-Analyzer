@@ -149,6 +149,7 @@ function ScoreStorySection({ finding }: { finding: Finding }) {
           base={finding.base_score}
           final={finding.final_score}
           severity={finding.severity_bucket}
+          method={finding.scoring_method}
         />
         <div className="flex min-w-0 flex-col gap-1.5">
           <p

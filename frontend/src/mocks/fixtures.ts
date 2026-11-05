@@ -48,6 +48,7 @@ const lowFinding: Finding = {
   base_score: 3.1,
   final_score: 3.1,
   final_vector: "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:L/I:N/A:N/CR:X/IR:X/AR:X",
+  scoring_method: "environmental",
   score_reasons: [
     "sensitivity:LOW",
     "no-context-change",
@@ -84,6 +85,7 @@ const infoFinding: Finding = {
   base_score: 3.1,
   final_score: 0.0,
   final_vector: null,
+  scoring_method: "legacy",
   score_reasons: [],
   severity_bucket: "INFO",
   evidence: {
@@ -118,6 +120,7 @@ const verboseErrorFinding: Finding = {
   base_score: 5.3,
   final_score: 5.3,
   final_vector: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N/CR:M/IR:M/AR:M",
+  scoring_method: "environmental",
   score_reasons: [
     "sensitivity:MEDIUM",
     "signal:INTERNAL_IP",

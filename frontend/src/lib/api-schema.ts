@@ -375,6 +375,13 @@ export interface components {
        *     ]
        */
       score_reasons?: string[];
+      /**
+       * Scoring Method
+       * @description Since 1.4. 'environmental': final_score is the CVSS v3.1 environmental score of final_vector. 'legacy': the interim formula (base x context multiplier + body bonus) and final_vector is null. The two are different scales: label them, don't compare them as one.
+       * @default legacy
+       * @enum {string}
+       */
+      scoring_method: "environmental" | "legacy";
       severity_bucket: components["schemas"]["Severity"];
       /**
        * Evidence
@@ -485,6 +492,13 @@ export interface components {
        *     ]
        */
       score_reasons?: string[];
+      /**
+       * Scoring Method
+       * @description Since 1.4. 'environmental': final_score is the CVSS v3.1 environmental score of final_vector. 'legacy': the interim formula (base x context multiplier + body bonus) and final_vector is null. The two are different scales: label them, don't compare them as one.
+       * @default legacy
+       * @enum {string}
+       */
+      scoring_method: "environmental" | "legacy";
       severity_bucket: components["schemas"]["Severity"];
       /**
        * Evidence
@@ -679,7 +693,7 @@ export interface components {
     ScanResults: {
       /**
        * Contract Version
-       * @default 1.3.0
+       * @default 1.4.0
        */
       contract_version: string;
       scan: components["schemas"]["app__api__schemas__contract__ScanStatus"];
@@ -1045,7 +1059,7 @@ export interface operations {
         content: {
           /**
            * @example {
-           *       "contract_version": "1.3.0",
+           *       "contract_version": "1.4.0",
            *       "scan": {
            *         "scan_id": "11111111-1111-4111-8111-111111111111",
            *         "url": "https://shop.example.com",
@@ -1093,6 +1107,7 @@ export interface operations {
            *           "base_score": 7.5,
            *           "final_score": 10,
            *           "score_reasons": [],
+           *           "scoring_method": "legacy",
            *           "severity_bucket": "CRITICAL",
            *           "evidence": {
            *             "text": "Unauthenticated data exposure on /api/v1/users/42",
@@ -1123,6 +1138,7 @@ export interface operations {
            *           "base_score": 7.5,
            *           "final_score": 10,
            *           "score_reasons": [],
+           *           "scoring_method": "legacy",
            *           "severity_bucket": "CRITICAL",
            *           "evidence": {
            *             "text": ".env file exposed on /.env",
@@ -1170,6 +1186,7 @@ export interface operations {
            *             "base:7.1",
            *             "environmental:8.6"
            *           ],
+           *           "scoring_method": "environmental",
            *           "severity_bucket": "HIGH",
            *           "evidence": {
            *             "text": "Cookie missing SameSite attribute on /admin/login",
@@ -1195,6 +1212,7 @@ export interface operations {
            *           "base_score": 7.4,
            *           "final_score": 7.4,
            *           "score_reasons": [],
+           *           "scoring_method": "legacy",
            *           "severity_bucket": "HIGH",
            *           "evidence": {
            *             "text": "Legacy TLS 1.0/1.1 offered",
@@ -1234,6 +1252,7 @@ export interface operations {
            *             "base:5.4",
            *             "environmental:6.4"
            *           ],
+           *           "scoring_method": "environmental",
            *           "severity_bucket": "MEDIUM",
            *           "evidence": {
            *             "text": "Missing Content-Security-Policy on /api/payment/checkout",
@@ -1271,6 +1290,7 @@ export interface operations {
            *             "base:5.3",
            *             "environmental:5.3"
            *           ],
+           *           "scoring_method": "environmental",
            *           "severity_bucket": "MEDIUM",
            *           "evidence": {
            *             "text": "Missing HSTS on /",
@@ -1305,6 +1325,7 @@ export interface operations {
            *             "base:5.3",
            *             "environmental:5.3"
            *           ],
+           *           "scoring_method": "environmental",
            *           "severity_bucket": "MEDIUM",
            *           "evidence": {
            *             "text": "Server version disclosure on /",
@@ -1409,6 +1430,7 @@ export interface operations {
            *       "base_score": 7.5,
            *       "final_score": 10,
            *       "score_reasons": [],
+           *       "scoring_method": "legacy",
            *       "severity_bucket": "CRITICAL",
            *       "evidence": {
            *         "text": ".env file exposed on /.env",
