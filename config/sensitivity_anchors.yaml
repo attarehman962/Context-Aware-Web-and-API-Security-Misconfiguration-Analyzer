@@ -1,0 +1,87 @@
+# Anchor phrases for the embedding sensitivity classifier (owner: Asim).
+# Read by backend/app/ml/sensitivity.py; measured by eval/harness/eval_sensitivity.py.
+#
+# A path is turned into text ("GET api users password reset"), embedded with
+# all-MiniLM-L6-v2, and scored against every anchor; a class scores the best
+# cosine of its anchors, and the best class wins. Below `threshold` the path
+# gets `default_class` (and a log line). Classes follow docs/labelling-guide.md.
+#
+# enabled: false keeps the keyword classifier (app.core.sensitivity) that the
+# final evaluation tables were produced with. Turn it on only after re-running
+# eval_sensitivity.py on dev, and re-run the evaluation before reporting.
+enabled: false
+model: all-MiniLM-L6-v2
+threshold: 0.30
+default_class: MEDIUM     # unsure: neither LOW (the costly miss) nor CRITICAL (noise)
+
+# Short path tokens expanded before embedding.
+abbreviations:
+  usr: user
+  pwd: password
+  passwd: password
+  acct: account
+  admin: administrator
+  auth: authentication
+  creds: credentials
+  cred: credential
+  cfg: configuration
+  conf: configuration
+  config: configuration
+  txn: transaction
+  pay: payment
+  mgmt: management
+  otp: one time password
+  mfa: multi factor authentication
+  sso: single sign on
+  jwt: token
+  env: environment variables
+  db: database
+  info: information
+  img: image
+  doc: documentation
+  docs: documentation
+  index: home page
+  me: my account
+  exec: execute command
+  cmd: command
+
+anchors:
+  LOW:
+    - public home page
+    - about us and contact information
+    - public product catalogue
+    - static content help and frequently asked questions
+    - public api documentation
+    - health check and version information
+    - news blog and articles
+    - third party external library
+    - robots and sitemap file for crawlers
+  MEDIUM:
+    - user profile details
+    - order history
+    - community posts and comments
+    - shopping basket and cart
+    - product reviews and feedback
+    - user settings and preferences
+    - search and listing of user content
+    - file upload for a user
+  HIGH:
+    - user login and authentication
+    - password reset and account recovery
+    - session token and access token
+    - change user password
+    - user registration and sign up
+    - verify email or one time password
+    - logout and session management
+    - operational logs metrics and diagnostics
+    - debug and diagnostic information
+  CRITICAL:
+    - administrator panel and user management
+    - payment and money transfer
+    - privileged system configuration
+    - secret keys and credentials management
+    - database backup and export
+    - internal tenant and role management
+    - environment variables and server configuration
+    - execute system commands on the server
+    - create drop or reset the database
