@@ -180,16 +180,17 @@ function HistoryTable({
               }}
               className="cursor-pointer border-b last:border-0 hover:bg-muted/50"
             >
-              <td className="px-3 py-2 whitespace-nowrap tabular-nums">
+              {/* On phones the date may wrap, so the target column gets the room. */}
+              <td className="px-3 py-2 whitespace-nowrap tabular-nums max-sm:whitespace-normal">
                 {new Date(scan.created_at).toLocaleString(undefined, {
                   dateStyle: "medium",
                   timeStyle: "short",
                 })}
               </td>
-              <td className="max-w-xs px-3 py-2">
+              <td className="max-w-xs px-3 py-2 max-sm:min-w-44">
                 <Link
                   href={`/scans/${scan.scan_id}`}
-                  className="font-medium break-all underline-offset-4 hover:underline"
+                  className="font-medium wrap-anywhere underline-offset-4 hover:underline"
                 >
                   {scan.url}
                 </Link>
