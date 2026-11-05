@@ -56,7 +56,9 @@ the same compose slot).
 - Branch names: `<name>/pNN-topic`, e.g. `atta/p01-repo-setup`,
   `neelam/p03-scan-dashboard`, `asim/p02-cvss-mapping`. `<name>` is one of
   `atta`, `neelam`, `asim`; `NN` is the two-digit phase number; `topic` is
-  lowercase kebab-case. CI fails PRs from branches that don't match.
+  lowercase kebab-case. A review fix in a partner's files goes on
+  `<name>/fix-<partner>-pNN-topic`, e.g. `atta/fix-asim-p11-check-specs`, for the
+  owner to review. CI fails PRs from branches that match neither.
 - No direct pushes to `main`; open a PR using `.github/pull_request_template.md`.
 - One topic per PR. CI must be green before merging.
 
