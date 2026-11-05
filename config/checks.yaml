@@ -407,11 +407,10 @@ checks:
   - check_id: INF-003
     category: INFO_DISCLOSURE
     title: .env file exposed
-    status: proposed
     description: >-
       A .env file is served: environment variables (KEY=value lines) that often
       hold database passwords, API keys and other secrets.
-    # PROPOSED 2026-11-05 (Atta, from Asim's answers; for Asim to review). Artifact
+    # Drafted 2026-11-05 by Atta from Asim's answers. Artifact
     # path: a last path segment of exactly .env or .env.*, at the root or under any
     # directory. Fires on 200, not HTML, not the soft-404 page, with a KEY= line.
     http_condition:
@@ -440,11 +439,10 @@ checks:
   - check_id: INF-004
     category: INFO_DISCLOSURE
     title: .git repository exposed
-    status: proposed
     description: >-
       The .git directory is served: its HEAD or config file is readable, so the
       repository (source code, history, sometimes credentials) can be rebuilt.
-    # PROPOSED 2026-11-05 (Atta, from Asim's answers; for Asim to review). Probes
+    # Drafted 2026-11-05 by Atta from Asim's answers. Probes
     # /.git/HEAD and /.git/config; fires on 200, not HTML, not the soft-404 page,
     # when HEAD is a ref or a 40-hex SHA or config has [core]. A 404 page that only
     # quotes ".git/HEAD" no longer fires.
@@ -471,11 +469,10 @@ checks:
   - check_id: INF-005
     category: INFO_DISCLOSURE
     title: Backup / archive file exposed
-    status: proposed
     description: >-
       A backup, editor or archive copy of a file is served (.bak, .old, .swp, a
       .zip or .sql dump), which can disclose source code, data or credentials.
-    # PROPOSED 2026-11-05 (Atta, from Asim's answers; for Asim to review). Judges
+    # Drafted 2026-11-05 by Atta from Asim's answers. Judges
     # discovered paths ending in a backup or archive suffix, and probes a small
     # fixed list. Fires on 200 with a non-empty body that differs from the soft-404
     # page. HTML is allowed (an .html.bak is HTML).
@@ -525,12 +522,11 @@ checks:
   - check_id: API-003
     category: REST_API
     title: Sensitive-Looking Endpoint Accessible Without Authentication
-    status: proposed
     description: >-
       A sensitive API endpoint (HIGH or CRITICAL) returns data, as non-empty
       JSON, to a request that carried no credentials, so access control may be
       missing.
-    # PROPOSED 2026-11-05 (Atta, from Asim's answers; for Asim to review).
+    # Drafted 2026-11-05 by Atta from Asim's answers.
     # "Sensitive" = HIGH and CRITICAL. Fires on 2xx with a non-empty JSON body,
     # no credentials sent, and not redirected to a login page.
     http_condition:
@@ -564,12 +560,11 @@ checks:
   - check_id: API-001
     category: REST_API
     title: Authentication Endpoint Missing Rate-Limit Headers
-    status: proposed
     description: >-
       An authentication endpoint sends no RateLimit-*, X-RateLimit-* or
       Retry-After header, so there is no sign that brute-force attempts are
       limited.
-    # PROPOSED 2026-11-05 (Atta, from Asim's answers; for Asim to review).
+    # Drafted 2026-11-05 by Atta from Asim's answers.
     # "Authentication endpoint" = the classifier's authentication family (there is
     # no AUTH sensitivity class; HIGH covers more than auth), or a POST route whose
     # path names a login, token, password, reset, register or session step. An
