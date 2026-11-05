@@ -106,6 +106,7 @@ def _index(port: int) -> str:
 <a href="/about">About</a>
 <a href="/redirect-out">Partner</a>
 <a href="/redirect-in">Home</a>
+<a href="/.env">Config</a>
 <a href="{other}/offsite">Offsite</a>
 <iframe src="{other}/frame"></iframe>
 <img src="{other}/pixel.gif">

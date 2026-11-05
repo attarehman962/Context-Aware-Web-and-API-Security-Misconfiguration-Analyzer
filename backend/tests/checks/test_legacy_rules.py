@@ -1,4 +1,4 @@
-"""Fire and no-fire tests for the 42 legacy ``@rule`` checks (one test per rule).
+"""Fire and no-fire tests for the 37 legacy ``@rule`` checks (one test per rule).
 
 Each test gives the rule a context it must report and a close one it must not,
 so a rule that fires on everything or on nothing fails.
@@ -25,21 +25,9 @@ def _tls(**fields) -> TlsProbe:
 # REST API
 
 
-def test_api001_rate_limit_headers():
-    assert_rule_fires("API-001", context(API, content_type=JSON))
-    assert_rule_no_fire(
-        "API-001", context(API, content_type=JSON, headers={"X-RateLimit-Limit": "100"})
-    )
-
-
 def test_api002_trace():
     assert_rule_fires("API-002", context(allowed_methods={"GET", "TRACE"}))
     assert_rule_no_fire("API-002", context(allowed_methods={"GET", "HEAD"}))
-
-
-def test_api003_unauthenticated_collection():
-    assert_rule_fires("API-003", context(API, content_type=JSON, body='{"users": [1, 2]}'))
-    assert_rule_no_fire("API-003", context(API, content_type=JSON, body='{"ok": true}'))
 
 
 def test_api005_privilege_fields():
@@ -214,28 +202,6 @@ def test_hdr012_expect_ct():
 def test_inf001_internal_ip():
     assert_rule_fires("INF-001", context(body_class=BodyClassification(internal_ip=True)))
     assert_rule_no_fire("INF-001", context(body_class=BodyClassification()))
-
-
-def test_inf003_env_file():
-    env = "https://shop.example.com/.env"
-    assert_rule_fires(
-        "INF-003", context(env, content_type="text/plain", body="DB_PASSWORD=cawasma-fake-value\n")
-    )
-    assert_rule_no_fire("INF-003", context(env, body="<html>Not found</html>"))
-
-
-def test_inf004_git_metadata():
-    head = "https://shop.example.com/.git/HEAD"
-    assert_rule_fires(
-        "INF-004", context(head, content_type="text/plain", body="ref: refs/heads/main\n")
-    )
-    assert_rule_no_fire("INF-004", context(head, status=404, body="ref: refs/heads/main"))
-
-
-def test_inf005_backup_file():
-    backup = "https://shop.example.com/backup.zip"
-    assert_rule_fires("INF-005", context(backup, content_type="application/zip"))
-    assert_rule_no_fire("INF-005", context(backup, content_type="text/html"))  # catch-all page
 
 
 def test_inf006_api_docs():

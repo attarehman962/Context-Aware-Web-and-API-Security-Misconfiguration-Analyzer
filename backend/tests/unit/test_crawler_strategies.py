@@ -133,7 +133,9 @@ async def test_off_host_links_are_logged_not_followed(caplog):
     crawler, found, _, fallback = await crawl(
         {"/": html('<a href="https://other.example/x">x</a>')}
     )
-    assert not fallback.called  # nothing outside the site was requested
+    # Nothing outside the site was requested (the fallback still answers the
+    # same-site soft-404 baseline, a random path).
+    assert all(c.request.url.host != "other.example" for c in fallback.calls)
     assert "https://other.example/x" in crawler.off_host
     assert all("other.example" not in e.url for e in found.values())
     assert "off-host" in caplog.text

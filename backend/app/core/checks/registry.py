@@ -28,9 +28,9 @@ from pathlib import Path
 from typing import Any
 
 from app.config import settings
-from app.core.contracts import EndpointInfo, ResponseInfo
+from app.core.contracts import EndpointInfo, ResponseInfo, SensitivityClass
 from app.core.engine import ScanResponse
-from app.core.specs import CheckSpec, load_checks
+from app.core.specs import AppliesToRule, CheckSpec, load_checks
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -53,6 +53,34 @@ class RawFinding:
 
 CheckFn = Callable[[ScanResponse, EndpointInfo], list[RawFinding]]
 CHECKS: dict[str, CheckFn] = {}
+
+
+@dataclass(frozen=True)
+class SoftNotFound:
+    """What the host answers for a path that can't exist (one random path per
+    scan, fetched by the crawler). A response like it is the site's catch-all,
+    not the file a check is looking for."""
+
+    path: str
+    status_code: int | None
+    body: str
+
+    def matches(self, resp: ScanResponse, path: str) -> bool:
+        if resp.status_code != self.status_code:
+            return False
+        # A 404 page may quote the path it was asked for.
+        return resp.body.replace(path, "") == self.body.replace(self.path, "")
+
+
+@dataclass(frozen=True)
+class SpecContext:
+    """What the pipeline knows about the endpoint beyond its response, for the
+    ``applies_to`` and ``artifact`` blocks of a spec."""
+
+    sensitivity: SensitivityClass | None = None
+    families: frozenset[str] = frozenset()
+    passive: bool = False
+    soft_404: SoftNotFound | None = None
 
 
 def register_check(check_id: str) -> Callable[[CheckFn], CheckFn]:
@@ -151,8 +179,74 @@ def condition_matches(
     return resp.method == condition.method and condition.matches(info)
 
 
+_HTML = re.compile(r"(?is)\A\s*(?:<!doctype html|<html)")
+_CREDENTIAL_HEADERS = ("authorization", "cookie")
+
+
+def _rule_holds(
+    rule: AppliesToRule, resp: ScanResponse, endpoint: EndpointInfo, context: SpecContext
+) -> bool:
+    if rule.sensitivity is not None:
+        return context.sensitivity in rule.sensitivity
+    if rule.sensitivity_family is not None:
+        return rule.sensitivity_family in context.families
+    if rule.path is not None:
+        return re.search(rule.path, endpoint.path) is not None and (
+            rule.methods is None or endpoint.method.upper() in rule.methods
+        )
+    sent = {k.lower() for k in resp.request_headers}  # credentials: absent
+    return not sent & set(_CREDENTIAL_HEADERS)
+
+
+def applies(
+    spec: CheckSpec, resp: ScanResponse, endpoint: EndpointInfo, context: SpecContext | None
+) -> bool:
+    """Whether ``spec`` judges this endpoint at all (its applies_to and artifact
+    blocks); http_condition then decides whether it fires. A spec with either
+    block needs a context; without one (host-level runs) it is not judged."""
+    if spec.applies_to is None and spec.artifact is None:
+        return True
+    if context is None:
+        return False
+    art = spec.artifact
+    if art is not None:
+        if context.passive or not re.search(art.path, endpoint.path):
+            return False
+        if art.not_html and ("html" in (resp.content_type or "").lower() or _HTML.match(resp.body)):
+            return False
+        if art.not_soft_404 and context.soft_404 and context.soft_404.matches(resp, endpoint.path):
+            return False
+        if art.require_body and not (resp.body.strip() or resp.content_length):
+            return False
+    if spec.applies_to is not None:
+        held = (_rule_holds(r, resp, endpoint, context) for r in spec.applies_to.rules)
+        if not (all(held) if spec.applies_to.match == "all" else any(held)):
+            return False
+    return True
+
+
+def artifact_probe_paths() -> list[str]:
+    """The fixed paths the artifact specs ask to probe, for the crawler."""
+    return sorted(
+        {p for spec in load_specs().values() if spec.artifact for p in spec.artifact.probe}
+    )
+
+
+def run_check(
+    check_id: str, resp: ScanResponse, endpoint: EndpointInfo, context: SpecContext | None = None
+) -> list[RawFinding]:
+    """One check, through its applies_to / artifact gate."""
+    if not applies(spec_for(check_id), resp, endpoint, context):
+        return []
+    return CHECKS[check_id](resp, endpoint)
+
+
 def run_spec_checks(
-    resp: ScanResponse, endpoint: EndpointInfo, *, scope: str = "every_endpoint"
+    resp: ScanResponse,
+    endpoint: EndpointInfo,
+    *,
+    scope: str = "every_endpoint",
+    context: SpecContext | None = None,
 ) -> list[RawFinding]:
     """Run every registered check of ``scope`` on this response. The pipeline
     calls it for each endpoint's GET and CORS preflight (``every_endpoint``),
@@ -164,7 +258,7 @@ def run_spec_checks(
         if spec is None or spec.http_condition.scope != scope:
             continue
         try:
-            findings.extend(CHECKS[check_id](resp, endpoint))
+            findings.extend(run_check(check_id, resp, endpoint, context))
         except Exception as exc:  # noqa: BLE001 - one bad check must not stop the scan
             logger.warning("check %s raised on %s: %s", check_id, endpoint.url, exc)
     return findings

@@ -40,6 +40,6 @@ def test_every_legacy_rule_has_fire_and_no_fire_tests():
     want = {"assert_rule_fires", "assert_rule_no_fire"}
     used = _calls(want)
     ids = sorted(legacy_rule_id(fn) for fn in REGISTRY)
-    assert len(ids) == 42
+    assert len(ids) == 37
     missing = {cid: sorted(want - used[cid]) for cid in ids if used[cid] != want}
     assert not missing, f"legacy rules without fire/no-fire tests: {missing}"

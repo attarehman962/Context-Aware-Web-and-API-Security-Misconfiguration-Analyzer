@@ -39,6 +39,7 @@ from app.core.body_classifier import BodyClassification, classify_response
 from app.core.chains import ChainEndpoint, ChainMember, DetectedChain, correlate
 from app.core.checks import CheckContext, RawFinding, run_checks, run_spec_checks
 from app.core.checks import registry as spec_registry
+from app.core.checks.registry import SoftNotFound, SpecContext
 from app.core.contracts import BodySignal, EndpointInfo, SensitivityClass
 from app.core.crawler import Crawler, DiscoveredEndpoint
 from app.core.cvss import compute_score, score_finding
@@ -197,12 +198,13 @@ def _spec_findings(
     signals: set[BodySignal],
     ep_index: int | None,
     scope: str = "every_endpoint",
+    context: SpecContext | None = None,
 ) -> list[ScoredFinding]:
     """Run the spec-registry checks of ``scope`` and score them with environmental
     metrics. Host-level findings (no endpoint, no class) are scored with the
     contract's neutral class, MEDIUM."""
     out: list[ScoredFinding] = []
-    for raw in run_spec_checks(result, endpoint, scope=scope):
+    for raw in run_spec_checks(result, endpoint, scope=scope, context=context):
         spec = spec_registry.spec_for(raw.check_id)
         score = score_finding(raw, context_class or ContextClass.MEDIUM, signals)
         text = str(raw.evidence.get("text") or spec.title or raw.check_id)
@@ -357,6 +359,7 @@ async def _analyse_endpoint(
     tls: TlsProbe | None,
     probe: bool,
     probe_origin: str,
+    soft_404: SoftNotFound | None = None,
 ) -> tuple[EndpointAnalysis, list[ScoredFinding]]:
     """GET one endpoint (usually a cache hit: the crawler fetched it), classify it,
     run its probes and every check; return its analysis and findings."""
@@ -415,6 +418,12 @@ async def _analyse_endpoint(
         body_class=body_class,
     )
     findings: list[ScoredFinding] = []
+    spec_context = SpecContext(
+        sensitivity=SensitivityClass(context_class.value) if context_class else None,
+        families=cls.families,
+        passive=engine.passive_only,
+        soft_404=soft_404,
+    )
     # Spec checks on the GET, and on the CORS preflight (OPTIONS checks).
     for resp in (result, signals.get("preflight")):
         if resp is not None:
@@ -426,6 +435,7 @@ async def _analyse_endpoint(
                     confidence=cls.confidence,
                     signals=body_signals(body_class),
                     ep_index=ep_index,
+                    context=spec_context,
                 )
             )
     for raw in run_checks(ctx):
@@ -547,7 +557,12 @@ async def run_pipeline(
         tls_task = asyncio.create_task(tls_probe())
         http_task = asyncio.create_task(plain_http_probe())
         await report("crawling", 8, "Discovering endpoints", {"endpoints_found": 0})
-        crawler = Crawler(engine, max_depth=crawl_depth, use_wordlist=use_wordlist)
+        crawler = Crawler(
+            engine,
+            max_depth=crawl_depth,
+            use_wordlist=use_wordlist,
+            extra_probes=spec_registry.artifact_probe_paths(),
+        )
         try:
             with clock("crawl"):
                 discovered = await crawler.crawl(target)
@@ -593,6 +608,7 @@ async def run_pipeline(
                     tls=tls,
                     probe=probe,
                     probe_origin=probe_origin,
+                    soft_404=crawler.soft_404,
                 )
             # One progress write at a time (the runner commits on one session).
             async with report_lock:
