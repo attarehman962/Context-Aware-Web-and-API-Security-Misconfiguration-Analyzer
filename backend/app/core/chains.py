@@ -62,10 +62,6 @@ class DetectedChain:
     member_indexes: list[int] = field(default_factory=list)   # indexes into the findings
     evidence: dict[str, Any] = field(default_factory=dict)
 
-    @property
-    def matched_rule_ids(self) -> list[str]:          # kept for existing callers
-        return sorted({c for g in self.evidence.get("groups", []) for c in g})
-
 
 @lru_cache(maxsize=4)
 def _templates(path: str) -> tuple[ChainSpec, ...]:

@@ -150,9 +150,3 @@ def get_llm_client() -> LLMClient | None:
     _client = LLMClient(provider, key, settings.LLM_MODEL or None)
     logger.info("LLM token expansion enabled (provider=%s)", provider)
     return _client
-
-
-def reset_llm_client() -> None:
-    """Testing helper: clear the cached singleton."""
-    global _client, _initialized
-    _client, _initialized = None, False
