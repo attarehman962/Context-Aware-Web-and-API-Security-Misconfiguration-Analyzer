@@ -30,11 +30,9 @@ def catalog_vector_problems(spec_vectors: dict[str, str]) -> list[str]:
         except CvssVectorError as exc:
             out.append(f"{meta.rule_id}: invalid vector {meta.cvss_vector!r}: {exc}")
             continue
-        if computed != meta.base_score:
-            out.append(
-                f"{meta.rule_id}: base_score {meta.base_score} but "
-                f"{meta.cvss_vector} scores {computed}"
-            )
+        spec = spec_vectors.get(meta.rule_id)
+        if spec is not None and spec != meta.cvss_vector:
+            out.append(f"{meta.rule_id}: {meta.cvss_vector} but checks.yaml has {spec}")
     return out
 
 
@@ -73,17 +71,17 @@ def main(argv: list[str] | None = None) -> int:
         except SpecError as exc:
             ok = False
             _report(exc)
-        mismatches = catalog_score_mismatches()
-        if mismatches:
-            print(
-                f"WARN backend/app/core/checks/catalog.py: {len(mismatches)} rules' "
-                "base_score disagrees with their CVSS vector:"
-            )
-            for line in mismatches:
+        problems = catalog_vector_problems(vectors)
+        if problems:
+            ok = False
+            print(f"FAIL backend/app/core/checks/catalog.py: {len(problems)} vectors:")
+            for line in problems:
                 print(f"     {line}")
         else:
-            print("OK   backend/app/core/checks/catalog.py: every vector parses and "
-                  "matches checks.yaml")
+            print(
+                "OK   backend/app/core/checks/catalog.py: every vector parses and "
+                "matches checks.yaml"
+            )
     return 0 if ok else 1
 
 
