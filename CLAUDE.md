@@ -269,8 +269,10 @@ frontend/             web UI (Neelam)
 From the repo root:
 
 ```bash
-make up        # build + start api, worker, postgres, redis; waits for healthchecks
-make down      # stop (keeps DB volume)
+make up        # build + start the whole app (api, worker, postgres, redis, frontend); waits for healthchecks
+make up-backend   # backend only (no frontend build)
+make demo      # the whole app + the HTTPS demo target (scan https://demo-target:8443/)
+make down      # stop whatever up / up-backend / demo started (keeps DB volume)
 make test      # pytest on the host (SQLite)
 make lint      # ruff + mypy
 make migrate   # alembic upgrade head in the api container

@@ -2,12 +2,17 @@
 #   make up | down | test | lint | migrate | seed | reset
 
 COMPOSE ?= docker compose
+# The whole app: backend services plus the frontend (an opt-in compose profile).
+APP := $(COMPOSE) --profile frontend
+# The app plus the HTTPS demo target. That overlay lets the scanner reach one
+# private host (ALLOWED_INTERNAL_HOSTS=demo-target), so it is never part of `up`.
+DEMO := $(COMPOSE) -f docker-compose.yml -f docker-compose.demo.yml --profile frontend
 # Host-side Python for test/lint; defaults to the repo venv when present.
 PYTHON ?= $(if $(wildcard .venv/bin/python),$(CURDIR)/.venv/bin/python,python3)
 BACKEND := backend
 
 .DEFAULT_GOAL := help
-.PHONY: help up down lock test lint typecheck migrate seed reset logs install env \
+.PHONY: help up up-backend demo down lock test lint typecheck migrate seed reset logs install env \
 	validate-checks validate-config coverage-stats openapi ml-smoke eval-up eval-down eval-reset eval-collect
 
 help: ## List targets
@@ -16,15 +21,23 @@ help: ## List targets
 env:
 	@test -f .env || (cp .env.example .env && echo "created .env from .env.example")
 
-up: env ## Build and start api, worker, postgres, redis (waits until healthy)
+up: env ## Build and start the whole app: api, worker, postgres, redis, frontend
+	$(APP) up -d --build --wait
+	@echo "App: http://localhost:$${FRONTEND_HOST_PORT:-3000}  API: http://localhost:$${API_HOST_PORT:-8000}/docs"
+
+up-backend: env ## Backend only: api, worker, postgres, redis (no frontend build)
 	$(COMPOSE) up -d --build --wait
 	@echo "API: http://localhost:$${API_HOST_PORT:-8000}/health  docs: /docs"
 
-down: ## Stop the stack (keeps the database volume)
-	$(COMPOSE) down
+demo: env ## The whole app plus the HTTPS demo target (scan https://demo-target:8443/)
+	$(DEMO) up -d --build --wait
+	@echo "App: http://localhost:$${FRONTEND_HOST_PORT:-3000}  scan https://demo-target:8443/"
+
+down: ## Stop everything up, up-backend or demo started (keeps the database volume)
+	$(DEMO) down
 
 logs: ## Follow logs of all services
-	$(COMPOSE) logs -f
+	$(DEMO) logs -f
 
 install: ## Install backend + dev tools into $(PYTHON)'s environment
 	"$(PYTHON)" -m pip install -c "$(BACKEND)/constraints.txt" -e "$(BACKEND)[dev]"
