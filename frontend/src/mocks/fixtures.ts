@@ -11,7 +11,6 @@ import type {
   ScanStatus,
 } from "@/lib/api-types";
 
-import errorJson from "./fixtures/error.json";
 import resultsDoneJson from "./fixtures/results-done.json";
 import resultsFailedJson from "./fixtures/results-failed.json";
 import resultsRunningJson from "./fixtures/results-running.json";
@@ -210,4 +209,3 @@ export const resultsRunning = resultsRunningJson as ScanResults;
 export const resultsFailed = resultsFailedJson as ScanResults;
 export const scanQueued = scanQueuedJson as ScanStatus;
 export const scanList = scansJson as ScanList;
-export const errorExample = errorJson;
