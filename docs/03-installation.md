@@ -12,13 +12,14 @@
 
 ```bash
 cd cawasma
-make up                          # postgres + redis + api + worker (creates .env if missing)
-docker compose --profile frontend up -d --build   # optional: the frontend too
+make up        # postgres + redis + api + worker + frontend (creates .env if missing)
+make demo      # the same plus the HTTPS demo target to scan (https://demo-target:8443/)
+make up-backend   # backend only, without building the frontend
 ```
 
 | Service | URL |
 |---------|-----|
-| Frontend (UI) | http://localhost:5173 |
+| Frontend (UI) | http://localhost:3000 |
 | API docs (Swagger) | http://localhost:8000/docs |
 | Health | http://localhost:8000/health (also `/api/health`) |
 

@@ -7,6 +7,11 @@ Services: api, worker, postgres, redis, frontend (--profile frontend),
 
 FULL SETUP (everything, one command)
 ------------------------------------
+make up
+        Builds and starts api, worker, postgres, redis and the Next.js frontend;
+        waits until all are healthy. `make demo` adds the HTTPS demo target,
+        `make down` stops everything (database data is KEPT).
+
 docker compose -f docker-compose.yml -f docker-compose.demo.yml --profile frontend up -d --build --wait
         Builds and starts api, worker, postgres, redis, the Next.js frontend and
         the HTTPS demo target; waits until all are healthy.
@@ -21,7 +26,7 @@ docker compose -f docker-compose.yml -f docker-compose.demo.yml --profile fronte
 Smaller setups:
 docker compose up -d --build --wait                         Backend only (api, worker, postgres, redis)
 docker compose --profile frontend up -d --build --wait      Backend + frontend
-make up / make down                                         Backend only, via the Makefile
+make up-backend / make down                                 Backend only, via the Makefile
 
 
 URLS
