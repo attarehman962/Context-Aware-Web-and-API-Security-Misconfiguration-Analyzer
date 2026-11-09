@@ -47,10 +47,9 @@ internal data. Those two signals set the CVSS v3.1 **environmental** metrics
 missing header scores higher on a login API than on a brochure page, and both
 scores are always shown side by side.
 
-Details: [docs/06-scoring-model.md](docs/06-scoring-model.md) and
-[docs/cvss-mapping.md](docs/cvss-mapping.md). The 20 checks with a reviewed
-spec are scored this way today; the rest still use an interim formula and say
-so in the report ([docs/check-coverage.md](docs/check-coverage.md)).
+The 20 checks with a reviewed spec are scored this way today; the rest still
+use an interim formula and say so in the report (`make check-coverage` writes
+the full table).
 
 ## Screenshots
 
@@ -138,8 +137,7 @@ make eval-down
 Raw outputs and per-run metrics go to `eval/results/`. The final tables for the
 report (tool comparison, the before/after ranking experiment, classifier
 accuracy) are written to `eval/results/final/` by
-`eval/harness/final_tables.py`; see [eval/harness/README.md](eval/harness/README.md)
-and [docs/evaluation-method.md](docs/evaluation-method.md).
+`eval/harness/final_tables.py`; see [eval/harness/README.md](eval/harness/README.md).
 
 The web app's **Evaluation** page (http://localhost:3000/evaluation) charts
 those tables. It reads the CSVs at build time, so after a new run:
@@ -182,7 +180,7 @@ backend/    FastAPI app, scanner core (DB-free), workers, migrations, tests
 frontend/   Next.js web app, unit and end-to-end tests
 config/     check specs, CVSS mapping, chain templates
 eval/       evaluation targets, ground truth, labels, harness, results
-docs/       design, scoring, API, schema, evaluation method
+docs/       API contract, screenshots, supervisor report
 ```
 
 ## Scope and limitations
@@ -194,20 +192,6 @@ docs/       design, scoring, API, schema, evaluation method
   *indicators* without test accounts; the report says which.
 - Context-aware scores are CAWASMA's, not official CVSS scores; the official
   base score is always kept and shown next to them.
-
-More: [docs/10-limitations-owasp.md](docs/10-limitations-owasp.md).
-
-## Documentation
-
-Start at [docs/README.md](docs/README.md). Key pages:
-[overview](docs/01-overview.md) ·
-[architecture](docs/02-architecture.md) ·
-[installation](docs/03-installation.md) ·
-[security checks](docs/05-security-checks.md) ·
-[scoring model](docs/06-scoring-model.md) ·
-[attack chains](docs/09-attack-chains.md) ·
-[database schema](docs/08-database-schema.md) ·
-[viva guide](docs/11-viva-guide.md)
 
 ## Development
 
