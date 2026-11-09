@@ -1,0 +1,4 @@
+tool,findings_mean,precision_mean,recall_mean,fpr_mean,scan_seconds_mean,tp_total,fp_total,fn_total,tn_total,not_covered_total,precision_micro,recall_micro
+cawasma,307.5,1.0,0.757,0.0,10.5,25,0,8,47,0,1.0,0.758
+zap,23.25,1.0,0.438,0.0,104.45,7,0,14,19,40,1.0,0.333
+nuclei,13.5,1.0,0.8,0.0,126.25,13,0,4,22,41,1.0,0.765
