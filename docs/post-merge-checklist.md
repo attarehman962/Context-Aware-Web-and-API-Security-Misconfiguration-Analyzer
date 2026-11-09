@@ -3,22 +3,24 @@
 Steps to do on `main` after the final-pass branches are merged, so nothing is
 forgotten. Tick each one in the PR that does it.
 
-## Merge order
+## Status (2026-11-06)
 
-| # | Branch | Owner reviews | Why this order |
-|---|--------|---------------|----------------|
-| 1 | `atta/p11-final-audit` | Atta (Asim, Neelam for shared docs) | everything else builds on it; it also fixes the CI branch-name rule the others need |
-| 2 | `atta/fix-neelam-p11-api-schema` | Neelam | contract 1.4.0 types, fixtures and the Legacy badge; built on #1 |
-| 3 | `atta/fix-asim-p11-catalog-vectors` | Asim | one vector per check id |
-| 4 | `atta/fix-neelam-p11-fixtures` | Neelam | built on #3; merge right after it |
-| 5 | `atta/fix-asim-p11-check-specs` | Asim | the five specs; built on #1 |
-| 6 | `atta/fix-asim-p11-sensitivity`, `-ranking`, `-fake-secrets`, `atta/fix-neelam-p11-security-headers` | Asim / Neelam | independent, any order |
+All final-pass branches are merged (#53–#74). Two web conflict resolutions had
+broken `main`; #65 (backend: `validate-config` crashed, API-001 catalog vector,
+formatting) and #66 (frontend fixture) repaired them, and #67 fixed the PostgreSQL
+test job that had failed since 4 November. The five specs from #56 were approved
+in #70.
 
-## After #3, #4 and #5: the example JSON and Neelam's fixtures
+**Rule from this:** don't resolve conflicts in generated files (`docs/openapi.json`,
+`docs/examples/*.json`, `frontend/src/lib/api-schema.ts`, fixtures) in the GitHub
+web editor. Merge locally, regenerate (`make openapi`, `npm run gen:api`, re-copy
+the fixtures) and run the tests before pushing.
 
-Each of these changes `docs/examples/*.json` (contract version, vectors, and in #5
-API-003 and INF-003 move from legacy to environmental scoring: 9.1 → 9.8). The
-frontend's fixture copies must match, or `src/mocks/fixtures.test.ts` fails.
+## Whenever docs/examples changes: Neelam's fixtures
+
+Any change to scoring, vectors or the contract changes `docs/examples/*.json`.
+The frontend's fixture copies must match, or `src/mocks/fixtures.test.ts` fails
+(done for this pass in #64 and #66).
 
 - [ ] Regenerate the examples and API types, then copy the examples:
 
@@ -31,8 +33,8 @@ frontend's fixture copies must match, or `src/mocks/fixtures.test.ts` fails.
   npm test
   ```
 
-- [ ] Update the score tests that read the example values (about five; the
-  failures name them). After #5 they were:
+- [x] Update the score tests that read the example values (done in #64 and #66;
+  next time, the failures name them). This pass they were:
   - `src/lib/findings.test.ts`, "measures the severity shift from the base rating":
     the expected shift per check and the up/down counts;
   - `src/lib/score-story.test.ts`, "names the context and says it is the interim
@@ -45,16 +47,15 @@ frontend's fixture copies must match, or `src/mocks/fixtures.test.ts` fails.
   - `src/components/results/scan-summary.test.tsx`, "shows target, time, counts
     and the context shift": the critical count and "moved up / down" counts;
   - `findings-panel.test.tsx`, "badges every legacy-scored row…": API-003 is no
-    longer legacy after #5.
+    longer legacy after #56.
 - [ ] `npm run lint && npm run typecheck && npm test && npm run test:e2e`.
 
 ## After every merge
 
 - [ ] `make lint` (includes `ruff format --check`), `make test`, `make validate-config`.
-- [ ] Run `ruff format` on Asim's files (`backend/app/ml/`,
+- [x] Run `ruff format` on Asim's files (`backend/app/ml/`,
   `backend/app/core/checks/catalog.py`) and remove the `[tool.ruff.format]`
-  exclude from `backend/pyproject.toml` (it was only there to avoid conflicts
-  with his open branches).
+  exclude from `backend/pyproject.toml` (#71).
 - [ ] `make check-coverage` and commit `docs/check-coverage.md` if it changed.
 - [ ] Clean-machine check from `main`: `REF=main bash scripts/clean_machine_check.sh`.
 
@@ -72,20 +73,45 @@ frontend's fixture copies must match, or `src/mocks/fixtures.test.ts` fails.
 
   and update the ranking section of `docs/evaluation-method.md` with the
   `ndcg10_pool_*` columns.
-- [ ] If any detection logic changed after 2026-11-04 (it did: #3 and #5), re-run
-  the evaluation before quoting detection numbers: `make eval-up`, then
-  `PYTHONHASHSEED=0 python eval/harness/run_all.py --tools cawasma`, then
-  `final_tables.py`.
+- [x] Evaluation re-run on `main` after #56 and #58 (run `20261105T050013Z`, #72);
+  the pools were refreshed from it. If detection logic changes again, re-run
+  (`make eval`, then `final_tables.py`) before quoting detection numbers.
 
 ## Open decisions, not code
 
-- [ ] Licence (AGPL-3.0, or drop SSLyze): after the presentation (Atta).
+- [ ] Dependency licences, **before submission**: SSLyze and nassl are AGPL-3.0
+  (every other Python and npm package, ML stack included, is permissive or weak
+  copyleft). Either license CAWASMA as AGPL-3.0 or drop SSLyze for the `ssl`
+  fallback in `core/tls.py`. The project's own licence text can follow after the
+  presentation.
 - [ ] `docs/check-triage.md`: Asim and Atta confirm SPEC / MERGE / DROP before
   any spec is written or check deleted.
 - [ ] API-003 base vector: 9.1, or 7.5 (C:H/I:N); see the note in `checks.yaml`.
+- [ ] Branch protection on `main`, run by Asim (repo admin). With one owner per
+  area, a PR touching only its author's files can't get a code-owner approval, so
+  either add a second owner per area in `.github/CODEOWNERS` or set
+  `enforce_admins` to `false` first.
+
+  ```bash
+  gh api -X PUT \
+    repos/Asimshakeel13/Context-Aware-Web-and-API-Security-Misconfiguration-Analyzer/branches/main/protection \
+    -H "Accept: application/vnd.github+json" --input - <<'JSON'
+  {
+    "required_status_checks": {"strict": true, "contexts": [
+      "Branch name (<name>/pNN-topic or <name>/fix-<partner>-pNN-topic)",
+      "Backend lint & type-check", "Backend tests (PostgreSQL)",
+      "Frontend lint, type-check, test & build",
+      "Frontend end-to-end on VAmPI (real stack)"]},
+    "enforce_admins": true,
+    "required_pull_request_reviews": {"required_approving_review_count": 1,
+      "require_code_owner_reviews": true, "dismiss_stale_reviews": true},
+    "restrictions": null, "allow_force_pushes": false, "allow_deletions": false
+  }
+  JSON
+  ```
 - [ ] The anchor sensitivity classifier stays `enabled: false` unless the
   evaluation is re-run with it.
 
 ## Clean-up
 
-- [ ] Delete the merged branches on origin.
+- [x] Delete the merged branches, local and on origin (2026-11-06).
