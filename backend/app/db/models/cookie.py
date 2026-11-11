@@ -1,7 +1,7 @@
 """Cookie model -- metadata for a cookie set by an endpoint.
 
 Only cookie *metadata* is stored (flags, scope), never the secret token value
-itself (spec section 20).
+itself.
 """
 
 from __future__ import annotations

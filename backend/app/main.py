@@ -57,7 +57,7 @@ async def _fail_interrupted_scans() -> None:
 
 
 def _error_body(code: str, message: str) -> dict:
-    """Build the standard error envelope (spec section 44)."""
+    """Build the standard error envelope."""
     return {"success": False, "error": {"code": code, "message": message}}
 
 
@@ -127,7 +127,7 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception):
-        # Never leak stack traces to clients (spec section 27/44).
+        # Never leak stack traces to clients.
         logger.exception("unhandled error on %s %s", request.method, request.url.path)
         return JSONResponse(
             status_code=500,

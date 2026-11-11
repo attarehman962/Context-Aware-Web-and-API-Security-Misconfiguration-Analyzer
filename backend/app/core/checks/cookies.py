@@ -1,4 +1,4 @@
-"""Cookie checks CKI-001..CKI-006 (spec section 13).
+"""Cookie checks CKI-001..CKI-006.
 
 CKI-001..CKI-003 moved to ``checks/spec/cookies.py``.
 """

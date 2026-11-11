@@ -1,11 +1,11 @@
-"""Public API contract v1: the shapes Neelam's frontend builds against.
+"""Public API contract v1: the shapes the frontend builds against.
 
 Frozen at the end of Sprint 1 (docs/api-contract.md). Rules for changing it:
 
 * adding an optional response field or a new endpoint is a MINOR bump
   (1.0.0 -> 1.1.0) and must keep every existing field;
 * renaming/removing a field, changing a type or an enum value is a MAJOR bump
-  and needs Neelam's agreement first;
+  and needs frontend sign-off first;
 * bump :data:`CONTRACT_VERSION`, run ``make openapi`` and note it in the
   changelog of docs/api-contract.md.
 

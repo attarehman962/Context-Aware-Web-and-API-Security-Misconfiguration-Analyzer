@@ -1,8 +1,8 @@
-"""Authentication checks AUT-001..AUT-007 (spec section 13).
+"""Authentication checks AUT-001..AUT-007.
 
 Most auth weaknesses require an authenticated session or business-logic flow
 and are therefore not fully determinable in black-box mode; those fire only on a
-surface indicator and carry a ``limitation`` (spec sections 47-48). CAWASMA
+surface indicator and carry a ``limitation``. CAWASMA
 never submits credentials.
 """
 

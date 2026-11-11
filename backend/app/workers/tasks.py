@@ -1,4 +1,4 @@
-"""Celery task definitions (spec section 23).
+"""Celery task definitions.
 
 The HTTP layer enqueues ``cawasma.run_scan`` (task id = scan id, so it can be
 revoked) and returns immediately; the worker runs the async pipeline via

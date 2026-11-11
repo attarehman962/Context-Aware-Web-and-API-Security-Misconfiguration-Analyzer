@@ -1,4 +1,4 @@
-"""SSRF protection (spec section 16; design notes in docs/engine-security.md).
+"""SSRF protection.
 
 The scanner fetches user-supplied URLs, so it must never be tricked into
 reaching internal infrastructure. Every decision is made on **IP addresses**,

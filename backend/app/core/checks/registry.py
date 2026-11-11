@@ -1,6 +1,6 @@
 """Spec-driven check registry (docs/adding-a-check.md).
 
-Each check in Asim's ``config/checks.yaml`` gets one implementation, registered
+Each check in ``config/checks.yaml`` gets one implementation, registered
 with :func:`register_check` in a module under ``app/core/checks/spec/`` (one
 file per check family; every module there is imported automatically). A check
 takes the normalised :class:`~app.core.engine.ScanResponse` and the

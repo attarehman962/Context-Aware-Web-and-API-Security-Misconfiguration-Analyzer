@@ -1,4 +1,4 @@
-"""Endpoint discovery crawler (spec section 18).
+"""Endpoint discovery crawler.
 
 Four strategies sharing one visited-set, bounded by same-origin scope,
 MAX_CRAWL_DEPTH, MAX_CRAWL_PAGES (pages fetched) and MAX_ENDPOINTS:

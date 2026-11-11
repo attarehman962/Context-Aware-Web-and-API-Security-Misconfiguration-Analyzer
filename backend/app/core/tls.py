@@ -1,4 +1,4 @@
-"""TLS/certificate probing (spec section 13, TLS checks), once per host.
+"""TLS/certificate probing, once per host.
 
 When SSLyze is installed (the default image), it enumerates every protocol
 version SSLv2-TLS 1.3 with its accepted cipher suites and validates the

@@ -1,7 +1,7 @@
 """Celery application.
 
 Scans run as background tasks so the HTTP request that creates a scan returns
-immediately (spec section 23). Redis is both broker and result backend. The
+immediately. Redis is both broker and result backend. The
 actual scan task is registered in ``tasks.py`` and implemented in a later phase.
 """
 

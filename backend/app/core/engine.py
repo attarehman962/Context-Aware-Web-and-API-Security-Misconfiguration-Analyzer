@@ -1,4 +1,4 @@
-"""Safe async HTTP engine (spec section 17; design notes in docs/engine-security.md).
+"""Safe async HTTP engine.
 
 Wraps httpx (HTTP/2 enabled) to collect what the checks need from a response,
 while enforcing the safety rules:
@@ -76,7 +76,7 @@ class ScanResponse:
     def ok(self) -> bool:
         return self.error is None and self.status_code is not None
 
-    # Names used by the engine contract (Atta Prompt 4).
+    # Names used by the engine contract.
     @property
     def url(self) -> str:
         return self.requested_url

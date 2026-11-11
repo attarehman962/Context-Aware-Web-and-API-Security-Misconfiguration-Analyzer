@@ -1,4 +1,4 @@
-"""Scan pipeline -- orchestrates the whole analysis (spec section 19).
+"""Scan pipeline -- orchestrates the whole analysis.
 
 Flow per scan:
 
@@ -375,7 +375,7 @@ async def _analyse_endpoint(
         status_code=result.status_code,
         content_type=result.content_type,
     )
-    # The class comes from the ML contract module (Asim) when it loads;
+    # The class comes from the ML contract module when it loads;
     # confidence and reason stay the built-in classifier's explanation.
     context_class = ml_classify(info) if ml_classify else cls.context_class
     body_class = classify_response(

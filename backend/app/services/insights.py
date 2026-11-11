@@ -1,4 +1,4 @@
-"""Executive insight generation (spec section 17).
+"""Executive insight generation.
 
 A deterministic, template-based summary generated from the scan's own data --
 NOT an external LLM call. This keeps the tool self-contained, reproducible and

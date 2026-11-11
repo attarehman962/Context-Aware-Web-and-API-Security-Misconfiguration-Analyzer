@@ -1,8 +1,8 @@
-"""REST API checks API-001..API-014 (spec section 13).
+"""REST API checks API-001..API-014.
 
 Several of these cannot be confirmed in unauthenticated black-box mode (BOLA,
 mass assignment, JWT internals). Those fire only on a genuine surface signal and
-always carry a ``limitation`` note (spec section 47).
+always carry a ``limitation`` note.
 
 API-004 moved to ``checks/spec/disclosure.py``; API-001 and API-003 to
 ``checks/spec/exposure.py``.

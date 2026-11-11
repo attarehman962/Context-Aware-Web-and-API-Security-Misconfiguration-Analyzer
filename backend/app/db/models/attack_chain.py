@@ -1,9 +1,9 @@
 """AttackChain model and the chain_findings association table.
 
-A chain (contribution 2) only exists when its required member findings are
+A chain only exists when its required member findings are
 actually detected. The composite score is a documented *template* value for a
 known pattern, stored as ``template_composite_score`` so it is never mistaken
-for a computed CVSS (spec section 6 & Phase-1 conflict resolution).
+for a computed CVSS.
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from app.db.models.scan import Scan
 
 
-# Many-to-many between attack_chains and findings (spec section 21).
+# Many-to-many between attack_chains and findings.
 chain_findings = Table(
     "chain_findings",
     Base.metadata,

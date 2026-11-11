@@ -1,4 +1,4 @@
-"""CORS checks COR-001..COR-005 (spec section 13).
+"""CORS checks COR-001..COR-005.
 
 These read the CORS response to a probe request carrying a test Origin header;
 the pipeline performs that probe and populates ``ctx.cors_*``.

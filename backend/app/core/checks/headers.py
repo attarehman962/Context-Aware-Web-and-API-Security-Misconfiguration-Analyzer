@@ -1,4 +1,4 @@
-"""Legacy header checks HDR-009..HDR-012 (spec section 13).
+"""Legacy header checks HDR-009..HDR-012.
 
 HDR-001..HDR-008 moved to the spec registry (``checks/spec/hsts.py``,
 ``checks/spec/security_headers.py``).

@@ -2,7 +2,7 @@
 
 Belongs to a scan and optionally to one finding: a scan-level note has no
 ``finding_id``. Lets an analyst mark a finding as a false positive, which can
-later feed classifier tuning (spec section 21 & 36).
+later feed classifier tuning.
 """
 
 from __future__ import annotations

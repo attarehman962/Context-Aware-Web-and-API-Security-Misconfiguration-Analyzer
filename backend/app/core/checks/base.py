@@ -85,7 +85,7 @@ def rule(fn: DetectFn) -> DetectFn:
 
 
 def base_vector(rule_id: str) -> str:
-    """The check's base vector: Asim's checks.yaml spec when the id has one, else
+    """The check's base vector: the checks.yaml spec when the id has one, else
     the catalog's. The five specs still run as legacy rules, and one check id must
     carry one vector whichever way it runs."""
     from app.core.checks.registry import load_specs

@@ -1,4 +1,4 @@
-"""Controlled wordlist for endpoint probing (spec section 18, strategy 3).
+"""Controlled wordlist for endpoint probing.
 
 The paths live in ``app/data/wordlist.txt`` so they can be reviewed and edited
 without touching code. Deliberately small and defensive: this is NOT a

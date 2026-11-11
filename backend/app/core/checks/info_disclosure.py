@@ -1,4 +1,4 @@
-"""Information-disclosure checks INF-001..INF-006 (spec section 13).
+"""Information-disclosure checks INF-001..INF-006.
 
 INF-002 moved to ``checks/spec/disclosure.py``; INF-003..005 to
 ``checks/spec/exposure.py``.

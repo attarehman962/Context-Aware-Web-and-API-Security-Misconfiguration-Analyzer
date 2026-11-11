@@ -1,4 +1,4 @@
-"""Response body classifier -- Contribution 3 (spec section 7).
+"""Response body classifier.
 
 Scans a response body for sensitivity signals and returns the corresponding
 CAWASMA response bonus. Credential exposure forces the finding severity to
@@ -115,7 +115,7 @@ def classify_response(
     body: str | None,
 ) -> BodyClassification:
     """The classification scans use: the ML contract's body classifier
-    (``app.ml.body_classifier``, Asim) when it loads, else :func:`classify_body`.
+    (``app.ml.body_classifier``) when it loads, else :func:`classify_body`.
 
     Both legacy rules (bonus, forced CRITICAL, API-013, INF-001) and the
     environmental score read this one result, so they can't disagree. The

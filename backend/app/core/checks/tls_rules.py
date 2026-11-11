@@ -1,4 +1,4 @@
-"""TLS checks TLS-001..TLS-008 (spec section 13).
+"""TLS checks TLS-001..TLS-008.
 
 These read ``ctx.tls`` (a TlsProbe). If no probe is available the TLS rules are
 skipped -- they never fabricate a result.

@@ -1,4 +1,4 @@
-"""Spec file formats owned by Asim, validated by Atta's engine.
+"""Check-spec file formats, validated by the engine.
 
 * ``config/checks.yaml``       -- check specifications (docs/check-spec-format.md)
 * ``config/cvss_mapping.yaml`` -- sensitivity class / body signal -> CR/IR/AR
@@ -337,7 +337,7 @@ class CheckSpec(_Strict):
     # How context should move the severity (Contract 1 "severity notes"),
     # e.g. "raise with endpoint sensitivity". Guidance for the CVSS mapping.
     severity_notes: str | None = None
-    # "proposed": drafted for Asim, not yet approved by him. Scans run it, but the
+    # "proposed": drafted but not yet approved. Scans run it, but the
     # report counts only approved specs (scripts/coverage_stats.py).
     status: Literal["approved", "proposed"] = "approved"
     applies_to: AppliesTo | None = None

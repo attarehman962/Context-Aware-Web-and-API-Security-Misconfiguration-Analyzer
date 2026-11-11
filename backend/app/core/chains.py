@@ -1,6 +1,6 @@
-"""Attack-chain correlation -- Contribution 2 (docs/chain-templates.md).
+"""Attack-chain correlation.
 
-Templates come from Asim's ``config/chains.yaml`` (format 1.1). For each
+Templates come from ``config/chains.yaml`` (format 1.1). For each
 template and each scope unit (one endpoint, one host, or the whole scan) a
 chain fires when **every** group has at least one member finding in the unit,
 and the unit passes the template's ``endpoint_sensitivity`` and

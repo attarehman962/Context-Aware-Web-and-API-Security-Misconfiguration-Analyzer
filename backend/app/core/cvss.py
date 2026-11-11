@@ -2,8 +2,8 @@
 
 Two ways to score, kept strictly apart from the official base score:
 
-* :func:`environmental_score` / :func:`score_finding` (**the target**, Atta
-  Prompt 6): the check's CVSS v3.1 base vector from checks.yaml is re-scored
+* :func:`environmental_score` / :func:`score_finding` (**the target**):
+  the check's CVSS v3.1 base vector from checks.yaml is re-scored
   through the CVSS v3.1 *environmental* metrics. The endpoint's sensitivity
   class and the response's body signals set the Security Requirements
   (CR/IR/AR) via config/cvss_mapping.yaml; nothing else changes (no modified
@@ -28,7 +28,7 @@ if TYPE_CHECKING:  # imported lazily below: specs.py imports this module
     from app.core.checks.registry import RawFinding
     from app.core.specs import CvssMapping
 
-# Endpoint context multipliers (spec section 9).
+# Endpoint context multipliers.
 CONTEXT_MULTIPLIERS: dict[ContextClass, float] = {
     ContextClass.CRITICAL: 2.0,
     ContextClass.HIGH: 1.5,
@@ -36,7 +36,7 @@ CONTEXT_MULTIPLIERS: dict[ContextClass, float] = {
     ContextClass.LOW: 0.6,
 }
 
-# Response-body bonuses (spec section 9).
+# Response-body bonuses.
 RESPONSE_BONUS = {
     "credentials": 3.5,
     "pii": 2.0,
@@ -48,7 +48,7 @@ MAX_SCORE = 10.0
 
 
 def severity_for(score: float) -> Severity:
-    """Map a 0-10 score to a severity bucket (spec section 10)."""
+    """Map a 0-10 score to a severity bucket."""
     if score >= 9.0:
         return Severity.CRITICAL
     if score >= 7.0:
@@ -79,7 +79,7 @@ def compute_score(
     """Apply the CAWASMA formula and derive severity.
 
     ``force_critical`` reflects the rule that credential exposure forces the
-    final severity to CRITICAL (spec section 7), regardless of the numeric score.
+    final severity to CRITICAL, regardless of the numeric score.
     """
     multiplier = CONTEXT_MULTIPLIERS.get(context_class or ContextClass.MEDIUM, 1.0)
     raw = (base_cvss * multiplier) + response_bonus
@@ -97,7 +97,7 @@ def compute_score(
     )
 
 
-# CVSS v3.1 environmental scoring (Atta Prompt 6)
+# CVSS v3.1 environmental scoring
 
 _REQUIREMENT_ORDER = {"L": 1, "M": 2, "H": 3}  # X (Not Defined) contributes nothing
 _V31_BUCKETS = (
@@ -148,7 +148,7 @@ def _mapping_path() -> str:
 
 
 def load_mapping(path: str | None = None) -> CvssMapping:
-    """Asim's config/cvss_mapping.yaml, validated (cached per path)."""
+    """Load config/cvss_mapping.yaml, validated (cached per path)."""
     return _load_mapping_cached(path or _mapping_path())
 
 

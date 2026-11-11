@@ -1,4 +1,4 @@
-"""Endpoint sensitivity classifier -- Contribution 1 (spec section 5).
+"""Endpoint sensitivity classifier.
 
 Design: a **hybrid** classifier.
 

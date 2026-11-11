@@ -1,4 +1,4 @@
-"""Report rendering (spec sections 25-27): JSON, CSV, HTML, PDF.
+"""Report rendering: JSON, CSV, HTML, PDF.
 
 Pure, DB-free renderers over the report dict built by
 :func:`app.services.contract_service.report_data` (contract export). The HTML

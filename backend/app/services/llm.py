@@ -1,4 +1,4 @@
-"""LLM-backed URL token expansion for the NLP classifier (spec section 5).
+"""LLM-backed URL token expansion for the NLP classifier.
 
 The endpoint classifier's first step is to expand abbreviations in a URL path
 (``usr`` -> ``user``, ``iam`` -> ``identity access management``). This module

@@ -1,6 +1,6 @@
 """AiInsight model -- optional LLM-generated executive summary for a scan.
 
-Optional by design: the core scanner works with no LLM key (spec section 35).
+Optional by design: the core scanner works with no LLM key.
 Sensitive data is redacted before ever being sent to an external model.
 """
 

@@ -50,7 +50,7 @@ class Settings(BaseSettings):
     # Frontend / CORS
     # Comma-separated list of allowed origins. Never "*": the scanner returns
     # sensitive assessment data, so origins are explicit.
-    FRONTEND_ORIGIN: str = "http://localhost:3000"  # Neelam's Next.js app
+    FRONTEND_ORIGIN: str = "http://localhost:3000"  # the Next.js frontend origin
 
     # Scanner safety limits
     REQUEST_TIMEOUT: float = 15.0  # seconds per HTTP request
@@ -67,7 +67,7 @@ class Settings(BaseSettings):
 
     # Hostnames allowed to resolve to PRIVATE ranges (comma-separated). Empty by
     # default; set only in the evaluation environment (docker-compose.eval-scan.yml)
-    # so the scanner can reach Asim's targets. Loopback, link-local and cloud
+    # so the scanner can reach the evaluation targets. Loopback, link-local and cloud
     # metadata stay blocked regardless (app/utils/security.py).
     ALLOWED_INTERNAL_HOSTS: str = ""
     # Extra CA certificate(s) (PEM file) the engine trusts on top of the system

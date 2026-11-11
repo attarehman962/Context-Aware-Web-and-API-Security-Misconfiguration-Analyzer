@@ -1,4 +1,4 @@
-"""Async driver that runs one scan end-to-end (spec section 19/24).
+"""Async driver that runs one scan end-to-end.
 
 Separated from the Celery task so it can be unit-tested directly (the Celery
 task is a thin ``asyncio.run`` wrapper). Updates the Scan row's status, progress

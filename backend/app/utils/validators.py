@@ -1,4 +1,4 @@
-"""Target URL validation (spec section 15).
+"""Target URL validation.
 
 A target must be a well-formed, HTTPS URL. HTTP-only targets are rejected. This
 module does *not* do SSRF checks -- that is ``security.py`` -- it only validates
