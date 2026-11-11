@@ -1,0 +1,49 @@
+% Part F: glossary. Shared, identical in all three documents.
+\section{Glossary}
+\begin{description}[leftmargin=0pt,style=nextline,itemsep=3pt]
+\item[CVSS base score] The standard severity of a vulnerability on its own, 0--10,
+from a vector such as \texttt{AV:N/AC:L/\dots}. Fixed per check; never invented per scan.
+\item[CVSS environmental score] The base score recomputed for a particular
+environment, using CR/IR/AR and modified base metrics. CAWASMA's context-aware
+score is this.
+\item[CR / IR / AR] Confidentiality, Integrity and Availability \emph{Requirements}:
+environmental inputs saying how much each property matters here. Values Low,
+Medium, High, or X (Not Defined). CAWASMA sets them from the endpoint class and
+the data in the response.
+\item[Sensitivity class] CAWASMA's label for how sensitive an endpoint is ---
+CRITICAL, HIGH, MEDIUM or LOW --- from the words in its URL path.
+\item[Body signals] Sensitive data found in a response: credentials, personal
+data (PII), financial data, or an internal IP address. Evidence is redacted.
+\item[Base vs.\ final score] CAWASMA always keeps both: the official base score
+and the context-aware (environmental) final score, in separate columns.
+\item[Legacy vs.\ environmental scoring] A finding is scored either by the CVSS
+environmental metrics (approved specs) or by the interim legacy formula; its
+\texttt{scoring\_method} says which.
+\item[Precision] Of the findings that were judged, the fraction that were
+correct: $\text{TP}/(\text{TP}+\text{FP})$.
+\item[Recall] Of the real issues in the answer key, the fraction found:
+$\text{TP}/(\text{TP}+\text{FN})$.
+\item[FPR] False-positive rate: $\text{FP}/(\text{FP}+\text{TN})$.
+\item[Ground truth] A hand-written list, per target, of which check should
+(\texttt{present}) or should not (\texttt{absent}) fire on which endpoint.
+\item[NDCG@10] Normalised Discounted Cumulative Gain at rank 10: a score for how
+well a ranking puts the important items near the top, against a graded list.
+\item[Tie-break sampling] Base scores tie often, so a ranking's NDCG is averaged
+over 1000 random orderings of the tied items, with a fixed seed.
+\item[SSRF] Server-Side Request Forgery: tricking the scanner into requesting an
+internal address. CAWASMA guards against it by validating the resolved IP on
+every hop.
+\item[Soft-404] A page that returns HTTP 200 but is really ``not found''. The
+crawler learns a baseline so it does not treat these as real endpoints.
+\item[Passive vs.\ active scan] Passive sends only safe GET/HEAD and reads what
+comes back; active sends extra, still non-destructive, probes. CAWASMA never
+sends attack payloads.
+\item[BOLA / IDOR] Broken Object-Level Authorisation / Insecure Direct Object
+Reference: reading another user's object by changing an id. CAWASMA only flags an
+\emph{indicator}; confirming it needs logged-in accounts, which is future work.
+\item[Attack chain] Several findings that together make a bigger risk, correlated
+from a template and scored with their own composite vector.
+\item[Environmental metric ``X''] ``Not Defined'': the neutral baseline. A public
+(LOW) endpoint uses X, so its score is unchanged --- context only ever raises a
+score here, it does not lower a public page below its base.
+\end{description}
