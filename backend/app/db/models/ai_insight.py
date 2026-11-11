@@ -1,6 +1,6 @@
 """AiInsight model -- optional LLM-generated executive summary for a scan.
 
-Optional by design: the core scanner works with no LLM key (spec section 35).
+Optional by design: the core scanner works with no LLM key.
 Sensitive data is redacted before ever being sent to an external model.
 """
 
@@ -31,4 +31,5 @@ class AiInsight(Base, TimestampMixin):
     scan: Mapped[Scan] = relationship(back_populates="ai_insights")
 
     def __repr__(self) -> str:  # pragma: no cover
+        """Readable debug representation."""
         return f"<AiInsight {self.provider} scan={self.scan_id}>"

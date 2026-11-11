@@ -51,6 +51,7 @@ _CHAIN_ID = uuid.UUID("c0050000-0000-4000-8000-000000000001")
 
 
 def _uid(n: int) -> uuid.UUID:
+    """A fixed UUID for mock data from a small integer."""
     return uuid.UUID(f"f0000000-0000-4000-8000-{n:012d}")
 
 
@@ -160,10 +161,12 @@ _C005 = next(t for t in load_templates() if t.chain_id == "C005")
 
 
 def _endpoint_id(path: str) -> uuid.UUID:
+    """A stable UUID for a mock endpoint path."""
     return uuid.uuid5(DONE_ID, path)
 
 
 def _build_findings() -> list[Finding]:
+    """Build the mock findings used by the example responses."""
     load_implementations()
     out = []
     for n, check_id, path, cls, signals, bonus, force, owasp, cwe, evidence in _FINDINGS:
@@ -210,6 +213,7 @@ def _build_findings() -> list[Finding]:
 
 
 def _counts(findings: list[Finding]) -> SeverityCounts:
+    """Count mock findings by severity."""
     counts = SeverityCounts()
     for f in findings:
         name = f.severity_bucket.value.lower()

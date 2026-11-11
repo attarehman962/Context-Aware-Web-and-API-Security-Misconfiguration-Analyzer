@@ -36,6 +36,7 @@ def enable_sqlite_foreign_keys(async_engine: AsyncEngine) -> None:
 
     @event.listens_for(async_engine.sync_engine, "connect")
     def _fk_on(dbapi_conn: Any, _record: Any) -> None:
+        """Enable SQLite foreign-key enforcement on each connection."""
         cursor = dbapi_conn.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.close()

@@ -2,7 +2,7 @@
 
 Scoring fields are deliberately split so the official CVSS v3.1 value
 (``base_score``) and CAWASMA's context-adjusted value (``final_score``) are
-never confused (spec sections 12 & 30). This distinction is a core honesty
+never confused. This distinction is a core honesty
 requirement of the project.
 
 ``evidence`` is redacted JSON: ``{"text": str, ...}`` where ``text`` is the
@@ -92,7 +92,7 @@ class Finding(Base, TimestampMixin):
     impact: Mapped[str | None] = mapped_column(Text, nullable=True)
     recommendation: Mapped[str | None] = mapped_column(Text, nullable=True)
     references: Mapped[list[str] | None] = mapped_column(JSONType, nullable=True)
-    # For checks that can't be confirmed in black-box mode (spec section 47).
+    # For checks that can't be confirmed in black-box mode.
     limitation: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships
@@ -111,4 +111,5 @@ class Finding(Base, TimestampMixin):
     )
 
     def __repr__(self) -> str:  # pragma: no cover
+        """Readable debug representation."""
         return f"<Finding {self.check_id} {self.severity_bucket} final={self.final_score}>"

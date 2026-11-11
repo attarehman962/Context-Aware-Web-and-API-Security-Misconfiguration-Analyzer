@@ -1,4 +1,4 @@
-"""Endpoint discovery crawler (spec section 18).
+"""Endpoint discovery crawler.
 
 Four strategies sharing one visited-set, bounded by same-origin scope,
 MAX_CRAWL_DEPTH, MAX_CRAWL_PAGES (pages fetched) and MAX_ENDPOINTS:
@@ -68,6 +68,7 @@ _STATE_CHANGING = re.compile(
 
 
 def _state_changing(url: str) -> bool:
+    """True if the path looks like a state-changing action (e.g. /logout)."""
     return bool(_STATE_CHANGING.search(urlparse(url).path))
 
 
@@ -98,6 +99,7 @@ class Crawler:
         max_pages: int | None = None,
         extra_probes: Iterable[str] = (),
     ) -> None:
+        """Set up the crawler with its engine, scope and discovery limits."""
         self._engine = engine
         # Per-scan depth (ScanRequest.crawl_depth), never above the global cap.
         self._max_depth = min(max_depth or settings.MAX_CRAWL_DEPTH, settings.MAX_CRAWL_DEPTH)
@@ -115,6 +117,7 @@ class Crawler:
     def _add(
         self, url: str, method: str, how: DiscoveryMethod, resp: HttpResult | None = None
     ) -> bool:
+        """Record an endpoint once per (URL, method); skip dupes and off-scope."""
         key = (_normalize(url), method.upper())
         if key in self._seen:
             return False
@@ -230,6 +233,7 @@ class Crawler:
         return False
 
     def _extract_html(self, base: str, html: str) -> list[tuple[str, str, DiscoveryMethod]]:
+        """Pull in-scope links out of an HTML page."""
         out: list[tuple[str, str, DiscoveryMethod]] = []
         try:
             soup = BeautifulSoup(html, "html.parser")
@@ -247,6 +251,7 @@ class Crawler:
         return out
 
     def _extract_js(self, base: str, text: str) -> list[str]:
+        """Pull candidate route paths out of JavaScript text."""
         found: dict[str, None] = {}  # ordered: deterministic results
         for pattern in _JS_PATTERNS:
             for m in pattern.findall(text):
@@ -258,6 +263,7 @@ class Crawler:
         return list(found)
 
     async def _fetch_soft_404(self, seed: str) -> None:
+        """Learn the site's 'not found' reply so soft-404 pages are ignored."""
         root = f"{urlparse(seed).scheme}://{urlparse(seed).netloc}"
         path = f"/cawasma-{secrets.token_hex(8)}"
         missing = await self._engine.fetch(root + path, method="GET", same_origin_only=True)
@@ -265,6 +271,7 @@ class Crawler:
             self.soft_404 = SoftNotFound(path, missing.status_code, missing.body)
 
     async def _probe_wordlist(self, seed: str) -> None:
+        """Probe the wordlist paths against the root to find hidden endpoints."""
         root = f"{urlparse(seed).scheme}://{urlparse(seed).netloc}"
         base = self.soft_404
         catch_all = base.body if base is not None and base.status_code == 200 else None

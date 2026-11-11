@@ -1,4 +1,4 @@
-"""LLM-backed URL token expansion for the NLP classifier (spec section 5).
+"""LLM-backed URL token expansion for the NLP classifier.
 
 The endpoint classifier's first step is to expand abbreviations in a URL path
 (``usr`` -> ``user``, ``iam`` -> ``identity access management``). This module
@@ -42,6 +42,7 @@ class LLMClient:
     """Expands URL abbreviations via an LLM, with a per-token cache."""
 
     def __init__(self, provider: str, api_key: str, model: str | None = None) -> None:
+        """Set up the LLM client for a provider and model."""
         self.provider = provider
         self.api_key = api_key
         self.model = model or _DEFAULT_MODELS.get(provider, "")
@@ -67,6 +68,7 @@ class LLMClient:
         return {t: self._cache.get(t, t) for t in tokens}
 
     async def _query(self, tokens: list[str]) -> dict:
+        """Ask the model to expand a list of tokens."""
         payload = json.dumps(tokens)
         if self.provider == "openai":
             text = await self._call_openai(payload)
@@ -77,6 +79,7 @@ class LLMClient:
         return _parse_json_object(text)
 
     async def _call_openai(self, user_content: str) -> str:
+        """Call the OpenAI chat API and return the text."""
         async with httpx.AsyncClient(timeout=settings.REQUEST_TIMEOUT) as client:
             resp = await client.post(
                 "https://api.openai.com/v1/chat/completions",
@@ -95,6 +98,7 @@ class LLMClient:
             return resp.json()["choices"][0]["message"]["content"]
 
     async def _call_anthropic(self, user_content: str) -> str:
+        """Call the Anthropic messages API and return the text."""
         async with httpx.AsyncClient(timeout=settings.REQUEST_TIMEOUT) as client:
             resp = await client.post(
                 "https://api.anthropic.com/v1/messages",
@@ -116,6 +120,7 @@ class LLMClient:
 
 
 def _parse_json_object(text: str) -> dict:
+    """Parse the model's reply into a JSON object."""
     text = text.strip()
     if text.startswith("```"):
         text = text.strip("`")

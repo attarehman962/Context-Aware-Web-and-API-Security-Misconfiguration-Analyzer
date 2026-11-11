@@ -1,11 +1,11 @@
-"""Public API contract v1: the shapes Neelam's frontend builds against.
+"""Public API contract v1: the shapes the frontend builds against.
 
 Frozen at the end of Sprint 1 (docs/api-contract.md). Rules for changing it:
 
 * adding an optional response field or a new endpoint is a MINOR bump
   (1.0.0 -> 1.1.0) and must keep every existing field;
 * renaming/removing a field, changing a type or an enum value is a MAJOR bump
-  and needs Neelam's agreement first;
+  and needs frontend sign-off first;
 * bump :data:`CONTRACT_VERSION`, run ``make openapi`` and note it in the
   changelog of docs/api-contract.md.
 
@@ -87,6 +87,7 @@ class ScanRequest(ScanOptions):
     @classmethod
     def _only_json_true(cls, value: Any) -> Any:
         # Literal[True] alone accepts 1 (1 == True); only JSON true confirms (SEC-06).
+        """Reject non-boolean values for this flag."""
         if not isinstance(value, bool):
             raise ValueError("must be true")
         return value
@@ -185,6 +186,7 @@ class Finding(_Contract):
     @model_validator(mode="before")
     @classmethod
     def _derive_scoring_method(cls, data: Any) -> Any:
+        """Default scoring_method from whether a final vector is set."""
         if isinstance(data, dict) and "scoring_method" not in data:
             method = "environmental" if data.get("final_vector") else "legacy"
             data = {**data, "scoring_method": method}
@@ -192,6 +194,7 @@ class Finding(_Contract):
 
     @model_validator(mode="after")
     def _scoring_method_matches_vector(self) -> Finding:
+        """scoring_method must agree with whether a vector is set."""
         if (self.scoring_method == "environmental") != (self.final_vector is not None):
             raise ValueError(
                 "scoring_method must be 'environmental' exactly when final_vector is set"
@@ -278,6 +281,7 @@ class ScanResults(_Contract):
 
     @model_validator(mode="after")
     def _rank_findings(self) -> ScanResults:
+        """Sort findings by final score, highest first."""
         self.findings.sort(key=lambda f: (-f.final_score, f.check_id, str(f.id)))
         return self
 

@@ -1,4 +1,4 @@
-"""Redaction of secrets from evidence, headers, and logs (spec sections 20/31).
+"""Redaction of secrets from evidence, headers, and logs.
 
 Nothing sensitive should ever be stored raw or written to a log: passwords,
 API keys, JWTs, session cookies, and authorization headers are masked here

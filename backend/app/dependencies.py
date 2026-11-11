@@ -14,6 +14,7 @@ class PaginationParams:
 
     @property
     def offset(self) -> int:
+        """The SQL offset for this page."""
         return (self.page - 1) * self.limit
 
 

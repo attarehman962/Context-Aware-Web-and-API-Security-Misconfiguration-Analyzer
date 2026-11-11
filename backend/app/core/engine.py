@@ -1,4 +1,4 @@
-"""Safe async HTTP engine (spec section 17; design notes in docs/engine-security.md).
+"""Safe async HTTP engine.
 
 Wraps httpx (HTTP/2 enabled) to collect what the checks need from a response,
 while enforcing the safety rules:
@@ -74,15 +74,18 @@ class ScanResponse:
 
     @property
     def ok(self) -> bool:
+        """True when the request got a status and no error occurred."""
         return self.error is None and self.status_code is not None
 
-    # Names used by the engine contract (Atta Prompt 4).
+    # Names used by the engine contract.
     @property
     def url(self) -> str:
+        """The URL that was requested."""
         return self.requested_url
 
     @property
     def status(self) -> int | None:
+        """The HTTP status code, or None if the request failed."""
         return self.status_code
 
 
@@ -101,6 +104,7 @@ class PinnedNetworkBackend(httpcore.AsyncNetworkBackend):
     """
 
     def __init__(self, inner: Any = None, *, allow_private: bool = False) -> None:
+        """Wrap a backend; allow_private reaches private IPs (tests/eval only)."""
         self._inner = inner if inner is not None else httpcore.AnyIOBackend()
         self._allow_private = allow_private
 
@@ -112,6 +116,7 @@ class PinnedNetworkBackend(httpcore.AsyncNetworkBackend):
         local_address: str | None = None,
         socket_options: Iterable[Any] | None = None,
     ) -> Any:
+        """Resolve and SSRF-check the host, then connect to the validated IP."""
         target = await asyncio.to_thread(
             resolve_and_validate, host, port, allow_private=self._allow_private
         )
@@ -135,9 +140,11 @@ class PinnedNetworkBackend(httpcore.AsyncNetworkBackend):
         timeout: float | None = None,  # noqa: ASYNC109 - httpcore API
         socket_options: Iterable[Any] | None = None,
     ) -> Any:
+        """Refuse Unix-socket connections; the scanner only uses HTTP over TCP."""
         raise SSRFError("unix sockets are not allowed")
 
     async def sleep(self, seconds: float) -> None:
+        """Sleep, delegating to the wrapped backend."""
         await self._inner.sleep(seconds)
 
 
@@ -167,6 +174,7 @@ class HttpEngine:
         cache: bool = True,
     ) -> None:
         # allow_private is for the test-suite only (reach a local mock server).
+        """Set up the scan's HTTP client: scope, limits, redirects, SSRF guard."""
         self._allow_private = allow_private
         self.passive_only = passive_only
         # The scan's scope: when set, every request -- first URL and each redirect
@@ -223,12 +231,15 @@ class HttpEngine:
         )
 
     async def __aenter__(self) -> HttpEngine:
+        """Enter the async context manager."""
         return self
 
     async def __aexit__(self, *exc: object) -> None:
+        """Exit the async context manager and close the client."""
         await self.aclose()
 
     async def aclose(self) -> None:
+        """Close the HTTP client and release its connections."""
         await self._client.aclose()
 
     async def fetch(
@@ -354,6 +365,7 @@ class HttpEngine:
     async def _send_with_retries(
         self, url: str, method: str, extra_headers: dict[str, str] | None
     ) -> httpx.Response:
+        """Send the request, retrying idempotent methods on transient failure."""
         attempts = 1 + (self._retries if method in _IDEMPOTENT else 0)
         for attempt in range(attempts):
             try:
@@ -392,6 +404,7 @@ class HttpEngine:
 
     @staticmethod
     def _capture(result: ScanResponse, resp: httpx.Response) -> None:
+        """Copy the response status, headers and body onto the result."""
         body_bytes: bytes = getattr(resp, "_cawasma_body", b"")
         result.truncated = getattr(resp, "_cawasma_truncated", False)
         result.headers = {k.lower(): v for k, v in resp.headers.items()}

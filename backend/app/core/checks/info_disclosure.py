@@ -1,4 +1,4 @@
-"""Information-disclosure checks INF-001..INF-006 (spec section 13).
+"""Information-disclosure checks INF-001..INF-006.
 
 INF-002 moved to ``checks/spec/disclosure.py``; INF-003..005 to
 ``checks/spec/exposure.py``.
@@ -11,6 +11,7 @@ from app.core.checks.base import CheckContext, RawFinding, make, rule
 
 @rule
 def inf_001_internal_ip(ctx: CheckContext) -> RawFinding | None:
+    """INF-001: internal IP address in the response."""
     if ctx.body_class and ctx.body_class.internal_ip:
         return make("INF-001", "Response body contains an internal/private IP address.")
     return None
@@ -18,6 +19,7 @@ def inf_001_internal_ip(ctx: CheckContext) -> RawFinding | None:
 
 @rule
 def inf_006_swagger(ctx: CheckContext) -> RawFinding | None:
+    """INF-006: public API documentation exposed."""
     body = ctx.result.body[:4000].lower()
     if ctx.result.status_code == 200 and (
         "swagger" in body or '"openapi"' in body or "swagger-ui" in ctx.path.lower()

@@ -45,4 +45,5 @@ class TlsInfo(Base, TimestampMixin):
     scan: Mapped[Scan] = relationship(back_populates="tls_info")
 
     def __repr__(self) -> str:  # pragma: no cover
+        """Readable debug representation."""
         return f"<TlsInfo {self.host} {self.negotiated_protocol}>"

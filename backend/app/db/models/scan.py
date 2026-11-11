@@ -49,7 +49,7 @@ class Scan(Base, TimestampMixin):
         nullable=False,
         index=True,
     )
-    # Progress 0-100 and a human-readable current stage (spec section 24).
+    # Progress 0-100 and a human-readable current stage.
     progress: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     current_stage: Mapped[str | None] = mapped_column(String(128), nullable=True)
     # Per-stage counts the worker updates as it goes, e.g. {"stage": "checking",
@@ -106,4 +106,5 @@ class Scan(Base, TimestampMixin):
     )
 
     def __repr__(self) -> str:  # pragma: no cover - debug helper
+        """Readable debug representation."""
         return f"<Scan {self.id} {self.status} {self.target_url!r}>"

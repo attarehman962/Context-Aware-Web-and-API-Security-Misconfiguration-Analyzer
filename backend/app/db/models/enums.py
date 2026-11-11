@@ -20,7 +20,7 @@ class ScanStatus(str, enum.Enum):
 
 
 class Severity(str, enum.Enum):
-    """CVSS severity buckets (spec section 10)."""
+    """CVSS severity buckets."""
 
     INFO = "INFO"
     LOW = "LOW"
@@ -30,7 +30,7 @@ class Severity(str, enum.Enum):
 
 
 class ContextClass(str, enum.Enum):
-    """Endpoint sensitivity classes from the NLP classifier (contribution 1)."""
+    """Endpoint sensitivity classes from the NLP classifier."""
 
     LOW = "LOW"
     MEDIUM = "MEDIUM"
@@ -39,7 +39,7 @@ class ContextClass(str, enum.Enum):
 
 
 class DiscoveryMethod(str, enum.Enum):
-    """How an endpoint was discovered by the crawler (spec section 18)."""
+    """How an endpoint was discovered by the crawler."""
 
     SEED = "SEED"  # the original target URL
     HTML = "HTML"  # extracted from HTML (<a>, <form>, <script>)
@@ -49,7 +49,7 @@ class DiscoveryMethod(str, enum.Enum):
 
 
 class FindingCategory(str, enum.Enum):
-    """The eight security-check categories (spec section 13)."""
+    """The eight security-check categories."""
 
     HEADERS = "HEADERS"
     COOKIES = "COOKIES"

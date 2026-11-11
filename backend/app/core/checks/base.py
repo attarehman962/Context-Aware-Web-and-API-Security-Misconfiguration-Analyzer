@@ -42,6 +42,7 @@ class CheckContext:
     injection_error_reflected: bool = False
 
     def header(self, name: str) -> str | None:
+        """The response header value by name, case-insensitive."""
         low = name.lower()
         for k, v in self.result.headers.items():
             if k.lower() == low:
@@ -49,6 +50,7 @@ class CheckContext:
         return None
 
     def has_header(self, name: str) -> bool:
+        """True if the response has this header."""
         return self.header(name) is not None
 
 
@@ -85,7 +87,7 @@ def rule(fn: DetectFn) -> DetectFn:
 
 
 def base_vector(rule_id: str) -> str:
-    """The check's base vector: Asim's checks.yaml spec when the id has one, else
+    """The check's base vector: the checks.yaml spec when the id has one, else
     the catalog's. The five specs still run as legacy rules, and one check id must
     carry one vector whichever way it runs."""
     from app.core.checks.registry import load_specs

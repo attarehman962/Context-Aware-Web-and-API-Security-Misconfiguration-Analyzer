@@ -41,14 +41,17 @@ router = APIRouter(prefix="/api", tags=["contract v1"])
 
 
 def _example(model: Any) -> dict[str, Any]:
+    """OpenAPI example body for a model."""
     return {"content": {"application/json": {"example": model.model_dump(mode="json")}}}
 
 
 def _errors(*codes: int) -> dict[int | str, dict[str, Any]]:
+    """OpenAPI error responses for the given status codes."""
     return {code: {"model": ErrorResponse} for code in codes}
 
 
 def _not_found() -> ApiError:
+    """A 404 NOT_FOUND API error."""
     return ApiError(status.HTTP_404_NOT_FOUND, "NOT_FOUND", "Scan not found.")
 
 
@@ -187,6 +190,7 @@ async def scan_events(scan_id: uuid.UUID, request: Request) -> StreamingResponse
 
 
 def _sse(events: AsyncIterator[str]) -> StreamingResponse:
+    """Wrap an event stream in an SSE streaming response."""
     return StreamingResponse(
         events,
         media_type="text/event-stream",
@@ -195,10 +199,12 @@ def _sse(events: AsyncIterator[str]) -> StreamingResponse:
 
 
 def _event(status_: ScanStatus) -> str:
+    """Format a scan status as one SSE 'status' event."""
     return f"event: status\ndata: {status_.model_dump_json()}\n\n"
 
 
 async def _mock_events(current: ScanStatus) -> AsyncIterator[str]:
+    """Yield a short SSE stream for mock mode."""
     yield "retry: 3000\n\n" + _event(current)  # mock scans don't move: one event
 
 
@@ -315,6 +321,7 @@ async def export_results(
     session: SessionDep,
     format: ExportFormat = Query("json", description="json | csv | html | pdf"),
 ) -> Response:
+    """Export a scan's results in the requested format."""
     if settings.MOCK_API:
         results = mock.RESULTS.get(scan_id)
     else:
@@ -360,6 +367,7 @@ async def list_scans(
     session: SessionDep,
     page: PaginationParams = Depends(pagination),
 ) -> Page[ScanStatus]:
+    """List past scans, newest first, with paging."""
     if settings.MOCK_API:
         items, total = mock.SCANS[page.offset : page.offset + page.limit], len(mock.SCANS)
     else:

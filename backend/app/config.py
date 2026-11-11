@@ -50,7 +50,7 @@ class Settings(BaseSettings):
     # Frontend / CORS
     # Comma-separated list of allowed origins. Never "*": the scanner returns
     # sensitive assessment data, so origins are explicit.
-    FRONTEND_ORIGIN: str = "http://localhost:3000"  # Neelam's Next.js app
+    FRONTEND_ORIGIN: str = "http://localhost:3000"  # the Next.js frontend origin
 
     # Scanner safety limits
     REQUEST_TIMEOUT: float = 15.0  # seconds per HTTP request
@@ -67,7 +67,7 @@ class Settings(BaseSettings):
 
     # Hostnames allowed to resolve to PRIVATE ranges (comma-separated). Empty by
     # default; set only in the evaluation environment (docker-compose.eval-scan.yml)
-    # so the scanner can reach Asim's targets. Loopback, link-local and cloud
+    # so the scanner can reach the evaluation targets. Loopback, link-local and cloud
     # metadata stay blocked regardless (app/utils/security.py).
     ALLOWED_INTERNAL_HOSTS: str = ""
     # Extra CA certificate(s) (PEM file) the engine trusts on top of the system
@@ -109,6 +109,7 @@ class Settings(BaseSettings):
     # Derived helpers
     @property
     def allowed_internal_hosts(self) -> frozenset[str]:
+        """The configured internal hosts, as a set."""
         return frozenset(
             h.strip().rstrip(".").lower()
             for h in self.ALLOWED_INTERNAL_HOSTS.split(",")
@@ -124,6 +125,7 @@ class Settings(BaseSettings):
     @classmethod
     def _cap_depth(cls, v: int) -> int:
         # Depth is intentionally shallow for a safe black-box scanner.
+        """Cap the crawl depth at 4."""
         if v > 4:
             raise ValueError("MAX_CRAWL_DEPTH must be <= 4 for safe scanning")
         return v

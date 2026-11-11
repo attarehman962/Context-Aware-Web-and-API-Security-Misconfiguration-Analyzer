@@ -1,4 +1,4 @@
-"""Async driver that runs one scan end-to-end (spec section 19/24).
+"""Async driver that runs one scan end-to-end.
 
 Separated from the Celery task so it can be unit-tested directly (the Celery
 task is a thin ``asyncio.run`` wrapper). Updates the Scan row's status, progress
@@ -40,6 +40,7 @@ class ScanCancelled(ScanError):
     """Raised at a progress step after the user asked to cancel."""
 
     def __init__(self) -> None:
+        """Set up the progress handler."""
         super().__init__(CANCELLED)
 
 
@@ -76,6 +77,7 @@ async def run_scan_async(scan_id: str | uuid.UUID, *, probe: bool = True) -> Non
             stage: str, percent: int, message: str, detail: dict[str, int]
         ) -> None:
             # A fresh read (not the cached attribute): the API sets it from outside.
+            """Persist progress and stop the scan if cancel was requested."""
             if await session.scalar(select(Scan.cancel_requested).where(Scan.id == sid)):
                 raise ScanCancelled
             active.progress = max(percent, active.progress)

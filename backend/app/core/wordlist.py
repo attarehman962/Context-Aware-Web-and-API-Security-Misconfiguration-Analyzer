@@ -1,4 +1,4 @@
-"""Controlled wordlist for endpoint probing (spec section 18, strategy 3).
+"""Controlled wordlist for endpoint probing.
 
 The paths live in ``app/data/wordlist.txt`` so they can be reviewed and edited
 without touching code. Deliberately small and defensive: this is NOT a
@@ -13,6 +13,7 @@ WORDLIST_FILE = Path(__file__).resolve().parents[1] / "data" / "wordlist.txt"
 
 
 def load_wordlist(path: Path = WORDLIST_FILE) -> tuple[str, ...]:
+    """Read the probe wordlist, dropping comments and blank lines."""
     lines = (line.split("#", 1)[0].strip() for line in path.read_text().splitlines())
     paths = [line for line in lines if line]
     bad = [p for p in paths if not p.startswith("/")]

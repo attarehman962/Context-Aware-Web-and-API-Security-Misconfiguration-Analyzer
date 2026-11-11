@@ -1,4 +1,4 @@
-"""Spec file formats owned by Asim, validated by Atta's engine.
+"""Check-spec file formats, validated by the engine.
 
 * ``config/checks.yaml``       -- check specifications (docs/check-spec-format.md)
 * ``config/cvss_mapping.yaml`` -- sensitivity class / body signal -> CR/IR/AR
@@ -55,6 +55,7 @@ class SpecError(ValueError):
     """A spec file is missing, unparsable or invalid. ``problems`` lists each issue."""
 
     def __init__(self, path: Path | str, problems: Iterable[str]) -> None:
+        """Create a spec error listing the file and its problems."""
         self.path = str(path)
         self.problems = list(problems)
         super().__init__(f"{self.path}: " + "; ".join(self.problems))
@@ -88,6 +89,7 @@ class HeaderRule(_Strict):
 
     @model_validator(mode="after")
     def _value_matches_op(self) -> HeaderRule:
+        """Check the value is consistent with the operator."""
         if self.op in _NO_VALUE_OPS and self.value is not None:
             raise ValueError(f"op {self.op!r} takes no value")
         if self.op not in _NO_VALUE_OPS and not self.value:
@@ -97,6 +99,7 @@ class HeaderRule(_Strict):
         return self
 
     def matches(self, response: ResponseInfo) -> bool:
+        """True if the response header satisfies this rule."""
         wanted = self.header.lower()
         actual = next((v for k, v in response.headers.items() if k.lower() == wanted), None)
         if self.op == "missing":
@@ -128,6 +131,7 @@ class StatusRule(_Strict):
     value: list[Annotated[int, Field(ge=100, le=599)]] = Field(min_length=1)
 
     def matches(self, response: ResponseInfo) -> bool:
+        """True if the response status satisfies this rule."""
         return (response.status_code in self.value) == (self.status == "in")
 
 
@@ -141,6 +145,7 @@ class BodyRule(_Strict):
 
     @model_validator(mode="after")
     def _regex_compiles(self) -> BodyRule:
+        """Validate that the body regex compiles."""
         if self.body in _NO_VALUE_BODY_OPS:
             if self.value is not None:
                 raise ValueError(f"body op {self.body!r} takes no value")
@@ -152,6 +157,7 @@ class BodyRule(_Strict):
         return self
 
     def matches(self, response: ResponseInfo) -> bool:
+        """True if the response body satisfies this rule."""
         if self.body == "not_empty":
             return bool(response.body.strip())
         if self.body == "json":
@@ -176,10 +182,12 @@ class HeaderNamesRule(_Strict):
 
     @model_validator(mode="after")
     def _regex_compiles(self) -> HeaderNamesRule:
+        """Validate that the header-name regex compiles."""
         _compile(self.value)
         return self
 
     def matches(self, response: ResponseInfo) -> bool:
+        """True if any response header name matches."""
         hit = any(re.search(self.value, name, re.IGNORECASE) for name in response.headers)
         return hit == (self.header_names == "any_match")
 
@@ -193,14 +201,17 @@ class UrlRule(_Strict):
 
     @model_validator(mode="after")
     def _regex_compiles(self) -> UrlRule:
+        """Validate that the URL regex compiles."""
         _compile(self.value)
         return self
 
     def matches(self, response: ResponseInfo) -> bool:
+        """True if the request URL matches this rule."""
         return (re.search(self.value, response.url) is not None) == (self.url == "matches")
 
 
 def _compile(pattern: str) -> None:
+    """Raise if the regular expression does not compile."""
     try:
         re.compile(pattern)
     except re.error as exc:
@@ -208,6 +219,7 @@ def _compile(pattern: str) -> None:
 
 
 def _rule_kind(rule: Any) -> str | None:
+    """Name the kind of a raw rule, or None if unknown."""
     if isinstance(rule, dict):
         keys = [k for k in _RULE_KINDS if k in rule]
     else:
@@ -238,6 +250,7 @@ class HttpCondition(_Strict):
     @field_validator("rules", mode="before")
     @classmethod
     def _one_target_per_rule(cls, rules: Any) -> Any:
+        """Each rule must target exactly one thing."""
         for i, rule in enumerate(rules if isinstance(rules, list) else []):
             if isinstance(rule, dict):
                 targets = [k for k in _RULE_KINDS if k in rule]
@@ -276,6 +289,7 @@ class AppliesToRule(_Strict):
 
     @model_validator(mode="after")
     def _one_condition(self) -> AppliesToRule:
+        """An applies-to rule must set exactly one condition."""
         set_ = [
             k
             for k in ("sensitivity", "sensitivity_family", "path", "credentials")
@@ -318,6 +332,7 @@ class Artifact(_Strict):
     @field_validator("path")
     @classmethod
     def _regex_compiles(cls, value: str) -> str:
+        """Validate that the regex compiles."""
         _compile(value)
         return value
 
@@ -337,7 +352,7 @@ class CheckSpec(_Strict):
     # How context should move the severity (Contract 1 "severity notes"),
     # e.g. "raise with endpoint sensitivity". Guidance for the CVSS mapping.
     severity_notes: str | None = None
-    # "proposed": drafted for Asim, not yet approved by him. Scans run it, but the
+    # "proposed": drafted but not yet approved. Scans run it, but the
     # report counts only approved specs (scripts/coverage_stats.py).
     status: Literal["approved", "proposed"] = "approved"
     applies_to: AppliesTo | None = None
@@ -346,6 +361,7 @@ class CheckSpec(_Strict):
     @field_validator("base_cvss_vector")
     @classmethod
     def _valid_vector(cls, vector: str) -> str:
+        """Validate the string is a CVSS v3.1 base vector."""
         try:
             parse_base_vector(vector)
         except CvssVectorError as exc:
@@ -364,6 +380,7 @@ class CheckSpecFile(_Strict):
 
     @model_validator(mode="after")
     def _unique_ids(self) -> CheckSpecFile:
+        """Reject duplicate check ids."""
         _reject_duplicates([c.check_id for c in self.checks], "check_id")
         return self
 
@@ -389,6 +406,7 @@ class CvssMapping(_Strict):
 
     @model_validator(mode="after")
     def _complete(self) -> CvssMapping:
+        """Every sensitivity class must be mapped."""
         missing = [c.value for c in SensitivityClass if c not in self.sensitivity_classes]
         missing += [s.value for s in BodySignal if s not in self.body_signals]
         if missing:
@@ -429,6 +447,7 @@ class ChainSpec(_Strict):
     @field_validator("composite_cvss_vector")
     @classmethod
     def _valid_vector(cls, vector: str | None) -> str | None:
+        """Validate the optional composite CVSS vector."""
         if vector is not None:
             try:
                 parse_base_vector(vector)
@@ -438,6 +457,7 @@ class ChainSpec(_Strict):
 
     @model_validator(mode="after")
     def _consistent(self) -> ChainSpec:
+        """A chain sets either groups or requires, not both."""
         if (self.groups is None) == (self.requires is None):
             raise ValueError("use either groups or requires (with min_matches), not both")
         if self.groups is not None:
@@ -481,6 +501,7 @@ class ChainSpec(_Strict):
 
     @property
     def member_ids(self) -> set[str]:
+        """The set of check ids this chain is built from."""
         if self.groups is not None:
             return {c for g in self.groups for c in g}
         return set(self.requires or [])
@@ -492,6 +513,7 @@ class ChainsFile(_Strict):
 
     @model_validator(mode="after")
     def _unique_ids(self) -> ChainsFile:
+        """Reject duplicate chain ids."""
         _reject_duplicates([c.chain_id for c in self.chains], "chain_id")
         return self
 
@@ -500,12 +522,14 @@ class ChainsFile(_Strict):
 
 
 def _reject_duplicates(values: list[str], what: str) -> None:
+    """Raise if the list contains duplicate values."""
     dupes = sorted({v for v in values if values.count(v) > 1})
     if dupes:
         raise ValueError(f"duplicate {what}: {', '.join(dupes)}")
 
 
 def _load(path: Path | str, model: type[BaseModel]) -> Any:
+    """Load and validate a YAML spec file into a model."""
     p = Path(path)
     try:
         data = yaml.safe_load(p.read_text(encoding="utf-8"))
@@ -520,16 +544,19 @@ def _load(path: Path | str, model: type[BaseModel]) -> Any:
 
 
 def _describe(error: Any) -> str:
+    """Format one validation error as 'location: message'."""
     loc = ".".join(str(part) for part in error["loc"]) or "(root)"
     return f"{loc}: {error['msg']}"
 
 
 def load_checks(path: Path | str) -> CheckSpecFile:
+    """Load and validate config/checks.yaml."""
     result: CheckSpecFile = _load(path, CheckSpecFile)
     return result
 
 
 def load_cvss_mapping(path: Path | str) -> CvssMapping:
+    """Load and validate config/cvss_mapping.yaml."""
     result: CvssMapping = _load(path, CvssMapping)
     return result
 

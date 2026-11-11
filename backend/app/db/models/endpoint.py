@@ -1,7 +1,7 @@
 """Endpoint model -- one discovered URL/method within a scan.
 
-Stores the NLP sensitivity classification (contribution 1) and the
-response-body signals (contribution 3) alongside basic response metadata. Both
+Stores the NLP sensitivity classification and the
+response-body signals alongside basic response metadata. Both
 feed the context-aware score of the endpoint's findings.
 
 ``body_signals`` shape (see docs/schema.md)::
@@ -51,7 +51,7 @@ class Endpoint(Base, TimestampMixin):
     status_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
     content_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
-    # NLP sensitivity classification (contribution 1)
+    # NLP sensitivity classification
     # ``context_class`` is the endpoint-sensitivity class (CRITICAL..LOW).
     context_class: Mapped[ContextClass | None] = mapped_column(
         Enum(ContextClass, name="context_class"), nullable=True
@@ -60,7 +60,7 @@ class Endpoint(Base, TimestampMixin):
     # Explainable reasons, e.g. ["Contains authentication-related tokens"].
     context_reason: Mapped[list[str] | None] = mapped_column(JSONType, nullable=True)
 
-    # Response-body signals (contribution 3), redacted
+    # Response-body signals, redacted
     body_signals: Mapped[dict[str, Any]] = mapped_column(JSONType, default=dict, nullable=False)
 
     response_time: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -81,10 +81,11 @@ class Endpoint(Base, TimestampMixin):
     )
 
     __table_args__ = (
-        # The same URL+method is discovered once per scan (dedup, spec 18).
+        # The same URL+method is discovered once per scan (dedup).
         UniqueConstraint("scan_id", "url", "method", name="uq_endpoint_scan_url_method"),
         Index("ix_endpoints_scan_context", "scan_id", "context_class"),
     )
 
     def __repr__(self) -> str:  # pragma: no cover
+        """Readable debug representation."""
         return f"<Endpoint {self.method} {self.path} ctx={self.context_class}>"

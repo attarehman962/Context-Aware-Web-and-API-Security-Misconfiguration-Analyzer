@@ -1,6 +1,6 @@
-"""Attack-chain correlation -- Contribution 2 (docs/chain-templates.md).
+"""Attack-chain correlation.
 
-Templates come from Asim's ``config/chains.yaml`` (format 1.1). For each
+Templates come from ``config/chains.yaml`` (format 1.1). For each
 template and each scope unit (one endpoint, one host, or the whole scan) a
 chain fires when **every** group has at least one member finding in the unit,
 and the unit passes the template's ``endpoint_sensitivity`` and
@@ -40,6 +40,7 @@ class ChainEndpoint:
 
     @property
     def host(self) -> str:
+        """The lowercased host of this endpoint's URL."""
         return urlparse(self.url).netloc.lower()
 
 
@@ -66,10 +67,12 @@ class DetectedChain:
 
 @lru_cache(maxsize=4)
 def _templates(path: str) -> tuple[ChainSpec, ...]:
+    """Load and cache the chain templates from a config path."""
     return tuple(load_chains(path).chains)
 
 
 def load_templates(path: Path | str | None = None) -> tuple[ChainSpec, ...]:
+    """Return the attack-chain templates from config/chains.yaml (cached)."""
     return _templates(str(path or Path(settings.CONFIG_DIR) / "chains.yaml"))
 
 

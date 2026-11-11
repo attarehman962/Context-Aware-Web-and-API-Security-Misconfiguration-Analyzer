@@ -1,4 +1,4 @@
-"""Target URL validation (spec section 15).
+"""Target URL validation.
 
 A target must be a well-formed, HTTPS URL. HTTP-only targets are rejected. This
 module does *not* do SSRF checks -- that is ``security.py`` -- it only validates
@@ -15,6 +15,7 @@ class InvalidTargetError(ValueError):
     """Raised when a target URL is malformed or not permitted."""
 
     def __init__(self, reason: str) -> None:
+        """Create the validation error with its reason."""
         self.reason = reason
         super().__init__(reason)
 
@@ -81,6 +82,7 @@ def validate_target_url(raw: str, *, require_https: bool = True) -> ParsedTarget
 
 
 def default_port(scheme: str) -> int:
+    """The default port for a scheme (443 for https, else 80)."""
     return 443 if scheme == "https" else 80
 
 

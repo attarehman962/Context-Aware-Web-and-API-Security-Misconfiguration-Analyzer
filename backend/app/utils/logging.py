@@ -39,12 +39,14 @@ _STANDARD = set(vars(logging.LogRecord("", 0, "", 0, "", None, None))) | {
 
 class _ScanIdFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
+        """Attach the current scan id to the log record."""
         record.scan_id = scan_id_var.get()
         return True
 
 
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
+        """Format the log record as one JSON object per line."""
         out: dict[str, object] = {
             "ts": self.formatTime(record, "%Y-%m-%dT%H:%M:%S%z"),
             "level": record.levelname,
@@ -63,11 +65,13 @@ class JsonFormatter(logging.Formatter):
 
 class TextFormatter(logging.Formatter):
     def __init__(self) -> None:
+        """Set up the human-readable log formatter."""
         super().__init__(
             fmt="%(asctime)s %(levelname)-8s %(name)s :: %(message)s", datefmt="%Y-%m-%dT%H:%M:%S%z"
         )
 
     def format(self, record: logging.LogRecord) -> str:
+        """Format the record as a readable line with the scan id."""
         line = super().format(record)
         if scan_id := getattr(record, "scan_id", None):
             line += f" [scan={scan_id}]"

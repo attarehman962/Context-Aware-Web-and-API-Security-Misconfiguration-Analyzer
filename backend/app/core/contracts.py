@@ -1,6 +1,6 @@
 """Engine <-> ML contract, version 1 (docs/cvss-mapping-contract.md).
 
-Asim's code provides two functions with these exact signatures:
+The ML layer provides two functions with these exact signatures:
 
 * ``app.ml.sensitivity.classify(endpoint: EndpointInfo) -> SensitivityClass``
 * ``app.ml.body_classifier.analyze(response: ResponseInfo) -> set[BodySignal]``
@@ -114,7 +114,7 @@ def check_conformance(classify: ClassifyFn, analyze: AnalyzeFn) -> list[str]:
     """Return contract violations for an implementation (empty list = conforms).
 
     Checks the return types, that edge-case inputs don't raise, and that results
-    are deterministic. It does not judge accuracy -- that is Asim's evaluation.
+    are deterministic. It does not judge accuracy -- that is left to the evaluation.
     """
     problems: list[str] = []
     for ep in _PROBE_ENDPOINTS:

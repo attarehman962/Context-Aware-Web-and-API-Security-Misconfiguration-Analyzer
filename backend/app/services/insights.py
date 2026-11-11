@@ -1,4 +1,4 @@
-"""Executive insight generation (spec section 17).
+"""Executive insight generation.
 
 A deterministic, template-based summary generated from the scan's own data --
 NOT an external LLM call. This keeps the tool self-contained, reproducible and
@@ -14,6 +14,7 @@ _SEV_ORDER = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]
 
 
 def generate_insight(result: ScanResult) -> str:
+    """Write a short executive summary of the scan."""
     by_sev = result.stats["by_severity"]
     crit, high = by_sev.get("CRITICAL", 0), by_sev.get("HIGH", 0)
     n_find, n_ep, n_chain = (

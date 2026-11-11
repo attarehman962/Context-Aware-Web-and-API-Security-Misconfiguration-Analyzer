@@ -45,7 +45,9 @@ def excerpt(check_id: str, body: str) -> str | None:
 
 
 def _make(check_id: str, summary: str) -> CheckFn:
+    """Build an information-disclosure check for a check id."""
     def check(resp: ScanResponse, endpoint: EndpointInfo) -> list[RawFinding]:
+        """Flag the response when the disclosure condition matches."""
         if not resp.ok or not condition_matches(check_id, resp):
             return []
         evidence: dict[str, object] = {

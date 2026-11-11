@@ -1,7 +1,7 @@
 """Cookie model -- metadata for a cookie set by an endpoint.
 
 Only cookie *metadata* is stored (flags, scope), never the secret token value
-itself (spec section 20).
+itself.
 """
 
 from __future__ import annotations
@@ -43,4 +43,5 @@ class Cookie(Base, TimestampMixin):
     endpoint: Mapped[Endpoint] = relationship(back_populates="cookies")
 
     def __repr__(self) -> str:  # pragma: no cover
+        """Readable debug representation."""
         return f"<Cookie {self.name} secure={self.secure} httponly={self.http_only}>"

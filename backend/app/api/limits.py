@@ -13,6 +13,7 @@ from app.services import rate_limit
 
 
 def client_of(request: Request) -> str:
+    """A client key for rate limiting: the caller's IP."""
     return request.client.host if request.client else "?"
 
 
@@ -49,6 +50,7 @@ def open_stream(request: Request, events: AsyncIterator[str]) -> AsyncIterator[s
         )
 
     async def counted() -> AsyncIterator[str]:
+        """Count one open SSE stream for this client while active."""
         _open_streams[client] += 1
         try:
             async for chunk in events:

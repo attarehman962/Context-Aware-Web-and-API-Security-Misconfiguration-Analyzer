@@ -42,7 +42,9 @@ _CHECKS: dict[str, tuple[tuple[str, ...], str]] = {
 
 
 def _make(check_id: str, headers: tuple[str, ...], summary: str) -> CheckFn:
+    """Build a check that flags one or more missing headers."""
     def check(resp: ScanResponse, endpoint: EndpointInfo) -> list[RawFinding]:
+        """Flag the response when a required header is missing."""
         if not resp.ok or not condition_matches(check_id, resp):
             return []
         seen = {h: resp.headers.get(h.lower()) for h in headers}

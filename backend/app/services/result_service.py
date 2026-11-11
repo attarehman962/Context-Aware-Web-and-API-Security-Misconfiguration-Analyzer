@@ -1,4 +1,4 @@
-"""Persist a pipeline :class:`ScanResult` into the database (spec section 19).
+"""Persist a pipeline :class:`ScanResult` into the database.
 
 Kept separate from the pipeline so the scanner stays database-free and unit-
 testable. All writes happen inside the caller's transaction/session.

@@ -2,7 +2,7 @@
 
 Belongs to a scan and optionally to one finding: a scan-level note has no
 ``finding_id``. Lets an analyst mark a finding as a false positive, which can
-later feed classifier tuning (spec section 21 & 36).
+later feed classifier tuning.
 """
 
 from __future__ import annotations
@@ -37,4 +37,5 @@ class Feedback(Base, TimestampMixin):
     finding: Mapped[Finding | None] = relationship(back_populates="feedback")
 
     def __repr__(self) -> str:  # pragma: no cover
+        """Readable debug representation."""
         return f"<Feedback finding={self.finding_id} fp={self.is_false_positive}>"

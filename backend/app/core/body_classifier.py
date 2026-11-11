@@ -1,4 +1,4 @@
-"""Response body classifier -- Contribution 3 (spec section 7).
+"""Response body classifier.
 
 Scans a response body for sensitivity signals and returns the corresponding
 CAWASMA response bonus. Credential exposure forces the finding severity to
@@ -65,11 +65,13 @@ def _iban_ok(candidate: str) -> bool:
 
 
 def _card_ok(number: str) -> bool:
+    """True if the digits pass a card-number Luhn check."""
     digits = "".join(d for d in number if d.isdigit())
     return bool(_CARD_PREFIX.match(digits)) and _luhn_ok(digits)
 
 
 def _luhn_ok(number: str) -> bool:
+    """True if the digits satisfy the Luhn checksum."""
     digits = [int(d) for d in number if d.isdigit()]
     if not (13 <= len(digits) <= 16):
         return False
@@ -96,6 +98,7 @@ class BodyClassification:
 
     @property
     def force_critical(self) -> bool:
+        """True if the body holds credentials (forces CRITICAL)."""
         return self.credentials
 
 
@@ -115,7 +118,7 @@ def classify_response(
     body: str | None,
 ) -> BodyClassification:
     """The classification scans use: the ML contract's body classifier
-    (``app.ml.body_classifier``, Asim) when it loads, else :func:`classify_body`.
+    (``app.ml.body_classifier``) when it loads, else :func:`classify_body`.
 
     Both legacy rules (bonus, forced CRITICAL, API-013, INF-001) and the
     environmental score read this one result, so they can't disagree. The

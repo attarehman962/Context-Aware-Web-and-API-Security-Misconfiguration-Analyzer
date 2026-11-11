@@ -22,6 +22,7 @@ class QueueUnavailable(RuntimeError):
 
 
 def queue_scan(scan_id: uuid.UUID) -> None:
+    """Queue the scan as a Celery task (task id = scan id)."""
     from app.workers.tasks import run_scan
 
     try:
