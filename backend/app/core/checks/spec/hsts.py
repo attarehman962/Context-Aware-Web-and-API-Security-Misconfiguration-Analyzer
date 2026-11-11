@@ -23,10 +23,12 @@ _MAX_AGE = re.compile(r"(?i)max-age\s*=\s*\"?(\d+)")
 
 
 def _is_https(resp: ScanResponse) -> bool:
+    """True if the final response was served over HTTPS."""
     return resp.ok and urlparse(resp.final_url).scheme == "https"
 
 
 def _hsts_evidence(resp: ScanResponse) -> dict[str, Any]:
+    """The HSTS header value as redacted evidence."""
     value = resp.headers.get(_HEADER)
     if value is None:
         return {"header": "Strict-Transport-Security", "present": False}
@@ -41,6 +43,7 @@ def _hsts_evidence(resp: ScanResponse) -> dict[str, Any]:
 
 @register_check("HDR-001")
 def missing_hsts(resp: ScanResponse, endpoint: EndpointInfo) -> list[RawFinding]:
+    """HDR-001: missing HSTS header on an HTTPS response."""
     if not _is_https(resp) or not condition_matches("HDR-001", resp):
         return []
     return [
@@ -57,6 +60,7 @@ def missing_hsts(resp: ScanResponse, endpoint: EndpointInfo) -> list[RawFinding]
 
 @register_check("TLS-009")
 def weak_hsts(resp: ScanResponse, endpoint: EndpointInfo) -> list[RawFinding]:
+    """HSTS present but weak (for example a short max-age)."""
     if not _is_https(resp) or not condition_matches("TLS-009", resp):
         return []
     evidence = _hsts_evidence(resp)

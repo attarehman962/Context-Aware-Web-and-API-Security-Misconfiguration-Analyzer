@@ -23,11 +23,13 @@ _ENV_NAME = re.compile(r"(?m)^([A-Z][A-Z0-9_]*)=")
 
 
 def _fires(check_id: str, resp: ScanResponse) -> bool:
+    """True if the check's condition matches this response."""
     return resp.ok and condition_matches(check_id, resp)
 
 
 @register_check("API-001")
 def auth_without_rate_limit_headers(resp: ScanResponse, ep: EndpointInfo) -> list[RawFinding]:
+    """API-001: auth endpoint with no rate-limit headers."""
     if not _fires("API-001", resp):
         return []
     text = f"No RateLimit-*, X-RateLimit-* or Retry-After header on {ep.path}"
@@ -36,6 +38,7 @@ def auth_without_rate_limit_headers(resp: ScanResponse, ep: EndpointInfo) -> lis
 
 @register_check("API-003")
 def sensitive_data_without_credentials(resp: ScanResponse, ep: EndpointInfo) -> list[RawFinding]:
+    """API-003: sensitive data returned without credentials."""
     if not _fires("API-003", resp):
         return []
     data = json.loads(resp.body)
@@ -46,6 +49,7 @@ def sensitive_data_without_credentials(resp: ScanResponse, ep: EndpointInfo) -> 
 
 @register_check("INF-003")
 def env_file(resp: ScanResponse, ep: EndpointInfo) -> list[RawFinding]:
+    """INF-003: an exposed .env file."""
     if not _fires("INF-003", resp):
         return []
     names = list(dict.fromkeys(_ENV_NAME.findall(resp.body)))
@@ -55,6 +59,7 @@ def env_file(resp: ScanResponse, ep: EndpointInfo) -> list[RawFinding]:
 
 @register_check("INF-004")
 def git_metadata(resp: ScanResponse, ep: EndpointInfo) -> list[RawFinding]:
+    """INF-004: an exposed .git repository."""
     if not _fires("INF-004", resp):
         return []
     text = f"Git metadata readable at {ep.path}"
@@ -63,6 +68,7 @@ def git_metadata(resp: ScanResponse, ep: EndpointInfo) -> list[RawFinding]:
 
 @register_check("INF-005")
 def backup_file(resp: ScanResponse, ep: EndpointInfo) -> list[RawFinding]:
+    """INF-005: an exposed backup or archive file."""
     if not _fires("INF-005", resp):
         return []
     size = resp.content_length or len(resp.body)

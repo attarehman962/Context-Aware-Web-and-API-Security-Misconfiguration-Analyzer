@@ -21,6 +21,7 @@ logger = get_logger(__name__)
 
 
 async def _check_database() -> str:
+    """Return 'ok' if the database answers, else the error."""
     try:
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
@@ -31,6 +32,7 @@ async def _check_database() -> str:
 
 
 async def _check_redis() -> str:
+    """Return 'ok' if Redis answers, else the error."""
     try:
         # Imported lazily so the app still starts if redis isn't installed yet.
         from redis.asyncio import from_url

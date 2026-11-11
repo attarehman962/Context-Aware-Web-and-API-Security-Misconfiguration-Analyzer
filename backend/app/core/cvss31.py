@@ -46,9 +46,11 @@ class BaseVector:
 
     @property
     def scope_changed(self) -> bool:
+        """True if the CVSS scope metric is Changed (S:C)."""
         return self.metrics["S"] == "C"
 
     def __str__(self) -> str:
+        """Render the metrics back into a CVSS v3.1 vector string."""
         return PREFIX + "/".join(f"{m}:{self.metrics[m]}" for m in BASE_METRICS)
 
 

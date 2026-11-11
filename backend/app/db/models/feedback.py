@@ -37,4 +37,5 @@ class Feedback(Base, TimestampMixin):
     finding: Mapped[Finding | None] = relationship(back_populates="feedback")
 
     def __repr__(self) -> str:  # pragma: no cover
+        """Readable debug representation."""
         return f"<Feedback finding={self.finding_id} fp={self.is_false_positive}>"

@@ -16,6 +16,7 @@ from app.core.tls import weak_ciphers
 
 @rule
 def tls_001_legacy(ctx: CheckContext) -> RawFinding | None:
+    """TLS-001: legacy TLS 1.0/1.1 offered."""
     if not ctx.tls:
         return None
     legacy = [
@@ -28,6 +29,7 @@ def tls_001_legacy(ctx: CheckContext) -> RawFinding | None:
 
 @rule
 def tls_002_weak_cipher(ctx: CheckContext) -> RawFinding | None:
+    """TLS-002: weak cipher suite negotiated."""
     if not ctx.tls or not weak_ciphers(ctx.tls):
         return None
     return make("TLS-002", f"Weak cipher negotiated: {ctx.tls.negotiated_cipher}.")
@@ -35,6 +37,7 @@ def tls_002_weak_cipher(ctx: CheckContext) -> RawFinding | None:
 
 @rule
 def tls_003_expiry(ctx: CheckContext) -> RawFinding | None:
+    """TLS-003: certificate expired or expiring soon."""
     if not ctx.tls or not ctx.tls.cert_not_after:
         return None
     now = datetime.now(UTC)
@@ -47,6 +50,7 @@ def tls_003_expiry(ctx: CheckContext) -> RawFinding | None:
 
 @rule
 def tls_004_self_signed(ctx: CheckContext) -> RawFinding | None:
+    """TLS-004: self-signed certificate."""
     if ctx.tls and ctx.tls.is_self_signed:
         return make("TLS-004", "Certificate subject equals issuer (self-signed).")
     return None
@@ -54,6 +58,7 @@ def tls_004_self_signed(ctx: CheckContext) -> RawFinding | None:
 
 @rule
 def tls_006_mixed_content(ctx: CheckContext) -> RawFinding | None:
+    """TLS-006: HTTPS page references HTTP resources."""
     if ctx.url.startswith("https://") and 'src="http://' in ctx.result.body.lower():
         return make("TLS-006", "HTTPS page references http:// sub-resources.")
     return None
@@ -61,6 +66,7 @@ def tls_006_mixed_content(ctx: CheckContext) -> RawFinding | None:
 
 @rule
 def tls_007_preload(ctx: CheckContext) -> RawFinding | None:
+    """TLS-007: HSTS preload not configured."""
     hsts = (ctx.header("Strict-Transport-Security") or "").lower()
     if hsts and "preload" not in hsts:
         return make("TLS-007", "HSTS present but without 'preload'.")
@@ -69,6 +75,7 @@ def tls_007_preload(ctx: CheckContext) -> RawFinding | None:
 
 @rule
 def tls_008_hostname(ctx: CheckContext) -> RawFinding | None:
+    """TLS-008: certificate hostname mismatch."""
     if ctx.tls and ctx.tls.hostname_matches is False:
         return make("TLS-008", "Certificate does not match the requested hostname.")
     return None

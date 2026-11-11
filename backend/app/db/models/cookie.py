@@ -43,4 +43,5 @@ class Cookie(Base, TimestampMixin):
     endpoint: Mapped[Endpoint] = relationship(back_populates="cookies")
 
     def __repr__(self) -> str:  # pragma: no cover
+        """Readable debug representation."""
         return f"<Cookie {self.name} secure={self.secure} httponly={self.http_only}>"

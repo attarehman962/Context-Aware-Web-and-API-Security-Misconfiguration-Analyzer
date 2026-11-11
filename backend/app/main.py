@@ -90,6 +90,7 @@ def create_app() -> FastAPI:
     # Consistent error handling
     @app.exception_handler(StarletteHTTPException)
     async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+        """Return HTTP errors in the standard envelope."""
         code = {
             400: "BAD_REQUEST",
             401: "UNAUTHORIZED",
@@ -104,6 +105,7 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(ApiError)
     async def api_error_handler(request: Request, exc: ApiError):
+        """Return an ApiError in the standard envelope."""
         return JSONResponse(
             status_code=exc.status_code,
             content=_error_body(exc.code, exc.message),
@@ -112,6 +114,7 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
+        """Return 422 validation errors in the standard envelope."""
         return JSONResponse(
             status_code=422,
             content=_error_body("VALIDATION_ERROR", "Request validation failed.")
@@ -128,6 +131,7 @@ def create_app() -> FastAPI:
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception):
         # Never leak stack traces to clients.
+        """Log and return a generic 500 without leaking details."""
         logger.exception("unhandled error on %s %s", request.method, request.url.path)
         return JSONResponse(
             status_code=500,
@@ -137,6 +141,7 @@ def create_app() -> FastAPI:
     # Every response says which API contract it follows.
     @app.middleware("http")
     async def contract_version_header(request: Request, call_next):
+        """Add the contract-version header to every response."""
         response = await call_next(request)
         response.headers["X-Contract-Version"] = CONTRACT_VERSION
         return response
@@ -150,9 +155,11 @@ def create_app() -> FastAPI:
 
 
 def _add_contract_version_to_openapi(app: FastAPI) -> None:
+    """Add the contract version to the generated OpenAPI schema."""
     base_openapi = app.openapi
 
     def openapi() -> dict:
+        """Build and cache the app's OpenAPI schema."""
         if app.openapi_schema is None:
             schema = base_openapi()
             schema["info"]["x-contract-version"] = CONTRACT_VERSION

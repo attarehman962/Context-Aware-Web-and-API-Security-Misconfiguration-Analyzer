@@ -147,4 +147,5 @@ async def request_cancel(session: AsyncSession, scan: Scan) -> None:
 
 
 async def get_scan(session: AsyncSession, scan_id: uuid.UUID) -> Scan | None:
+    """Fetch a scan by id, or None."""
     return await session.get(Scan, scan_id)

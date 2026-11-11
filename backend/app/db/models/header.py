@@ -31,4 +31,5 @@ class Header(Base, TimestampMixin):
     endpoint: Mapped[Endpoint] = relationship(back_populates="headers")
 
     def __repr__(self) -> str:  # pragma: no cover
+        """Readable debug representation."""
         return f"<Header {self.name}>"

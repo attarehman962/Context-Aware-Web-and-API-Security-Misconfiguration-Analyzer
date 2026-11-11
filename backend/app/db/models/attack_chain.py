@@ -78,4 +78,5 @@ class AttackChain(Base, TimestampMixin):
     )
 
     def __repr__(self) -> str:  # pragma: no cover
+        """Readable debug representation."""
         return f"<AttackChain {self.chain_code} {self.severity}>"

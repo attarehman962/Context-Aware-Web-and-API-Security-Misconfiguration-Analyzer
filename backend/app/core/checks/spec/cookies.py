@@ -40,7 +40,9 @@ def cookie_metadata(raw: str) -> dict[str, object]:
 
 
 def _make(check_id: str, flag: str, summary: str) -> CheckFn:
+    """Build a check that flags a cookie missing a given flag."""
     def check(resp: ScanResponse, endpoint: EndpointInfo) -> list[RawFinding]:
+        """Flag cookies in the response that lack the flag."""
         if not resp.ok:
             return []
         out = []

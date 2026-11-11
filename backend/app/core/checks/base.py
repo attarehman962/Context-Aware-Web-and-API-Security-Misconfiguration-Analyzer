@@ -42,6 +42,7 @@ class CheckContext:
     injection_error_reflected: bool = False
 
     def header(self, name: str) -> str | None:
+        """The response header value by name, case-insensitive."""
         low = name.lower()
         for k, v in self.result.headers.items():
             if k.lower() == low:
@@ -49,6 +50,7 @@ class CheckContext:
         return None
 
     def has_header(self, name: str) -> bool:
+        """True if the response has this header."""
         return self.header(name) is not None
 
 

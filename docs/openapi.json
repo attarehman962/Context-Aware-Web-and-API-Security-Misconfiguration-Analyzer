@@ -948,6 +948,7 @@
           "contract v1"
         ],
         "summary": "Download results as JSON, CSV, HTML or PDF",
+        "description": "Export a scan's results in the requested format.",
         "operationId": "export_results_api_results__scan_id__export_get",
         "parameters": [
           {
@@ -1038,6 +1039,7 @@
           "contract v1"
         ],
         "summary": "Scan history, newest first",
+        "description": "List past scans, newest first, with paging.",
         "operationId": "list_scans_api_scans_get",
         "parameters": [
           {
@@ -1310,7 +1312,7 @@
           "CRITICAL"
         ],
         "title": "ContextClass",
-        "description": "Endpoint sensitivity classes from the NLP classifier (contribution 1)."
+        "description": "Endpoint sensitivity classes from the NLP classifier."
       },
       "EndpointDetail": {
         "properties": {
@@ -1678,7 +1680,7 @@
           "INFO_DISCLOSURE"
         ],
         "title": "FindingCategory",
-        "description": "The eight security-check categories (spec section 13)."
+        "description": "The eight security-check categories."
       },
       "FindingDetail": {
         "properties": {
@@ -2246,7 +2248,7 @@
           "CRITICAL"
         ],
         "title": "Severity",
-        "description": "CVSS severity buckets (spec section 10)."
+        "description": "CVSS severity buckets."
       },
       "SeverityCounts": {
         "properties": {

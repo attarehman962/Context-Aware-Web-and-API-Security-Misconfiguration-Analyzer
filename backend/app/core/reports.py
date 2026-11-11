@@ -46,6 +46,7 @@ _LEVELS = {"H": "High", "M": "Medium", "L": "Low", "X": "Not defined"}
 
 
 def _reason_source(source: str) -> str:
+    """Turn a score-reason source tag into readable text."""
     kind, _, value = source.partition(":")
     if kind == "sensitivity":
         return f"endpoint sensitivity is {value}"
@@ -130,6 +131,7 @@ def redact_evidence(value: Any) -> Any:
 
 
 def _view(data: dict[str, Any]) -> dict[str, Any]:
+    """Shape scan data for the templates, redacting evidence."""
     findings = []
     for f in data.get("findings", []):
         f = dict(f)
@@ -143,6 +145,7 @@ def _view(data: dict[str, Any]) -> dict[str, Any]:
 def _environment() -> Any:
     # Autoescape: titles, URLs and evidence come from the scanned target, so an
     # unescaped Server header or path would be live HTML/JS in the report.
+    """Build the Jinja2 environment for HTML/PDF reports."""
     from jinja2 import Environment, FileSystemLoader
 
     return Environment(
@@ -151,10 +154,12 @@ def _environment() -> Any:
 
 
 def render_html(data: dict[str, Any]) -> str:
+    """Render the scan report as HTML."""
     return str(_environment().get_template(TEMPLATE).render(**_view(data)))
 
 
 def render_pdf(data: dict) -> bytes:
+    """Render the scan report as a PDF (HTML via WeasyPrint)."""
     html = render_html(data)
     try:
         from weasyprint import HTML

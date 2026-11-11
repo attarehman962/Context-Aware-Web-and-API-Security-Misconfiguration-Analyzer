@@ -31,4 +31,5 @@ class AiInsight(Base, TimestampMixin):
     scan: Mapped[Scan] = relationship(back_populates="ai_insights")
 
     def __repr__(self) -> str:  # pragma: no cover
+        """Readable debug representation."""
         return f"<AiInsight {self.provider} scan={self.scan_id}>"

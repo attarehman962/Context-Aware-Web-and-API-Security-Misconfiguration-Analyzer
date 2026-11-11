@@ -71,6 +71,7 @@ def _utc(value: datetime | None) -> datetime | None:
 
 
 def scan_status(scan: Scan, counts: SeverityCounts | None = None) -> ScanStatus:
+    """Map a Scan row to the API ScanStatus schema."""
     opts = scan.options or {}
     return ScanStatus(
         scan_id=scan.id,
@@ -95,6 +96,7 @@ def scan_status(scan: Scan, counts: SeverityCounts | None = None) -> ScanStatus:
 async def severity_counts(
     session: AsyncSession, scan_ids: list[uuid.UUID]
 ) -> dict[uuid.UUID, SeverityCounts]:
+    """Count a scan's findings by severity."""
     rows = (
         await session.execute(
             select(FindingRow.scan_id, FindingRow.severity_bucket, func.count())
@@ -111,6 +113,7 @@ async def severity_counts(
 async def list_scans(
     session: AsyncSession, offset: int, limit: int
 ) -> tuple[list[ScanStatus], int]:
+    """List scans for the history endpoint, with paging."""
     total = await session.scalar(select(func.count()).select_from(Scan)) or 0
     scans = list(
         (
@@ -134,6 +137,7 @@ class FindingFilter:
     in_chain: bool | None = None
 
     def keep(self, f: Finding) -> bool:
+        """True if the finding passes the active filters."""
         return (
             (not self.severity or f.severity_bucket in self.severity)
             and (not self.category or f.category in self.category)
@@ -145,6 +149,7 @@ class FindingFilter:
         )
 
     def as_dict(self) -> dict[str, Any]:
+        """This object as a plain dict."""
         out: dict[str, Any] = {}
         if self.severity:
             out["severity"] = sorted(s.value for s in self.severity)
@@ -186,6 +191,7 @@ def select_findings(
 
 
 def _chain(c: AttackChain) -> Chain:
+    """Map an AttackChain row to the API Chain schema."""
     return Chain(
         id=c.id,
         chain_code=c.chain_code,
@@ -200,6 +206,7 @@ def _chain(c: AttackChain) -> Chain:
 
 
 async def get_results(session: AsyncSession, scan_id: uuid.UUID) -> ScanResults | None:
+    """Assemble a scan's full results for the API."""
     scan = await session.get(Scan, scan_id)
     if scan is None:
         return None
@@ -286,6 +293,7 @@ async def get_finding_detail(
 
 
 def _finding(f: FindingRow) -> Finding:
+    """Map a finding row to the API Finding schema."""
     ep = f.endpoint
     signals = ep.body_signals if ep is not None else {}
     return Finding(
@@ -350,6 +358,7 @@ def redacted(results: ScanResults) -> ScanResults:
 
 
 def _csv(results: ScanResults) -> str:
+    """Render the results as CSV."""
     buf = io.StringIO()
     writer = csv.writer(buf)
     writer.writerow(CSV_COLUMNS)

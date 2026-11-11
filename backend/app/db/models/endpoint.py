@@ -81,10 +81,11 @@ class Endpoint(Base, TimestampMixin):
     )
 
     __table_args__ = (
-        # The same URL+method is discovered once per scan (dedup, spec 18).
+        # The same URL+method is discovered once per scan (dedup).
         UniqueConstraint("scan_id", "url", "method", name="uq_endpoint_scan_url_method"),
         Index("ix_endpoints_scan_context", "scan_id", "context_class"),
     )
 
     def __repr__(self) -> str:  # pragma: no cover
+        """Readable debug representation."""
         return f"<Endpoint {self.method} {self.path} ctx={self.context_class}>"

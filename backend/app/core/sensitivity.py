@@ -189,6 +189,7 @@ class ClassificationResult:
     families: frozenset[str] = frozenset()
 
     def as_dict(self) -> dict:
+        """This classification result as a plain dict."""
         return {
             "class": self.context_class.value,
             "confidence": round(self.confidence, 2),
@@ -233,6 +234,7 @@ class SensitivityClassifier:
     """Classify an endpoint path into CRITICAL/HIGH/MEDIUM/LOW."""
 
     def __init__(self, use_embeddings: bool = True) -> None:
+        """Set up the classifier; optionally load the embedding model."""
         self._model: Any = None
         self._anchor_vecs: dict[ContextClass, Any] | None = None
         self._embeddings_ok = False
@@ -240,6 +242,7 @@ class SensitivityClassifier:
             self._try_load_model()
 
     def _try_load_model(self) -> None:
+        """Try to load the embedding model; fall back to keywords."""
         try:
             from sentence_transformers import SentenceTransformer  # heavy, optional
 
@@ -256,6 +259,7 @@ class SensitivityClassifier:
 
     @property
     def embeddings_available(self) -> bool:
+        """True if the embedding model loaded."""
         return self._embeddings_ok
 
     def classify(
@@ -318,6 +322,7 @@ _default: SensitivityClassifier | None = None
 
 
 def get_classifier() -> SensitivityClassifier:
+    """The shared built-in sensitivity classifier (cached)."""
     global _default
     if _default is None:
         _default = SensitivityClassifier(use_embeddings=True)

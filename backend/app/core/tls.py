@@ -111,6 +111,7 @@ def _parse_cert(der: bytes, host: str, probe: TlsProbe) -> None:
 
 
 def _host_matches(host: str, pattern: str) -> bool:
+    """True if a hostname matches a cert name pattern (handles wildcard)."""
     host = host.lower().rstrip(".")
     pattern = pattern.lower().rstrip(".")
     if pattern.startswith("*."):
@@ -231,6 +232,7 @@ def _sslyze_scan(host: str, ip: str, port: int, probe: TlsProbe) -> bool:
 
 
 def _probe_legacy(host: str, ip: str, port: int, probe: TlsProbe) -> None:
+    """Record which legacy TLS versions (1.0/1.1) the host still offers."""
     for name, version in _LEGACY_PROTOCOLS.items():
         if version is None:
             probe.legacy_probe_inconclusive = True

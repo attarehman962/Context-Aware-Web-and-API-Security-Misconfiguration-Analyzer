@@ -11,11 +11,13 @@ from app.db.models.enums import ContextClass
 
 
 def _missing(ctx: CheckContext, header: str) -> bool:
+    """True if the response lacks this header."""
     return not ctx.has_header(header)
 
 
 @rule
 def hdr_009_coop(ctx: CheckContext) -> RawFinding | None:
+    """HDR-009: missing Cross-Origin-Opener-Policy."""
     if _missing(ctx, "Cross-Origin-Opener-Policy"):
         return make("HDR-009", "Response has no Cross-Origin-Opener-Policy header.")
     return None
@@ -23,6 +25,7 @@ def hdr_009_coop(ctx: CheckContext) -> RawFinding | None:
 
 @rule
 def hdr_010_corp(ctx: CheckContext) -> RawFinding | None:
+    """HDR-010: missing Cross-Origin-Resource-Policy."""
     if _missing(ctx, "Cross-Origin-Resource-Policy"):
         return make("HDR-010", "Response has no Cross-Origin-Resource-Policy header.")
     return None
@@ -31,6 +34,7 @@ def hdr_010_corp(ctx: CheckContext) -> RawFinding | None:
 @rule
 def hdr_011_cache(ctx: CheckContext) -> RawFinding | None:
     # Only relevant for sensitive endpoints.
+    """HDR-011: weak cache control on a sensitive endpoint."""
     if ctx.context_class in (ContextClass.HIGH, ContextClass.CRITICAL):
         cc = (ctx.header("Cache-Control") or "").lower()
         if "no-store" not in cc:
@@ -41,6 +45,7 @@ def hdr_011_cache(ctx: CheckContext) -> RawFinding | None:
 @rule
 def hdr_012_expect_ct(ctx: CheckContext) -> RawFinding | None:
     # Legacy/informational: only when HSTS present but no CT signalling.
+    """HDR-012: missing Expect-CT while HSTS is present."""
     if ctx.has_header("Strict-Transport-Security") and _missing(ctx, "Expect-CT"):
         return make("HDR-012", "No Expect-CT header (legacy CT signalling absent).")
     return None

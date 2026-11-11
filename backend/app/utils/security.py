@@ -51,6 +51,7 @@ class SSRFError(Exception):
     """Raised when a target resolves to a disallowed address."""
 
     def __init__(self, reason: str) -> None:
+        """Create the SSRF error with the reason the address was blocked."""
         self.reason = reason
         super().__init__(reason)
 
@@ -134,6 +135,7 @@ def parse_ip_literal(host: str) -> IPAddress | None:
 
 
 def is_allowed_internal(host: str) -> bool:
+    """True if the host is on the internal allow-list (tests/eval only)."""
     return host.strip().rstrip(".").lower() in settings.allowed_internal_hosts
 
 

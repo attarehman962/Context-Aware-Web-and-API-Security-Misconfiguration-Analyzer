@@ -111,4 +111,5 @@ class Finding(Base, TimestampMixin):
     )
 
     def __repr__(self) -> str:  # pragma: no cover
+        """Readable debug representation."""
         return f"<Finding {self.check_id} {self.severity_bucket} final={self.final_score}>"

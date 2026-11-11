@@ -140,6 +140,7 @@ def severity_bucket(score: float) -> tuple[Severity, str]:
 
 
 def _mapping_path() -> str:
+    """Path to the CVSS environmental mapping YAML file."""
     from pathlib import Path
 
     from app.config import settings
@@ -154,6 +155,7 @@ def load_mapping(path: str | None = None) -> CvssMapping:
 
 @lru_cache
 def _load_mapping_cached(path: str) -> CvssMapping:
+    """Load and cache the parsed CVSS mapping for a path."""
     from app.core.specs import load_cvss_mapping
 
     return load_cvss_mapping(path)

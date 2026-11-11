@@ -14,6 +14,7 @@ _SEV_ORDER = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]
 
 
 def generate_insight(result: ScanResult) -> str:
+    """Write a short executive summary of the scan."""
     by_sev = result.stats["by_severity"]
     crit, high = by_sev.get("CRITICAL", 0), by_sev.get("HIGH", 0)
     n_find, n_ep, n_chain = (

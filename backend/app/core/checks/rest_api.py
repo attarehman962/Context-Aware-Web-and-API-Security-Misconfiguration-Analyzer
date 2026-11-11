@@ -24,11 +24,13 @@ _JWT = re.compile(r"eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,
 
 
 def _is_api(ctx: CheckContext) -> bool:
+    """True if the endpoint looks like a JSON/REST API."""
     return "/api" in ctx.path or "json" in (ctx.result.content_type or "").lower()
 
 
 @rule
 def api_002_trace(ctx: CheckContext) -> RawFinding | None:
+    """API-002: HTTP TRACE method enabled."""
     if "TRACE" in {m.upper() for m in ctx.allowed_methods}:
         return make("API-002", "TRACE method is enabled (from Allow/OPTIONS).")
     return None
@@ -37,6 +39,7 @@ def api_002_trace(ctx: CheckContext) -> RawFinding | None:
 @rule
 def api_005_mass_assignment(ctx: CheckContext) -> RawFinding | None:
     # Surface signal only: a writable object endpoint exposing many fields.
+    """API-005: possible mass assignment."""
     if (
         _is_api(ctx)
         and ctx.result.status_code == 200
@@ -53,6 +56,7 @@ def api_005_mass_assignment(ctx: CheckContext) -> RawFinding | None:
 @rule
 def api_006_bola(ctx: CheckContext) -> RawFinding | None:
     # Numeric object id in an API path is a BOLA/IDOR surface indicator.
+    """API-006: possible BOLA/IDOR (numeric id in an API path)."""
     if _is_api(ctx) and re.search(r"/\d+(?:/|$)", ctx.path):
         return make("API-006", f"Numeric object identifier in path: {ctx.path}")
     return None
@@ -60,6 +64,7 @@ def api_006_bola(ctx: CheckContext) -> RawFinding | None:
 
 @rule
 def api_007_versioning(ctx: CheckContext) -> RawFinding | None:
+    """API-007: API has no version segment."""
     if "/api" in ctx.path and not re.search(r"/v\d+", ctx.path):
         return make("API-007", f"API path is unversioned: {ctx.path}")
     return None
@@ -67,6 +72,7 @@ def api_007_versioning(ctx: CheckContext) -> RawFinding | None:
 
 @rule
 def api_008_deprecated(ctx: CheckContext) -> RawFinding | None:
+    """API-008: deprecated API (Deprecation/Sunset header)."""
     if ctx.has_header("Deprecation") or ctx.has_header("Sunset"):
         return make("API-008", "Endpoint advertises Deprecation/Sunset header.")
     return None
@@ -74,6 +80,7 @@ def api_008_deprecated(ctx: CheckContext) -> RawFinding | None:
 
 @rule
 def api_009_options_methods(ctx: CheckContext) -> RawFinding | None:
+    """API-009: OPTIONS exposes too many methods."""
     methods = {m.upper() for m in ctx.allowed_methods}
     if len(methods) >= 5:
         return make("API-009", f"OPTIONS exposes many methods: {sorted(methods)}")
@@ -82,6 +89,7 @@ def api_009_options_methods(ctx: CheckContext) -> RawFinding | None:
 
 @rule
 def api_010_jwt(ctx: CheckContext) -> RawFinding | None:
+    """API-010: JWT misconfiguration indicators."""
     auth = ctx.header("Authorization") or ""
     if _JWT.search(auth) or _JWT.search(ctx.result.body):
         return make("API-010", "JWT observed; verify signing algorithm and validation.")
@@ -91,6 +99,7 @@ def api_010_jwt(ctx: CheckContext) -> RawFinding | None:
 @rule
 def api_011_overfetch(ctx: CheckContext) -> RawFinding | None:
     # Heuristic: very large JSON object counts many keys.
+    """API-011: API response returns excess fields."""
     if _is_api(ctx) and ctx.result.status_code == 200:
         if ctx.result.body.count('":') > 40:
             return make("API-011", "API response returns a large number of fields.")
@@ -99,6 +108,7 @@ def api_011_overfetch(ctx: CheckContext) -> RawFinding | None:
 
 @rule
 def api_012_graphql(ctx: CheckContext) -> RawFinding | None:
+    """API-012: GraphQL introspection enabled."""
     if ctx.graphql_introspection or "__schema" in ctx.result.body:
         return make("API-012", "GraphQL introspection appears enabled.")
     return None
@@ -106,6 +116,7 @@ def api_012_graphql(ctx: CheckContext) -> RawFinding | None:
 
 @rule
 def api_013_secrets(ctx: CheckContext) -> RawFinding | None:
+    """API-013: secrets in the API response."""
     if ctx.body_class and ctx.body_class.credentials:
         return make("API-013", "Credential-like secret detected in response body.")
     return None
@@ -113,6 +124,7 @@ def api_013_secrets(ctx: CheckContext) -> RawFinding | None:
 
 @rule
 def api_014_injection(ctx: CheckContext) -> RawFinding | None:
+    """API-014: injection error reflected in the response."""
     if ctx.injection_error_reflected:
         return make("API-014", "Benign probe caused an error to be reflected.")
     return None

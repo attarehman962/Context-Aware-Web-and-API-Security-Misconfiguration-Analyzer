@@ -17,11 +17,13 @@ from app.core.engine import ScanResponse
 
 
 def _acao(resp: ScanResponse) -> str | None:
+    """The response's Access-Control-Allow-Origin header."""
     return resp.headers.get("access-control-allow-origin")
 
 
 @register_check("COR-003")
 def cors_wildcard_with_credentials(resp: ScanResponse, endpoint: EndpointInfo) -> list[RawFinding]:
+    """COR-003: wildcard or weak origin with credentials allowed."""
     if not resp.ok or not condition_matches("COR-003", resp):
         return []
     return [
@@ -39,6 +41,7 @@ def cors_wildcard_with_credentials(resp: ScanResponse, endpoint: EndpointInfo) -
 
 @register_check("COR-002")
 def cors_reflected_origin(resp: ScanResponse, endpoint: EndpointInfo) -> list[RawFinding]:
+    """COR-002: the request Origin is reflected back."""
     sent = next((v for k, v in resp.request_headers.items() if k.lower() == "origin"), None)
     if (
         not resp.ok

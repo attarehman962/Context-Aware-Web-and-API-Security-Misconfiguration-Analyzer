@@ -40,6 +40,7 @@ class ChainEndpoint:
 
     @property
     def host(self) -> str:
+        """The lowercased host of this endpoint's URL."""
         return urlparse(self.url).netloc.lower()
 
 
@@ -66,10 +67,12 @@ class DetectedChain:
 
 @lru_cache(maxsize=4)
 def _templates(path: str) -> tuple[ChainSpec, ...]:
+    """Load and cache the chain templates from a config path."""
     return tuple(load_chains(path).chains)
 
 
 def load_templates(path: Path | str | None = None) -> tuple[ChainSpec, ...]:
+    """Return the attack-chain templates from config/chains.yaml (cached)."""
     return _templates(str(path or Path(settings.CONFIG_DIR) / "chains.yaml"))
 
 

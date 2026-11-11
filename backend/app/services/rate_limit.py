@@ -40,11 +40,13 @@ def parse(rule: str) -> tuple[int, int] | None:
 
 class ScanRateLimiter:
     def __init__(self) -> None:
+        """Set up the limiter with a local fallback counter."""
         self._local: dict[str, int] = {}
         self._redis: Any = None
         self._warned = False
 
     async def _incr_redis(self, key: str, window: int) -> int | None:
+        """Increment the window counter in Redis, or None if down."""
         try:
             if self._redis is None:
                 import redis.asyncio as aioredis
@@ -62,6 +64,7 @@ class ScanRateLimiter:
             return None
 
     async def hit(self, client: str, now: float | None = None) -> Decision:
+        """Record a request and decide whether it is allowed."""
         rule = parse(settings.SCAN_RATE_LIMIT)
         if rule is None:
             return Decision(True, 0, 0, 0)

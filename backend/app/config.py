@@ -109,6 +109,7 @@ class Settings(BaseSettings):
     # Derived helpers
     @property
     def allowed_internal_hosts(self) -> frozenset[str]:
+        """The configured internal hosts, as a set."""
         return frozenset(
             h.strip().rstrip(".").lower()
             for h in self.ALLOWED_INTERNAL_HOSTS.split(",")
@@ -124,6 +125,7 @@ class Settings(BaseSettings):
     @classmethod
     def _cap_depth(cls, v: int) -> int:
         # Depth is intentionally shallow for a safe black-box scanner.
+        """Cap the crawl depth at 4."""
         if v > 4:
             raise ValueError("MAX_CRAWL_DEPTH must be <= 4 for safe scanning")
         return v

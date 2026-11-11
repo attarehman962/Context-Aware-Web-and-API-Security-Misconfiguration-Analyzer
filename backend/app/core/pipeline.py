@@ -138,15 +138,18 @@ class ScanResult:
 async def _noop(
     stage: str, percent: int, message: str, detail: dict[str, int]
 ) -> None:  # default progress
+    """Do nothing; the default progress callback."""
     return None
 
 
 def _str_attr(attrs: dict[str, str | bool], key: str) -> str | None:
+    """Return a cookie attribute as a string, or None."""
     value = attrs.get(key)
     return value if isinstance(value, str) else None
 
 
 def _parse_cookies(set_cookie_headers: list[str]) -> list[CookieMeta]:
+    """Parse Set-Cookie headers into cookie metadata (no values)."""
     metas: list[CookieMeta] = []
     for raw in set_cookie_headers:
         parts = [p.strip() for p in raw.split(";")]
@@ -242,6 +245,7 @@ def _spec_findings(
 
 
 async def _no_response() -> None:
+    """Return None; used when there is no response to probe."""
     return None
 
 
@@ -465,20 +469,24 @@ class StageClock:
     for the performance budget: a full scan under 10 minutes."""
 
     def __init__(self) -> None:
+        """Start the stage clock."""
         self._start = time.perf_counter()
         self._open: dict[str, float] = {}
         self._done: dict[str, float] = {}
 
     def start(self, stage: str) -> None:
+        """Mark the start of a timed stage."""
         self._open[stage] = time.perf_counter()
 
     def stop(self, stage: str) -> None:
+        """Add the elapsed time to a stage's running total."""
         self._done[stage] = self._done.get(stage, 0.0) + (
             time.perf_counter() - self._open.pop(stage)
         )
 
     @contextmanager
     def __call__(self, stage: str) -> Iterator[None]:
+        """Time a stage for the duration of a `with` block."""
         self.start(stage)
         try:
             yield
@@ -486,6 +494,7 @@ class StageClock:
             self.stop(stage)
 
     def seconds(self) -> dict[str, float]:
+        """Per-stage elapsed times, rounded to milliseconds."""
         out = {k: round(v, 3) for k, v in self._done.items()}
         out["total"] = round(time.perf_counter() - self._start, 3)
         return out
@@ -540,6 +549,7 @@ async def run_pipeline(
         port = urlparse(target).port or 443
 
         async def tls_probe() -> TlsProbe | None:
+            """Probe the host's TLS once, timed under the 'tls' stage."""
             with clock("tls"):
                 return (
                     await asyncio.to_thread(probe_tls, host, port, allow_private=allow_private)
@@ -549,6 +559,7 @@ async def run_pipeline(
 
         async def plain_http_probe() -> HttpResult | None:
             # TLS-005 judges the plain-HTTP probe itself, before any redirect.
+            """Fetch the plain-HTTP root to check the HTTPS redirect."""
             with clock("http_probe"):
                 return (
                     await engine.fetch(f"http://{host}/", follow_redirects=False) if probe else None
@@ -596,6 +607,7 @@ async def run_pipeline(
         async def analyse(
             ep_index: int, de: DiscoveredEndpoint
         ) -> tuple[EndpointAnalysis, list[ScoredFinding]]:
+            """Analyse one endpoint: run checks, classify, score, update progress."""
             nonlocal done, found
             async with slots:
                 ep, ep_findings = await _analyse_endpoint(
@@ -720,6 +732,7 @@ def _ml_classifier() -> Callable[[EndpointInfo], SensitivityClass] | None:
 
 
 def _build_stats(endpoints, findings, chains) -> dict:
+    """Summarise endpoint, finding and chain counts for the scan stats."""
     by_sev = {s.value: 0 for s in Severity}
     for f in findings:
         by_sev[f.severity.value] += 1

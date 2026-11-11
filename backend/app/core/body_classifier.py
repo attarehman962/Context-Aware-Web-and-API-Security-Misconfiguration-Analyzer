@@ -65,11 +65,13 @@ def _iban_ok(candidate: str) -> bool:
 
 
 def _card_ok(number: str) -> bool:
+    """True if the digits pass a card-number Luhn check."""
     digits = "".join(d for d in number if d.isdigit())
     return bool(_CARD_PREFIX.match(digits)) and _luhn_ok(digits)
 
 
 def _luhn_ok(number: str) -> bool:
+    """True if the digits satisfy the Luhn checksum."""
     digits = [int(d) for d in number if d.isdigit()]
     if not (13 <= len(digits) <= 16):
         return False
@@ -96,6 +98,7 @@ class BodyClassification:
 
     @property
     def force_critical(self) -> bool:
+        """True if the body holds credentials (forces CRITICAL)."""
         return self.credentials
 
 

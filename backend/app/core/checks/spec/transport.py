@@ -17,6 +17,7 @@ from app.core.engine import ScanResponse
 
 @register_check("TLS-005")
 def http_does_not_redirect(resp: ScanResponse, endpoint: EndpointInfo) -> list[RawFinding]:
+    """TLS-005: plain HTTP does not redirect to HTTPS."""
     if (
         urlparse(resp.requested_url).scheme != "http"
         or resp.status_code is None

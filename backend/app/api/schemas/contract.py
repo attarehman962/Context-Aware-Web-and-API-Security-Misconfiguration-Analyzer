@@ -87,6 +87,7 @@ class ScanRequest(ScanOptions):
     @classmethod
     def _only_json_true(cls, value: Any) -> Any:
         # Literal[True] alone accepts 1 (1 == True); only JSON true confirms (SEC-06).
+        """Reject non-boolean values for this flag."""
         if not isinstance(value, bool):
             raise ValueError("must be true")
         return value
@@ -185,6 +186,7 @@ class Finding(_Contract):
     @model_validator(mode="before")
     @classmethod
     def _derive_scoring_method(cls, data: Any) -> Any:
+        """Default scoring_method from whether a final vector is set."""
         if isinstance(data, dict) and "scoring_method" not in data:
             method = "environmental" if data.get("final_vector") else "legacy"
             data = {**data, "scoring_method": method}
@@ -192,6 +194,7 @@ class Finding(_Contract):
 
     @model_validator(mode="after")
     def _scoring_method_matches_vector(self) -> Finding:
+        """scoring_method must agree with whether a vector is set."""
         if (self.scoring_method == "environmental") != (self.final_vector is not None):
             raise ValueError(
                 "scoring_method must be 'environmental' exactly when final_vector is set"
@@ -278,6 +281,7 @@ class ScanResults(_Contract):
 
     @model_validator(mode="after")
     def _rank_findings(self) -> ScanResults:
+        """Sort findings by final score, highest first."""
         self.findings.sort(key=lambda f: (-f.final_score, f.check_id, str(f.id)))
         return self
 

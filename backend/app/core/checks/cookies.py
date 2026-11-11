@@ -24,6 +24,7 @@ _TOKEN_PARAMS = {
 
 
 def _parse_cookie(raw: str) -> dict:
+    """Parse one Set-Cookie header into name and attributes."""
     parts = [p.strip() for p in raw.split(";")]
     name = parts[0].split("=", 1)[0] if parts and "=" in parts[0] else parts[0]
     value = parts[0].split("=", 1)[1] if parts and "=" in parts[0] else ""
@@ -36,6 +37,7 @@ def _parse_cookie(raw: str) -> dict:
 @rule
 def cki_004_token_in_url(ctx: CheckContext) -> RawFinding | None:
     # Whole parameter names: "author=" or "inside=" are not session tokens.
+    """CKI-004: session token passed in the URL."""
     for name in sorted(query_names(ctx.url)):
         if name in _TOKEN_PARAMS or name.endswith(("_token", "-token", "sessionid", "sessid")):
             return make("CKI-004", f"URL query appears to carry a session token ({name}).")
@@ -44,6 +46,7 @@ def cki_004_token_in_url(ctx: CheckContext) -> RawFinding | None:
 
 @rule
 def cki_005_scope(ctx: CheckContext) -> RawFinding | None:
+    """CKI-005: cookie scoped too broadly."""
     for raw in ctx.result.set_cookie_headers:
         c = _parse_cookie(raw)
         domain = c["attrs"].get("domain")
@@ -56,6 +59,7 @@ def cki_005_scope(ctx: CheckContext) -> RawFinding | None:
 
 @rule
 def cki_006_entropy(ctx: CheckContext) -> RawFinding | None:
+    """CKI-006: low session-token entropy."""
     for raw in ctx.result.set_cookie_headers:
         c = _parse_cookie(raw)
         name = c["name"].lower()

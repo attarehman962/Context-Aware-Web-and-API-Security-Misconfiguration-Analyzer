@@ -66,6 +66,7 @@ class SoftNotFound:
     body: str
 
     def matches(self, resp: ScanResponse, path: str) -> bool:
+        """True if the response matches this soft-404 baseline."""
         if resp.status_code != self.status_code:
             return False
         # A 404 page may quote the path it was asked for.
@@ -89,6 +90,7 @@ def register_check(check_id: str) -> Callable[[CheckFn], CheckFn]:
         raise RegistryError(f"{check_id!r} is not a valid check_id (AAA-NNN)")
 
     def decorate(fn: CheckFn) -> CheckFn:
+        """Register the check function under its id."""
         if check_id in CHECKS:
             raise RegistryError(
                 f"{check_id} registered twice "
@@ -105,14 +107,17 @@ def register_check(check_id: str) -> Callable[[CheckFn], CheckFn]:
 
 @lru_cache
 def _specs_from(path: str) -> Mapping[str, CheckSpec]:
+    """Load and cache the check specs from a path, keyed by id."""
     return {c.check_id: c for c in load_checks(path).checks}
 
 
 def load_specs(path: Path | str | None = None) -> Mapping[str, CheckSpec]:
+    """The check specs from config/checks.yaml (cached)."""
     return _specs_from(str(path or Path(settings.CONFIG_DIR) / "checks.yaml"))
 
 
 def spec_for(check_id: str) -> CheckSpec:
+    """The spec for one check id."""
     return load_specs()[check_id]
 
 
@@ -141,6 +146,7 @@ def validate_registry(specs: Mapping[str, CheckSpec] | Iterable[str]) -> list[st
 
 
 def validate_registry_at_startup() -> None:
+    """Load the check implementations so errors surface at startup."""
     load_implementations()
     validate_registry(load_specs())
 
@@ -149,6 +155,7 @@ def validate_registry_at_startup() -> None:
 
 
 def response_info(resp: ScanResponse) -> ResponseInfo:
+    """Adapt a scan response to the ResponseInfo the specs read."""
     return ResponseInfo(
         url=resp.final_url,
         status_code=resp.status_code or 0,
@@ -186,6 +193,7 @@ _CREDENTIAL_HEADERS = ("authorization", "cookie")
 def _rule_holds(
     rule: AppliesToRule, resp: ScanResponse, endpoint: EndpointInfo, context: SpecContext
 ) -> bool:
+    """True if a spec rule holds for this response and context."""
     if rule.sensitivity is not None:
         return context.sensitivity in rule.sensitivity
     if rule.sensitivity_family is not None:

@@ -106,4 +106,5 @@ class Scan(Base, TimestampMixin):
     )
 
     def __repr__(self) -> str:  # pragma: no cover - debug helper
+        """Readable debug representation."""
         return f"<Scan {self.id} {self.status} {self.target_url!r}>"
