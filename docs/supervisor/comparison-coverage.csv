@@ -1,7 +1,0 @@
-category,present_entries,checks,cawasma,cawasma_found,cawasma_not_covered,zap,zap_found,zap_not_covered,nuclei,nuclei_found,nuclei_not_covered
-Security headers,15,HDR-002 HDR-003 HDR-004 HDR-005 HDR-006 HDR-007,detected,15/15,0,partly,7/15,1,partly,12/15,3
-Cookies,3,CKI-001 CKI-002 CKI-003,detected,3/3,0,not detected,0/3,0,not detected,0/3,3
-TLS / transport,0,,no ground truth,0/0,0,no ground truth,0/0,0,no ground truth,0/0,0
-CORS,0,,no ground truth,0/0,0,no ground truth,0/0,0,no ground truth,0/0,0
-Information disclosure,5,INF-002 INF-003,partly,3/5,0,not detected,0/5,1,partly,1/5,0
-API auth / rate limit / data exposure,10,API-001 API-003,partly,4/10,0,not detected,0/10,10,not detected,0/10,10

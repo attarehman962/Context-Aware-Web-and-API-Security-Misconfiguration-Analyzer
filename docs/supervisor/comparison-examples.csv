@@ -1,4 +1,0 @@
-example,target,endpoint,check,zap,nuclei,base,final,endpoint_class,body_signals,requirements,reason
-1 raised,vampi,/users/v1/_debug,HDR-004,Low (Medium),,4.3,5.0,HIGH,CREDENTIALS;PII,CR:H/IR:H/AR:M,sensitive endpoint returning credentials and personal data
-2 kept,vampi,/,HDR-004,Low (Medium),info,4.3,4.3,LOW,,CR:X/IR:X/AR:X,"public page, no sensitive data"
-3 raised by data,crapi,/.env,INF-003,,high,9.1,9.8,LOW,CREDENTIALS,CR:H/IR:H/AR:M,response holds credentials
