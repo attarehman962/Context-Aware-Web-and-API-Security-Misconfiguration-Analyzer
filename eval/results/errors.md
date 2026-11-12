@@ -1,12 +1,12 @@
 # CAWASMA errors
 
-- **scored**: 20261105T050013Z
-- **commit**: 5f2d60e
+- **scored**: 20261111T015128Z
+- **commit**: 3675280
 - **CAWASMA**: api 1.0.0, {'crawl_depth': 2, 'use_wordlist': True, 'passive_only': False}
 - **ZAP**: zaproxy/zap-stable:2.15.0 (baseline; VAmPI: API scan, safe mode)
 - **Nuclei**: projectdiscovery/nuclei:v3.9.0, nuclei-templates v10.1.1
 - **targets**: reset before the run
-- **raw outputs**: eval/results/raw/<tool>/<target>/20261105T050013Z/
+- **raw outputs**: eval/results/raw/<tool>/<target>/20261111T015128Z/
 
 False positives go to Atta (detection code); false negatives may be the scanner
 or the ground truth: check the target's `observed/*.json` first.
